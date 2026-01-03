@@ -54,6 +54,52 @@ async def lifespan(app: FastAPI):
         # Stockage dans l'état de l'application pour accès via request.app.state
         app.state.kanji_cache = {item['kanji']: item['data'] for item in all_data}
         print(f"✅ {len(app.state.kanji_cache)} kanjis en cache.")
+
+
+
+        #-----------------------------------------
+        app = FastAPI(lifespan=lifespan)    
+
+        # 1. CORS en premier
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"], # On garde "*" pour les tests, on sécurisera après
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
+        # 2. Inclusion des routers avec le préfixe /api
+        app.include_router(quiz_router, prefix="/api")
+        app.include_router(answer_router, prefix="/api")
+        app.include_router(stats_router, prefix="/api")
+        app.include_router(compose_router, prefix="/api")
+        app.include_router(session_router, prefix="/api")
+        app.include_router(ranking_router, prefix="/api")
+
+        # 3. Fichiers statiques (Utile pour voir l'interface sur Render si besoin)
+        if FRONTEND_DIR.exists():
+            app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR / "static")), name="static")
+            app.mount("/pages", StaticFiles(directory=str(FRONTEND_DIR / "pages")), name="static_pages")
+        print("les app.get:")
+        @app.get("/")
+        @app.get("/quiz-page")
+        @app.get("/intrus-page")
+        @app.get("/stats-page")
+        @app.get("/compose-page")
+        @app.get("/ranking-page")
+        def spa_index():
+            index_file = FRONTEND_DIR / "index.html"
+            if index_file.exists():
+                return FileResponse(index_file)
+            return {"error": "Frontend files not found"}
+        print("Routes enregistrées:")
+        for route in app.routes:
+            # On vérifie si l'attribut 'methods' existe avant de l'afficher
+            methods = getattr(route, "methods", "N/A")
+            print(f"Route enregistrée: {route.path} | Methods: {methods}")
+
+    # ---------------------------------------------------
     except Exception as e:
         print(f"❌ Erreur chargement cache kanji: {e}")
         app.state.kanji_cache = {}
@@ -61,6 +107,9 @@ async def lifespan(app: FastAPI):
     yield
     # --- [SHUTDOWN] ---
     print("Shutting down...")
+
+
+    
 app = FastAPI(lifespan=lifespan)    
 
 # 1. CORS en premier
@@ -84,7 +133,7 @@ app.include_router(ranking_router, prefix="/api")
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR / "static")), name="static")
     app.mount("/pages", StaticFiles(directory=str(FRONTEND_DIR / "pages")), name="static_pages")
-
+print("les app.get:")
 @app.get("/")
 @app.get("/quiz-page")
 @app.get("/intrus-page")
@@ -96,6 +145,20 @@ def spa_index():
     if index_file.exists():
         return FileResponse(index_file)
     return {"error": "Frontend files not found"}
+print("Routes enregistrées:")
+for route in app.routes:
+    # On vérifie si l'attribut 'methods' existe avant de l'afficher
+    methods = getattr(route, "methods", "N/A")
+    print(f"Route enregistrée: {route.path} | Methods: {methods}")
+# @app.on_event("startup")
+async def debug_routes():
+    print("Routes enregistrées:")
+    for route in app.routes:
+        # On vérifie si l'attribut 'methods' existe avant de l'afficher
+        methods = getattr(route, "methods", "N/A")
+        print(f"Route enregistrée: {route.path} | Methods: {methods}")
+
+debug_routes       
 # @app.on_event("startup")
 # async def startup_event():
 #     global KANJI_CACHE
@@ -125,9 +188,3 @@ def spa_index():
 #     except Exception as e:
 #         print(f"❌ Erreur chargement cache kanji: {e}")
 
-@app.on_event("startup")
-async def debug_routes():
-    for route in app.routes:
-        # On vérifie si l'attribut 'methods' existe avant de l'afficher
-        methods = getattr(route, "methods", "N/A")
-        print(f"Route enregistrée: {route.path} | Methods: {methods}")
