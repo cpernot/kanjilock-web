@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,7 +17,51 @@ from backend.api.ranking import router as ranking_router
 from backend.core.config import FRONTEND_DIR, USER_ID
 from backend.data.progress import load_data
 
-app = FastAPI()
+
+# Variable globale pour les kanjis
+KANJI_CACHE = {}
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("🚀 STARTUP: Lifespan démarré")
+    # --- [STARTUP] ---
+    global KANJI_CACHE
+    from backend.core.config import supabase
+    from backend.data.progress import load_data
+    from backend.core.config import USER_ID
+    
+    print("🚀 Initialisation du serveur (Lifespan)...")
+    
+    # 1. Charger les données utilisateur
+    try:
+        load_data(USER_ID)
+        print(f"✅ Données utilisateur chargées pour : {USER_ID}")
+    except Exception as e:
+        print(f"⚠️ Erreur chargement user: {e}")
+
+    # 2. Charger le Cache Kanjis
+    try:
+        all_data = []
+        chunk_size = 1000
+        start = 0
+        while True:
+            res = supabase.table('kanji').select("*").range(start, start + chunk_size - 1).execute()
+            all_data.extend(res.data)
+            if len(res.data) < chunk_size:
+                break
+            start += chunk_size
+        
+        # Stockage dans l'état de l'application pour accès via request.app.state
+        app.state.kanji_cache = {item['kanji']: item['data'] for item in all_data}
+        print(f"✅ {len(app.state.kanji_cache)} kanjis en cache.")
+    except Exception as e:
+        print(f"❌ Erreur chargement cache kanji: {e}")
+        app.state.kanji_cache = {}
+
+    yield
+    # --- [SHUTDOWN] ---
+    print("Shutting down...")
+app = FastAPI(lifespan=lifespan)    
 
 # 1. CORS en premier
 app.add_middleware(
@@ -51,38 +96,34 @@ def spa_index():
     if index_file.exists():
         return FileResponse(index_file)
     return {"error": "Frontend files not found"}
-
-# Variable globale pour les kanjis
-KANJI_CACHE = {}
-
-@app.on_event("startup")
-async def startup_event():
-    global KANJI_CACHE
-    from backend.core.config import supabase
-    print("🚀 Initialisation du serveur...")
+# @app.on_event("startup")
+# async def startup_event():
+#     global KANJI_CACHE
+#     from backend.core.config import supabase
+#     print("🚀 Initialisation du serveur...")
     
-    # Pré-chargement des données utilisateur (Supabase)
-    try:
-        load_data(USER_ID)
-        print(f"✅ Données utilisateur chargées pour : {USER_ID}")
-    except Exception as e:
-        print(f"⚠️ Erreur chargement initial user: {e}")
+#     # Pré-chargement des données utilisateur (Supabase)
+#     try:
+#         load_data(USER_ID)
+#         print(f"✅ Données utilisateur chargées pour : {USER_ID}")
+#     except Exception as e:
+#         print(f"⚠️ Erreur chargement initial user: {e}")
 
-    # Chargement du Cache Kanjis
-    try:
-        all_data = []
-        chunk_size = 1000
-        start = 0
-        while True:
-            res = supabase.table('kanji').select("*").range(start, start + chunk_size - 1).execute()
-            all_data.extend(res.data)
-            if len(res.data) < chunk_size: break
-            start += chunk_size
-        KANJI_CACHE = {item['kanji']: item['data'] for item in all_data}
-        app.state.kanji_cache = KANJI_CACHE  # <--- AJOUTE CETTE LIGNE
-        print(f"✅ {len(KANJI_CACHE)} kanjis en cache.")
-    except Exception as e:
-        print(f"❌ Erreur chargement cache kanji: {e}")
+#     # Chargement du Cache Kanjis
+#     try:
+#         all_data = []
+#         chunk_size = 1000
+#         start = 0
+#         while True:
+#             res = supabase.table('kanji').select("*").range(start, start + chunk_size - 1).execute()
+#             all_data.extend(res.data)
+#             if len(res.data) < chunk_size: break
+#             start += chunk_size
+#         KANJI_CACHE = {item['kanji']: item['data'] for item in all_data}
+#         app.state.kanji_cache = KANJI_CACHE  # <--- AJOUTE CETTE LIGNE
+#         print(f"✅ {len(KANJI_CACHE)} kanjis en cache.")
+#     except Exception as e:
+#         print(f"❌ Erreur chargement cache kanji: {e}")
 
 @app.on_event("startup")
 async def debug_routes():
