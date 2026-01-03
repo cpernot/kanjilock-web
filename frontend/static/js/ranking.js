@@ -11,7 +11,8 @@ export function initRanking() {
 }
 
 async function loadRanking(range) {
-  let url = "/ranking/global";
+  // 1. On initialise l'URL avec la variable globale API_BASE_URL
+  let url = `${API_BASE_URL}/ranking/global`;
 
   if (range === "month") {
     const now = new Date();
@@ -19,10 +20,29 @@ async function loadRanking(range) {
     url = `${API_BASE_URL}/ranking/month/${ym}`;
   }
 
-  const res = await fetch(url);
-  const data = await res.json();
+  try {
+    const res = await fetch(url);
+    
+    // Sécurité : si le serveur répond 404 ou 500
+    if (!res.ok) {
+        console.error("Erreur serveur:", res.status);
+        renderTable([]); // On affiche un tableau vide
+        return;
+    }
 
-  renderTable(data);
+    const data = await res.json();
+
+    // Sécurité : on vérifie que data est bien un tableau avant le forEach
+    if (Array.isArray(data)) {
+        renderTable(data);
+    } else {
+        console.error("Format de données invalide", data);
+        renderTable([]);
+    }
+  } catch (error) {
+    console.error("Erreur de connexion au backend:", error);
+    renderTable([]);
+  }
 }
 
 function renderTable(data) {
