@@ -29,6 +29,14 @@ origins = [
     "https://kanjilock-web.vercel.app/"
 ]
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 print("CWD =", os.getcwd())
 
 now = datetime.now().isoformat()
@@ -39,13 +47,7 @@ app.include_router(compose_router, prefix="/api")
 app.include_router(session_router, prefix="/api")
 app.include_router(ranking_router, prefix="/api")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
 
 def get_srs_stats(user_srs):
     counts = {1: 0, 2: 0, 3: 0, 4: 0}
