@@ -25,7 +25,7 @@ app = FastAPI()
 origins = [
     "http://localhost:5500", # Pour tes tests locaux (Live Server VS Code par ex)
     "http://127.0.0.1:5500",
-    "https://ton-projet-vercel.vercel.app" # L'URL Vercel future
+    "https://kanjilock-web.vercel.app" # L'URL Vercel future
 ]
 
 print("CWD =", os.getcwd())
