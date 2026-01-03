@@ -14,8 +14,7 @@ Thumbs.db
 
 # Logs locaux (puisqu'on passe sur Supabase)
 *.log
-main_data/*.log
-main_data/*.jsonl
+main_data/*
 
 # Excel temporaire
 ~$*
