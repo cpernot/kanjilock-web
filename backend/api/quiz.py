@@ -1,6 +1,6 @@
 import random, uuid
 from datetime import date
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from backend.data.progress import load_data, save_data
 from backend.core.selection import choose_weighted_kanji
@@ -17,11 +17,11 @@ def is_kanji_valid(k, mode_def):
     return True
 
 @router.get("/quiz")
-def quiz_api(mode: str = "qa"):
+def quiz_api(request: Request, mode: str = "qa"):
     # 1. Utilisation du Cache global (évite l'appel réseau lourd)
-    from backend.main import KANJI_CACHE as kanjis
+    kanji_cache = getattr(request.app.state, "kanji_cache", {})
     
-    if not kanjis:
+    if not kanji_cache:
         return {"error": "Le cache des kanjis est vide ou en cours de chargement"}
 
     today = date.today().isoformat()
@@ -44,7 +44,7 @@ def quiz_api(mode: str = "qa"):
     if mode == "intrus":
         # On utilise "qa" par défaut pour les stats de l'intrus
         user_srs_intrus = user.get("qa", {})
-        payload = quiz_intrus(kanjis, user_srs_intrus, show_box=True)
+        payload = quiz_intrus(kanji_cache, user_srs_intrus, show_box=True)
 
         if not payload:
             return {"error": "Pas assez de données"}
@@ -71,7 +71,7 @@ def quiz_api(mode: str = "qa"):
     
     # Filtrage des kanjis valides (sur le cache en mémoire, donc instantané)
     filtered_kanjis = {
-        k_char: k_data for k_char, k_data in kanjis.items() 
+        k_char: k_data for k_char, k_data in kanji_cache.items() 
         if is_kanji_valid(k_data, mode_def)
     }
 

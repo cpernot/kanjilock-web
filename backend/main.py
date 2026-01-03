@@ -79,6 +79,7 @@ async def startup_event():
             if len(res.data) < chunk_size: break
             start += chunk_size
         KANJI_CACHE = {item['kanji']: item['data'] for item in all_data}
+        app.state.kanji_cache = KANJI_CACHE  # <--- AJOUTE CETTE LIGNE
         print(f"✅ {len(KANJI_CACHE)} kanjis en cache.")
     except Exception as e:
         print(f"❌ Erreur chargement cache kanji: {e}")

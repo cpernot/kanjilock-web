@@ -1,29 +1,26 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 import random, uuid
 from backend.core.logging import log_event
 
 router = APIRouter()
 
-# On ne charge plus de fichiers CSV ici.
-# On va utiliser le cache global défini dans main.py
-# Pour y accéder, on l'importera dynamiquement ou on utilisera une fonction
-
 @router.get("/quiz_compose")
-def quiz_compose():
-    from backend.main import KANJI_CACHE  # Import local pour éviter les imports circulaires
+def quiz_compose(request: Request): # <--- Ajoute request: Request ici
+    # Récupère le cache depuis l'état de l'app sans importer main
+    kanji_cache = getattr(request.app.state, "kanji_cache", {})
     
-    if not KANJI_CACHE:
+    if not kanji_cache:
         return {"error": "Le cache des kanjis est vide"}
 
     # Filtrer les kanjis qui ont des mots composés
     # (Assure-toi que ta table Supabase contient bien une colonne 'liste_de_mots' dans le JSON 'data')
-    pool_compose = [k for k, v in KANJI_CACHE.items() if v.get("liste_de_mots")]
+    pool_compose = [k for k, v in kanji_cache.items() if v.get("liste_de_mots")]
     
     if not pool_compose:
         return {"error": "Aucune donnée de composition trouvée dans Supabase"}
 
     kanji = random.choice(pool_compose)
-    k_data = KANJI_CACHE[kanji]
+    k_data = kanji_cache[kanji]
 
     # Extraction des mots corrects
     mots_corrects = [
@@ -34,7 +31,7 @@ def quiz_compose():
 
     # Création des leurres à partir des autres kanjis du cache
     tous_les_mots = []
-    for data in KANJI_CACHE.values():
+    for data in kanji_cache.values():
         mots = data.get("liste_de_mots", "").split(",")
         tous_les_mots.extend([m.strip() for m in mots if m.strip()])
     

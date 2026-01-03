@@ -1,13 +1,13 @@
 from backend.data.progress import load_data
 from backend.core.config import USER_ID
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 router = APIRouter()
 
 @router.get("/stats")
-def stats_api(mode: str = "qa"):
+def stats_api(request: Request, mode: str = "qa"):
     # 1. On importe le cache depuis main pour éviter de relire le fichier JSON
-    from backend.main import KANJI_CACHE as kanjis
+    kanji_cache = getattr(request.app.state, "kanji_cache", {})
     
     # 2. On charge la progression depuis Supabase via load_data (avec l'ID !)
     # load_data(USER_ID) renvoie déjà {"srs": {...}, "daily_stats": {...}}
@@ -32,7 +32,7 @@ def stats_api(mode: str = "qa"):
     kanji_list = []
     for k_char, v_stats in srs.items():
         # On récupère les infos statiques (signification, etc.) dans le cache
-        k_info = kanjis.get(k_char, {})
+        k_info = kanji_cache.get(k_char, {})
         
         kanji_entry = {
             "kanji": k_char,

@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from backend.core.config import supabase
 
 router = APIRouter()
