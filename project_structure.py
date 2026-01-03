@@ -3,6 +3,9 @@ import ast
 
 EXCLUDE_DIRS = {"data", "__pycache__", ".git", ".venv", "venv", "node_modules"}
 OUTPUT_FILE = "kanjilock_structure.txt"
+EXCLUDE_DIRS = {"main_data", "__pycache__", ".git", ".venv", "venv", "node_modules", "data"}
+EXCLUDE_EXT = {".pyc", ".log", ".env", ".md", ".txt""migrate_to_supabase.py", "export_project_to_txt.py","extract_requirements.py", "project_structure.py"}
+
 
 def should_skip(path):
     return any(part in EXCLUDE_DIRS for part in path.split(os.sep))

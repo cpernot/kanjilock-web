@@ -1,20 +1,25 @@
 ./
+  .env
+  .gitignore
   export_project_to_txt.py
         def should_skip()
+  extract_requirements.py
+        def extract_imports()
   kanjilock_backup.txt
   kanjilock_structure.txt
+  migrate_to_supabase.py
+        def migrate_kanji()
+        def migrate_progress()
+        def migrate_sessions()
+        def migrate_csv_keywords()
   project_structure.py
         def should_skip()
         def analyze_python_file()
   README.txt
   start.py
-  vercel.json
   ~$kanji_composition(en chantier).xlsx
   backend/
     main.py
-          def get_srs_stats()
-          def get_daily_stats()
-          def get_kanji_stats()
           def spa_index()
     requirements.txt
     api/
@@ -24,10 +29,7 @@
             def is_kanji_valid()
             def quiz_api()
       quiz_compose.py
-            def load_compose_data()
-            def pick_random_words()
             def quiz_compose()
-            def validate()
       quiz_modes.py
             def quiz_intrus()
       ranking.py
@@ -42,6 +44,7 @@
       config.py
       logging.py
             def log_event()
+            def _send_to_supabase()
       selection.py
             def choose_weighted_kanji()
       srs.py
@@ -49,10 +52,12 @@
             def update_kanji_srs()
             def is_available()
     models/
+  main_data/  
   frontend/
     icon-192.png
     icon-512.png
     index.html
+    vercel.json
     pages/
       compose.html
       home.html
@@ -73,6 +78,7 @@
         app.js
         common.js
         compose_quiz.js
+        config.js
         home.js
         intrus.js
         login.js
@@ -93,10 +99,3 @@
         error.wav
         success.wav
         Windows Notify Messaging.wav
-  main_data/
-    events.log
-    events.log.jsonl
-    kanjilock.json
-    liste_de_mots.csv
-    progress.json
-    sessions.jsonl

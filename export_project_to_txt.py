@@ -1,8 +1,9 @@
 import os
 
 OUTPUT_FILE = "kanjilock_backup.txt"
-EXCLUDE_DIRS = {"data", "__pycache__", ".git", ".venv", "venv", "node_modules"}
-EXCLUDE_EXT = {".pyc", ".log"}
+EXCLUDE_DIRS = {"main_data", "__pycache__", ".git", ".venv", "venv", "node_modules", "data"}
+EXCLUDE_EXT = {".pyc", ".log", ".env", ".md", ".txt",
+               ".xlsx", "migrate_to_supabase.py", "export_project_to_txt.py","extract_requirements.py", "project_structure.py"}
 
 def should_skip(path):
     parts = set(path.split(os.sep))
