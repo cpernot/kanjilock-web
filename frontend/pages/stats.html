@@ -1,0 +1,35 @@
+<head>
+  <meta charset="utf-8">
+  <title>Quiz - Intrus</title>
+
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+
+  <div id="controls">
+    <button id="dailyBtn">🗓 Activité quotidienne</button>
+    <div id="heatmap" style="display:grid;grid-template-columns:repeat(14,20px);gap:4px"></div>
+    <h2>Progression SRS</h2>
+   
+    <select id="modeSelect">
+      <option value="qa">Kanji → Sens</option>
+      <option value="qb">Sens → Kanji</option>
+      <option value="qc">Mot → Sens</option>
+      <option value="qd">Kanji → Boite</option>
+      <option value="qe">Kanji → Romaji</option>
+    </select>
+     <!-- <button id="statsBtn">📊 Stats</button>     
+      <button id="weakkanjiBtn">⚠️ Faiblesses</button> -->
+  </div>
+
+<!-- <h2>Activité quotidienne</h2> -->
+<canvas id="srsChart" width="400" height="200"></canvas>
+<div id="weakKanjis"></div>
+
+
+
+

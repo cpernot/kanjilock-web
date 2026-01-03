@@ -1,0 +1,294 @@
+:root {
+  --paper: #f9f6f1;
+  --ink: #1c1c1c;
+  --ink-soft: #444;
+  --accent: #8b0000; /* rouge sceau japonais */
+  --bottom-nav-height: 64px;
+}
+
+/* RESET */
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Mincho ProN",
+               "Yu Mincho", "Helvetica Neue", serif;
+  /* padding:
+    env(safe-area-inset-top)
+    env(safe-area-inset-right)
+    env(safe-area-inset-bottom)
+    env(safe-area-inset-left); */
+}
+/* body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.02),
+      rgba(0,0,0,0.02) 1px,
+      transparent 1px,
+      transparent 4px
+    );
+  pointer-events: none;
+} */
+/* CONTENU */
+
+header {
+  text-align: center;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+/* Boutons */
+#controls_home button{
+  padding: 50px 52px;
+  margin: 4px 4px;
+  width: 40%;
+  font-size: 12px;
+  border-radius: 15px;
+  border: none;
+  background: #222;
+  color: #fff;
+}
+#controls select{
+  text-align: left;
+  padding: 10px 12px;
+  margin: 4px 0;
+  width: 55%;
+  font-size: 12px;
+  border-radius: 8px;
+  border: none;
+  background: #222;
+  color: #fff;}
+#controls button{
+  text-align: left;
+  padding: 10px 12px;
+  margin: 4px 0;
+  width: 55%;
+  font-size: 12px;
+  border-radius: 8px;
+  border: none;
+  background: #222;
+  color: #fff;
+}
+
+
+/* BOTTOM NAV */
+.bottom-nav {
+  position: fixed;
+  /* bottom: env(safe-area-inset-bottom); */
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--bottom-nav-height);
+  background: #111;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  border-top: 1px solid #333;
+}
+
+.bottom-nav a {
+  color: #aaa;
+  text-decoration: none;
+  font-size: 22px;
+  padding: 8px;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.bottom-nav a.active {
+  color: #fff;
+  transform: scale(1.25);
+  border-bottom: 3px solid #111;
+}
+
+main {
+  padding-bottom: calc(
+    var(--bottom-nav-height) + env(safe-area-inset-bottom)
+  );
+}
+
+#multi_quiz h2 {
+  font-size: 46px;
+  text-align: center;
+  margin: 24px 0;
+  letter-spacing: 4px;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.05);}
+/* Boutons */
+#multi_quiz button {
+  display: block;
+  width: 92%;
+  margin: 14px auto;
+  padding: 18px;
+  font-size: 18px;
+  border-radius: 14px;
+  border: 1px solid #ddd;
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+#multi_quiz button:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+#result {
+  text-align: center;
+  font-size: 20px;
+  padding: 12px;
+  margin-bottom: 1rem;
+}
+
+footer {
+  padding: 10px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.correct {
+  animation: flashGreen 1s;
+}
+.wrong {
+  animation: shake 0.7s;
+}
+
+@keyframes flashGreen {
+  0% { background:#fff; }
+  100% { background:#c8f7c5; }
+}
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  50% { transform: translateX(10px); }
+  100% { transform: translateX(0); }
+}
+#answer-zone {
+  min-height: 220px;          /* ajuste à ton design */
+  margin-top: 1rem;
+  padding: 0.5rem;
+  transition: opacity 0.1s ease;
+  /* background: rgba(255,255,255,0.85); */
+  /* border-left: 1px solid rgb(57, 56, 56); */
+}
+
+#result:empty {
+  opacity: 0;
+}
+
+#result {
+  opacity: 1;
+}
+#compose-options button {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+}
+#compose-options button.selected {
+  background: #ffd;
+}
+
+.time-bar {
+  height: 6px;
+  width: 100%;
+  background: #ddd;
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 10px 0;
+}
+
+.time-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #4caf50, #ff9800, #f44336);
+  transform-origin: left;
+  transform: scaleX(1);
+}
+
+
+/* 
+.compose .options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.compose .option {
+  padding: 10px;
+  font-size: 1rem;
+}
+
+.compose .option.selected {
+  background: #4caf50;
+  color: white;
+}
+
+.compose .validate {
+  width: 100%;
+  padding: 12px;
+  font-size: 1.1rem;
+}
+
+.success { color: green; }
+.error { color: red; } */
+.session-end {
+  text-align: center;
+  padding: 20px;
+}
+
+.session-end h2 {
+  font-size: 46px;
+  text-align: center;
+  margin: 24px 0;
+  letter-spacing: 4px;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.05);}
+
+.session-end  button {
+  /* margin: 10px;
+  padding: 10px 16px;
+  font-size: 1em; */
+  text-align: middle;
+  padding: 14px 16px;
+  margin: 4px 0;
+  width: 20%;
+  font-size: 12px;
+  border-radius: 8px;
+  border: none;
+  background: #222;
+  color: #fff;
+}
+
+.ranking h2 {
+  font-size: 46px;
+  text-align: center;
+  margin: 24px 0;
+  letter-spacing: 4px;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.05);}
+
+.ranking  button {
+  text-align: middle;
+  padding: 14px 16px;
+  margin: 4px 0;
+  width: 20%;
+  font-size: 10px;
+  border-radius: 8px;
+  border: none;
+  background: #222;
+  color: #fff;}
+
+.login.login  button {
+  text-align: middle;
+  padding: 14px 16px;
+  margin: 4px 0;
+  width: 20%;
+  font-size: 10px;
+  border-radius: 8px;
+  border: none;
+  background: #222;
+  color: #fff;}

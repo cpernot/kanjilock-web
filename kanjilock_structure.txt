@@ -1,0 +1,102 @@
+./
+  export_project_to_txt.py
+        def should_skip()
+  kanjilock_backup.txt
+  kanjilock_structure.txt
+  project_structure.py
+        def should_skip()
+        def analyze_python_file()
+  README.txt
+  start.py
+  vercel.json
+  ~$kanji_composition(en chantier).xlsx
+  backend/
+    main.py
+          def get_srs_stats()
+          def get_daily_stats()
+          def get_kanji_stats()
+          def spa_index()
+    requirements.txt
+    api/
+      answer.py
+            def answer()
+      quiz.py
+            def is_kanji_valid()
+            def quiz_api()
+      quiz_compose.py
+            def load_compose_data()
+            def pick_random_words()
+            def quiz_compose()
+            def validate()
+      quiz_modes.py
+            def quiz_intrus()
+      ranking.py
+            def compute_ranking()
+            def ranking_global()
+            def ranking_month()
+      session.py
+            def save_session()
+      stats.py
+            def stats_api()
+    core/
+      config.py
+      logging.py
+            def log_event()
+      selection.py
+            def choose_weighted_kanji()
+      srs.py
+            def compute_next_review()
+            def update_kanji_srs()
+            def is_available()
+    models/
+  frontend/
+    icon-192.png
+    icon-512.png
+    index.html
+    pages/
+      compose.html
+      home.html
+      intrus.html
+      login.html
+      multi_quiz.html
+      ranking.html
+      session_end.html
+      settings.html
+      stats.html
+    static/
+      favicon.ico
+      manifest.json
+      service-worker.js
+      css/
+        style.css
+      js/
+        app.js
+        common.js
+        compose_quiz.js
+        home.js
+        intrus.js
+        login.js
+        modeManager.js
+        multi_quiz.js
+        player.js
+        quizSession.js
+        ranking.js
+        session_end.js
+        settings.js
+        spa.js
+        stats_js.js
+      sounds/
+        APPLAUSE.WAV
+        ARROW.WAV
+        BOMB.WAV
+        CHIMES.WAV
+        error.wav
+        success.wav
+        Windows Notify Messaging.wav
+  main_data/
+    events.log
+    events.log.jsonl
+    kanjilock.json
+    liste_de_mots.csv
+    progress.json
+    sessions.jsonl
