@@ -25,7 +25,8 @@ app = FastAPI()
 origins = [
     "http://localhost:5500", # Pour tes tests locaux (Live Server VS Code par ex)
     "http://127.0.0.1:5500",
-    "https://kanjilock-web.vercel.app" # L'URL Vercel future
+    "https://kanjilock-web.vercel.app", # L'URL Vercel future
+    "https://kanjilock-web.vercel.app/"
 ]
 
 print("CWD =", os.getcwd())
@@ -40,7 +41,7 @@ app.include_router(ranking_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
