@@ -8,7 +8,7 @@ router = APIRouter()
 # On va utiliser le cache global défini dans main.py
 # Pour y accéder, on l'importera dynamiquement ou on utilisera une fonction
 
-@router.get("/quiz_compose")
+@router.get("/")
 def quiz_compose():
     from backend.main import KANJI_CACHE  # Import local pour éviter les imports circulaires
     

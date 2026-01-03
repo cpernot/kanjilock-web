@@ -36,7 +36,7 @@ def compute_ranking(db_sessions):
     
     return ranking
 
-@router.get("/ranking/global")
+@router.get("/global")
 def ranking_global():
     # On récupère toutes les lignes de la table sessions
     response = supabase.table("sessions").select("*").execute()

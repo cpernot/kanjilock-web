@@ -31,9 +31,9 @@ app.add_middleware(
 app.include_router(quiz_router, prefix="/api")
 app.include_router(answer_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")
-app.include_router(compose_router, prefix="/api")
+app.include_router(compose_router, prefix="/api/quiz_compose")
 app.include_router(session_router, prefix="/api")
-app.include_router(ranking_router, prefix="/api")
+app.include_router(ranking_router, prefix="/api/ranking")
 
 # 3. Fichiers statiques (Utile pour voir l'interface sur Render si besoin)
 if FRONTEND_DIR.exists():

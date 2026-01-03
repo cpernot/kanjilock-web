@@ -4,7 +4,7 @@ from fastapi import APIRouter
 
 router = APIRouter()
 
-@router.get("/stats")
+@router.get("/")
 def stats_api(mode: str = "qa"):
     # 1. On importe le cache depuis main pour éviter de relire le fichier JSON
     from backend.main import KANJI_CACHE as kanjis
