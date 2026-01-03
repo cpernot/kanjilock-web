@@ -79,9 +79,9 @@ app.add_middleware(
 app.include_router(quiz_router, prefix="/api")
 app.include_router(answer_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")
-app.include_router(compose_router, prefix="/api/quiz_compose")
+app.include_router(compose_router, prefix="/api")
 app.include_router(session_router, prefix="/api")
-app.include_router(ranking_router, prefix="/api/ranking")
+app.include_router(ranking_router, prefix="/api")
 
 # 3. Fichiers statiques (Utile pour voir l'interface sur Render si besoin)
 if FRONTEND_DIR.exists():
@@ -127,6 +127,7 @@ async def startup_event():
             if len(res.data) < chunk_size: break
             start += chunk_size
         KANJI_CACHE = {item['kanji']: item['data'] for item in all_data}
+        app.state.kanji_cache = KANJI_CACHE  # <--- AJOUTE CETTE LIGNE
         print(f"✅ {len(KANJI_CACHE)} kanjis en cache.")
     except Exception as e:
         print(f"❌ Erreur chargement cache kanji: {e}")
@@ -220,7 +221,7 @@ FILE: .\backend\api\quiz.py
 ================================================================================
 import random, uuid
 from datetime import date
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from backend.data.progress import load_data, save_data
 from backend.core.selection import choose_weighted_kanji
@@ -237,11 +238,11 @@ def is_kanji_valid(k, mode_def):
     return True
 
 @router.get("/quiz")
-def quiz_api(mode: str = "qa"):
+def quiz_api(request: Request, mode: str = "qa"):
     # 1. Utilisation du Cache global (évite l'appel réseau lourd)
-    from backend.main import KANJI_CACHE as kanjis
+    kanji_cache = getattr(request.app.state, "kanji_cache", {})
     
-    if not kanjis:
+    if not kanji_cache:
         return {"error": "Le cache des kanjis est vide ou en cours de chargement"}
 
     today = date.today().isoformat()
@@ -264,7 +265,7 @@ def quiz_api(mode: str = "qa"):
     if mode == "intrus":
         # On utilise "qa" par défaut pour les stats de l'intrus
         user_srs_intrus = user.get("qa", {})
-        payload = quiz_intrus(kanjis, user_srs_intrus, show_box=True)
+        payload = quiz_intrus(kanji_cache, user_srs_intrus, show_box=True)
 
         if not payload:
             return {"error": "Pas assez de données"}
@@ -291,7 +292,7 @@ def quiz_api(mode: str = "qa"):
     
     # Filtrage des kanjis valides (sur le cache en mémoire, donc instantané)
     filtered_kanjis = {
-        k_char: k_data for k_char, k_data in kanjis.items() 
+        k_char: k_data for k_char, k_data in kanji_cache.items() 
         if is_kanji_valid(k_data, mode_def)
     }
 
@@ -356,32 +357,29 @@ def quiz_api(mode: str = "qa"):
 ================================================================================
 FILE: .\backend\api\quiz_compose.py
 ================================================================================
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 import random, uuid
 from backend.core.logging import log_event
 
 router = APIRouter()
 
-# On ne charge plus de fichiers CSV ici.
-# On va utiliser le cache global défini dans main.py
-# Pour y accéder, on l'importera dynamiquement ou on utilisera une fonction
-
-@router.get("/")
-def quiz_compose():
-    from backend.main import KANJI_CACHE  # Import local pour éviter les imports circulaires
+@router.get("/quiz_compose")
+def quiz_compose(request: Request): # <--- Ajoute request: Request ici
+    # Récupère le cache depuis l'état de l'app sans importer main
+    kanji_cache = getattr(request.app.state, "kanji_cache", {})
     
-    if not KANJI_CACHE:
+    if not kanji_cache:
         return {"error": "Le cache des kanjis est vide"}
 
     # Filtrer les kanjis qui ont des mots composés
     # (Assure-toi que ta table Supabase contient bien une colonne 'liste_de_mots' dans le JSON 'data')
-    pool_compose = [k for k, v in KANJI_CACHE.items() if v.get("liste_de_mots")]
+    pool_compose = [k for k, v in kanji_cache.items() if v.get("liste_de_mots")]
     
     if not pool_compose:
         return {"error": "Aucune donnée de composition trouvée dans Supabase"}
 
     kanji = random.choice(pool_compose)
-    k_data = KANJI_CACHE[kanji]
+    k_data = kanji_cache[kanji]
 
     # Extraction des mots corrects
     mots_corrects = [
@@ -392,7 +390,7 @@ def quiz_compose():
 
     # Création des leurres à partir des autres kanjis du cache
     tous_les_mots = []
-    for data in KANJI_CACHE.values():
+    for data in kanji_cache.values():
         mots = data.get("liste_de_mots", "").split(",")
         tous_les_mots.extend([m.strip() for m in mots if m.strip()])
     
@@ -476,7 +474,7 @@ def quiz_intrus(kanjis, user_srs, show_box=True):
 ================================================================================
 FILE: .\backend\api\ranking.py
 ================================================================================
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from backend.core.config import supabase
 
 router = APIRouter()
@@ -514,7 +512,7 @@ def compute_ranking(db_sessions):
     
     return ranking
 
-@router.get("/global")
+@router.get("/ranking/global")
 def ranking_global():
     # On récupère toutes les lignes de la table sessions
     response = supabase.table("sessions").select("*").execute()
@@ -584,14 +582,14 @@ FILE: .\backend\api\stats.py
 ================================================================================
 from backend.data.progress import load_data
 from backend.core.config import USER_ID
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 router = APIRouter()
 
-@router.get("/")
-def stats_api(mode: str = "qa"):
+@router.get("/stats")
+def stats_api(request: Request, mode: str = "qa"):
     # 1. On importe le cache depuis main pour éviter de relire le fichier JSON
-    from backend.main import KANJI_CACHE as kanjis
+    kanji_cache = getattr(request.app.state, "kanji_cache", {})
     
     # 2. On charge la progression depuis Supabase via load_data (avec l'ID !)
     # load_data(USER_ID) renvoie déjà {"srs": {...}, "daily_stats": {...}}
@@ -616,7 +614,7 @@ def stats_api(mode: str = "qa"):
     kanji_list = []
     for k_char, v_stats in srs.items():
         # On récupère les infos statiques (signification, etc.) dans le cache
-        k_info = kanjis.get(k_char, {})
+        k_info = kanji_cache.get(k_char, {})
         
         kanji_entry = {
             "kanji": k_char,

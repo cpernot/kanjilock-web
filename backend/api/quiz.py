@@ -1,6 +1,6 @@
 import random, uuid
 from datetime import date
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 
 from backend.data.progress import load_data, save_data
 from backend.core.selection import choose_weighted_kanji
@@ -22,7 +22,7 @@ def quiz_api(request: Request, mode: str = "qa"):
     kanji_cache = getattr(request.app.state, "kanji_cache", {})
     
     if not kanji_cache:
-        return {"error": "Le cache des kanjis est vide ou en cours de chargement"}
+        raise HTTPException(status_code=503, detail="Le cache des kanjis est en cours de chargement")
 
     today = date.today().isoformat()
     
