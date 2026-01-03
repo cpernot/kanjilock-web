@@ -83,3 +83,10 @@ async def startup_event():
         print(f"✅ {len(KANJI_CACHE)} kanjis en cache.")
     except Exception as e:
         print(f"❌ Erreur chargement cache kanji: {e}")
+
+@app.on_event("startup")
+async def debug_routes():
+    for route in app.routes:
+        # On vérifie si l'attribut 'methods' existe avant de l'afficher
+        methods = getattr(route, "methods", "N/A")
+        print(f"Route enregistrée: {route.path} | Methods: {methods}")
