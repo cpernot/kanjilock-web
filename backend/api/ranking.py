@@ -36,13 +36,13 @@ def compute_ranking(db_sessions):
     
     return ranking
 
-@router.get("/api/ranking/global")
+@router.get("/ranking/global")
 def ranking_global():
     # On récupère toutes les lignes de la table sessions
     response = supabase.table("sessions").select("*").execute()
     return compute_ranking(response.data)
 
-@router.get("/api/ranking/month/{year_month}")
+@router.get("/ranking/month/{year_month}")
 def ranking_month(year_month: str):
     """
     year_month = '2026-01'

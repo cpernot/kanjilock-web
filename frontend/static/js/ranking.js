@@ -11,12 +11,12 @@ export function initRanking() {
 }
 
 async function loadRanking(range) {
-  let url = "/api/ranking/global";
+  let url = "/ranking/global";
 
   if (range === "month") {
     const now = new Date();
     const ym = now.toISOString().slice(0, 7); // YYYY-MM
-    url = `${API_BASE_URL}/api/ranking/month/${ym}`;
+    url = `${API_BASE_URL}/ranking/month/${ym}`;
   }
 
   const res = await fetch(url);

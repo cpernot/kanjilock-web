@@ -16,7 +16,7 @@ def is_kanji_valid(k, mode_def):
         return mode_def["is_valid"](k)
     return True
 
-@router.get("/api/quiz")
+@router.get("/quiz")
 def quiz_api(mode: str = "qa"):
     # 1. Utilisation du Cache global (évite l'appel réseau lourd)
     from backend.main import KANJI_CACHE as kanjis

@@ -32,12 +32,12 @@ origins = [
 print("CWD =", os.getcwd())
 
 now = datetime.now().isoformat()
-app.include_router(quiz_router)
-app.include_router(answer_router)
-app.include_router(stats_router)
-app.include_router(compose_router)
-app.include_router(session_router)
-app.include_router(ranking_router)
+app.include_router(quiz_router, prefix="/api")
+app.include_router(answer_router, prefix="/api")
+app.include_router(stats_router, prefix="/api")
+app.include_router(compose_router, prefix="/api")
+app.include_router(session_router, prefix="/api")
+app.include_router(ranking_router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,

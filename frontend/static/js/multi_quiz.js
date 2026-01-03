@@ -114,7 +114,7 @@ async function loadQuiz() {
 
   console.log("MODE ACTIF:", mode);
 
-  const res = await fetch(`${API_BASE_URL}/api/quiz?mode=${mode}`);
+  const res = await fetch(`${API_BASE_URL}/quiz?mode=${mode}`);
   const data = await res.json();
   
   if (data.error) {
@@ -153,7 +153,7 @@ async function sendAnswer(choice) {
     ? Date.now() - questionStartTime
     : null;
 
-  const res = await fetch(`${API_BASE_URL}/api/answer`, {
+  const res = await fetch(`${API_BASE_URL}/answer`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -203,13 +203,13 @@ if (summary) {
     score_global: summary.scoreOn100,
     started_at: summary.startedAt
   };
-  console.log("/api/session1",payload);
-  await fetch(`${API_BASE_URL}/api/session`, {
+  console.log("session1",payload);
+  await fetch(`${API_BASE_URL}/session`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
-  console.log("/api/session",payload); 
+  console.log("session",payload); 
   sessionStorage.setItem(
     "lastSessionSummary",
     JSON.stringify(summary)

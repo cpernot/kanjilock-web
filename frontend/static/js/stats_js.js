@@ -20,7 +20,7 @@ document.getElementById("statsBtn")?.addEventListener("click", loadStats);
 
 document.getElementById("dailyBtn")?.addEventListener("click", async () => {
   const mode = getMode();
-  const res = await fetch(`${API_BASE_URL}/api/stats?mode=${mode}`);
+  const res = await fetch(`${API_BASE_URL}/stats?mode=${mode}`);
   const data = await res.json();
   renderHeatmap(data.daily_stats);
 });
@@ -36,7 +36,7 @@ async function loadStats() {
   const mode = getMode();
   console.log("MODE UTILISÉ:", mode);
 
-  const res = await fetch(`${API_BASE_URL}/api/stats?mode=${mode}`);
+  const res = await fetch(`${API_BASE_URL}/stats?mode=${mode}`);
   const data = await res.json();
 
   drawSrsChart(data.srs_levels);
@@ -112,7 +112,7 @@ function showWeakKanjis(kanjis) {
 
 async function loadWeakKanjis() {
   const mode = getMode();
-  const res = await fetch(`${API_BASE_URL}/api/stats?mode=${mode}`);
+  const res = await fetch(`${API_BASE_URL}/stats?mode=${mode}`);
   const data = await res.json();
   showWeakKanjis(data.kanjis);
 }

@@ -8,7 +8,7 @@ from fastapi import APIRouter
 
 router = APIRouter()
 
-@router.post("/api/answer")
+@router.post("/answer")
 def answer(payload: dict):   
     qid = payload.get("qid")
     choice = payload.get("choice")

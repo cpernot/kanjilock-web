@@ -5,7 +5,7 @@ from backend.data.session_log import log_session
 
 router = APIRouter()
 
-@router.post("/api/session")
+@router.post("/session")
 def save_session(payload: dict):
     """
     Reçoit une session complète depuis le frontend

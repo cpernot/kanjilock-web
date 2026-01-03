@@ -4,7 +4,7 @@ from backend.data.kanji_loader import load_kanjilock
 from backend.core.logging import log_event
 from backend.core.config import DATA_DIR
 
-router = APIRouter(prefix="/api")
+router = APIRouter()
 
 COMPOSE_FILE = DATA_DIR / "liste_de_mots.csv"
 

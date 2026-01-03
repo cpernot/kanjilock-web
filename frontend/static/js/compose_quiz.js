@@ -21,7 +21,7 @@ export function initCompose() {
 async function loadComposeQuiz() {
   selectedWords.clear();
 
-  const res = await fetch(`${API_BASE_URL}/apiquiz_compose`);
+  const res = await fetch(`${API_BASE_URL}/quiz_compose`);
   const data = await res.json();
 
   currentQid = data.qid;
@@ -63,7 +63,7 @@ function toggleSelection(btn, word) {
    VALIDATE
    ============================ */
 async function validateAnswer() {
-  const res = await fetch(`${API_BASE_URL}/apiquiz_compose/validate`, {
+  const res = await fetch(`${API_BASE_URL}/quiz_compose/validate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
