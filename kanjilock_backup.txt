@@ -47,13 +47,66 @@ if __name__ == "__main__":
 FILE: .\backend\main.py
 ================================================================================
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-import os
-from datetime import datetime
+from backend.core.config import FRONTEND_DIR, USER_ID
+from backend.data.progress import load_data
 
-# Imports des routers
+# 1. DEFINITION DU LIFESPAN
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from backend.core.config import supabase
+    print("🚀 STARTUP: Initialisation du serveur...")
+    
+    # --- Chargement des données ---
+    try:
+        load_data(USER_ID)
+        print(f"✅ Données utilisateur chargées pour : {USER_ID}")
+    except Exception as e:
+        print(f"⚠️ Erreur chargement user: {e}")
+
+    try:
+        all_data = []
+        chunk_size = 1000
+        start = 0
+        while True:
+            res = supabase.table('kanji').select("*").range(start, start + chunk_size - 1).execute()
+            all_data.extend(res.data)
+            if len(res.data) < chunk_size: break
+            start += chunk_size
+        
+        app.state.kanji_cache = {item['kanji']: item['data'] for item in all_data}
+        print(f"✅ {len(app.state.kanji_cache)} kanjis en cache.")
+    except Exception as e:
+        print(f"❌ Erreur chargement cache kanji: {e}")
+        app.state.kanji_cache = {}
+
+    # --- AFFICHAGE DES ROUTES (Le print que tu aimes) ---
+    print("\n--- 🛣️ ROUTES ENREGISTRÉES ---")
+    for route in app.routes:
+        methods = getattr(route, "methods", "N/A")
+        print(f"Path: {route.path} | Methods: {methods}")
+    print("------------------------------\n")
+
+    yield
+    print("🛑 SHUTDOWN: Fermeture du serveur...")
+
+# 2. CRÉATION DE L'APP (Indispensable à la racine pour Uvicorn)
+app = FastAPI(lifespan=lifespan)
+
+# 3. MIDDLEWARE
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 4. IMPORTS ET INCLUSION DES ROUTERS
+# (On les importe ici pour s'assurer que l'objet 'app' existe déjà)
 from backend.api.quiz import router as quiz_router
 from backend.api.answer import router as answer_router
 from backend.api.stats import router as stats_router
@@ -61,21 +114,6 @@ from backend.api.quiz_compose import router as compose_router
 from backend.api.session import router as session_router
 from backend.api.ranking import router as ranking_router
 
-from backend.core.config import FRONTEND_DIR, USER_ID
-from backend.data.progress import load_data
-
-app = FastAPI()
-
-# 1. CORS en premier
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], # On garde "*" pour les tests, on sécurisera après
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# 2. Inclusion des routers avec le préfixe /api
 app.include_router(quiz_router, prefix="/api")
 app.include_router(answer_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")
@@ -83,7 +121,7 @@ app.include_router(compose_router, prefix="/api")
 app.include_router(session_router, prefix="/api")
 app.include_router(ranking_router, prefix="/api")
 
-# 3. Fichiers statiques (Utile pour voir l'interface sur Render si besoin)
+# 5. FICHIERS STATIQUES ET ROUTES SPA
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR / "static")), name="static")
     app.mount("/pages", StaticFiles(directory=str(FRONTEND_DIR / "pages")), name="static_pages")
@@ -100,37 +138,11 @@ def spa_index():
         return FileResponse(index_file)
     return {"error": "Frontend files not found"}
 
-# Variable globale pour les kanjis
-KANJI_CACHE = {}
 
-@app.on_event("startup")
-async def startup_event():
-    global KANJI_CACHE
-    from backend.core.config import supabase
-    print("🚀 Initialisation du serveur...")
-    
-    # Pré-chargement des données utilisateur (Supabase)
-    try:
-        load_data(USER_ID)
-        print(f"✅ Données utilisateur chargées pour : {USER_ID}")
-    except Exception as e:
-        print(f"⚠️ Erreur chargement initial user: {e}")
+================================================================================
+FILE: .\backend\__init__.py
+================================================================================
 
-    # Chargement du Cache Kanjis
-    try:
-        all_data = []
-        chunk_size = 1000
-        start = 0
-        while True:
-            res = supabase.table('kanji').select("*").range(start, start + chunk_size - 1).execute()
-            all_data.extend(res.data)
-            if len(res.data) < chunk_size: break
-            start += chunk_size
-        KANJI_CACHE = {item['kanji']: item['data'] for item in all_data}
-        app.state.kanji_cache = KANJI_CACHE  # <--- AJOUTE CETTE LIGNE
-        print(f"✅ {len(KANJI_CACHE)} kanjis en cache.")
-    except Exception as e:
-        print(f"❌ Erreur chargement cache kanji: {e}")
 
 ================================================================================
 FILE: .\backend\api\answer.py
@@ -221,7 +233,7 @@ FILE: .\backend\api\quiz.py
 ================================================================================
 import random, uuid
 from datetime import date
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 
 from backend.data.progress import load_data, save_data
 from backend.core.selection import choose_weighted_kanji
@@ -243,7 +255,7 @@ def quiz_api(request: Request, mode: str = "qa"):
     kanji_cache = getattr(request.app.state, "kanji_cache", {})
     
     if not kanji_cache:
-        return {"error": "Le cache des kanjis est vide ou en cours de chargement"}
+        raise HTTPException(status_code=503, detail="Le cache des kanjis est en cours de chargement")
 
     today = date.today().isoformat()
     
@@ -632,6 +644,11 @@ def stats_api(request: Request, mode: str = "qa"):
     }
 
 ================================================================================
+FILE: .\backend\api\__init__.py
+================================================================================
+
+
+================================================================================
 FILE: .\backend\core\config.py
 ================================================================================
 # backend/core/config.py
@@ -862,22 +879,40 @@ FILE: .\frontend\icon-512.png
 FILE: .\frontend\index.html
 ================================================================================
 <!DOCTYPE html>
-<main id="app"></main>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <title>KanjiLock</title>
 
-<nav class="bottom-nav">
-  <a href="/" data-link data-mode="home">🏠</a>
-  <a href="/quiz-page" data-link data-mode="qa">🧩</a>
-  <a href="/intrus-page" data-link>🔍</a>
-  <a href="/compose-page" data-link >⚠️</a>
-  <a href="/stats-page" data-link data-mode="stats">📊</a>  
-  <a href="/ranking-page" data-link>🏆</a>
-</nav>
-<link rel="icon" href="/static/favicon.ico">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="KanjiLock">
+    
+    <link rel="icon" href="/static/favicon.ico">
+    <link rel="apple-touch-icon" href="/static/icon-512.png">
+    <link rel="stylesheet" href="/static/css/style.css">
+   
+</head>
 
-<script src="/static/js/config.js"></script>
-<script type="module" src="/static/js/spa.js"></script>
-<script src="/static/js/app.js"></script>
+<body>
+    <main id="app"></main>
 
+    <nav class="bottom-nav">
+        <a href="/" data-link data-mode="home">🏠</a>
+        <a href="/quiz-page" data-link data-mode="qa">🧩</a>
+        <a href="/intrus-page" data-link>🔍</a>
+        <a href="/compose-page" data-link>⚠️</a>
+        <a href="/stats-page" data-link data-mode="stats">📊</a>  
+        <a href="/ranking-page" data-link>🏆</a>
+    </nav>
+
+    <script src="/static/js/config.js"></script>
+    <script type="module" src="/static/js/spa.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
 
 ================================================================================
 FILE: .\frontend\vercel.json
@@ -1051,13 +1086,7 @@ FILE: .\frontend\pages\login.html
 ================================================================================
 FILE: .\frontend\pages\multi_quiz.html
 ================================================================================
-<!-- <head>
-  <meta charset="utf-8">
-  <title>Multi_Quiz_KanjiLock</title>
 
-  <link rel="stylesheet" href="/static/css/style.css">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-</head> -->
 <head>
   <meta charset="utf-8">
   <title>Multi_Quiz_KanjiLock</title>
@@ -1069,7 +1098,6 @@ FILE: .\frontend\pages\multi_quiz.html
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
-
 
   <main>
     <h1>🧩 Quiz</h1>
@@ -1098,7 +1126,6 @@ FILE: .\frontend\pages\multi_quiz.html
     </div>
   </main>
 
-</div>
 
 
 
@@ -1214,21 +1241,22 @@ FILE: .\frontend\static\favicon.ico
 [Erreur lecture: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte]
 
 ================================================================================
+FILE: .\frontend\static\icon-512.png
+================================================================================
+[Erreur lecture: 'utf-8' codec can't decode byte 0x89 in position 0: invalid start byte]
+
+================================================================================
 FILE: .\frontend\static\manifest.json
 ================================================================================
 {
-  "name": "Kanji Lock",
+  "name": "Kanji Lock PWA",
   "short_name": "KanjiLock",
   "start_url": "/",
   "display": "standalone",
+  "scope": "/",
   "background_color": "#ffffff",
   "theme_color": "#000000",
-  "icons": [
-    {
-      "src": "/static/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
+  "icons": [   
     {
       "src": "/static/icon-512.png",
       "sizes": "512x512",
@@ -1709,7 +1737,7 @@ const isLocal = window.location.hostname === "localhost" || window.location.host
 // On ajoute /api à la fin de l'URL de base
 window.API_BASE_URL = isLocal 
     ? "http://127.0.0.1:8000/api" 
-    : "https://kanjilock-backend.onrender.com/api";
+    : "https://kanjilock-web.onrender.com/api";
 
 console.log("Mode:", isLocal ? "Local" : "Production", "| API Root:", window.API_BASE_URL);
 
@@ -1838,22 +1866,22 @@ FILE: .\frontend\static\js\multi_quiz.js
 import { getMode, initMode } from "./modeManager.js";
 import { getPlayer_setting } from "./settings.js";
 import {
-  startSession,
-  recordAnswer,
-  getSessionSummary,
-  resetSession,
-  endSessionIfNeeded 
+  startSession,
+  recordAnswer,
+  getSessionSummary,
+  resetSession,
+  endSessionIfNeeded 
 } from "./quizSession.js";
 import { navigate } from "./spa.js"; // ou ta fonction équivalente
 
 console.log("multi_quiz.js chargé");
 /* ============================
-   INIT PAGE QUIZ (SPA)
-   ============================ */
+   INIT PAGE QUIZ (SPA)
+   ============================ */
 export function initQuiz() {
-  console.log("Quiz init");
-  initMode();
-  bindQuizButtons();
+  console.log("Quiz init");
+  initMode();
+  bindQuizButtons();
 }
 let currentData = null;
 let quizRunning = false;
@@ -1863,263 +1891,262 @@ let timeoutId = null;
 // let player = null;
 
 /* ============================
-   BINDINGS UI
-   ============================ */
+   BINDINGS UI
+   ============================ */
 function bindQuizButtons() {
-  const startBtn = document.getElementById("startBtn");
-  const stopBtn = document.getElementById("stopBtn");
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn = document.getElementById("stopBtn");
 
-  if (startBtn) {
-    startBtn.onclick = () => {
-      quizRunning = true;
-      startSession();
-      loadQuiz();
-    };
-  }
+  if (startBtn) {
+    startBtn.onclick = () => {
+      quizRunning = true;
+      startSession();
+      loadQuiz();
+    };
+  }
 
-  if (stopBtn) {
-    stopBtn.onclick = () => {
-      quizRunning = false;
-      stopTimer();
-      document.getElementById("multi_quiz").innerHTML = "⏸ Quiz arrêté";
-    };
-  }
+  if (stopBtn) {
+    stopBtn.onclick = () => {
+      quizRunning = false;
+      stopTimer();
+      document.getElementById("multi_quiz").innerHTML = "⏸ Quiz arrêté";
+    };
+  }
 }
 /* ============================
-   QUIZ TIMER
-   ============================ */
+   QUIZ TIMER
+   ============================ */
 let timerInterval = null;
 let bipTimeout = null;
 let timerStart = null;
 
 function startTimer() {
-  const fill = document.getElementById("timeFill");
-  if (!fill) return;
+  const fill = document.getElementById("timeFill");
+  if (!fill) return;
 
-  timerStart = Date.now();
+  timerStart = Date.now();
 
-  fill.style.transition = "none";
-  fill.style.width = "100%";
-  void fill.offsetWidth;
+  fill.style.transition = "none";
+  fill.style.width = "100%";
+  void fill.offsetWidth;
 
-  requestAnimationFrame(() => {
-    fill.style.transition = "width 5s linear";
-    fill.style.width = "0%";
-  });
-  bipTimeout = setTimeout(() => {
-    playBip("BOMB.WAV");
-  }, 5000);
+  requestAnimationFrame(() => {
+    fill.style.transition = "width 5s linear";
+    fill.style.width = "0%";
+  });
+  bipTimeout = setTimeout(() => {
+    playBip("BOMB.WAV");
+  }, 5000);
 }
 function stopTimer() {
-  if (bipTimeout) {
-    clearTimeout(bipTimeout);
-    bipTimeout = null;
-  }
+  if (bipTimeout) {
+    clearTimeout(bipTimeout);
+    bipTimeout = null;
+  }
 
-  const fill = document.getElementById("timeFill");
-  if (!fill || !timerStart) return;
+  const fill = document.getElementById("timeFill");
+  if (!fill || !timerStart) return;
 
-  const elapsed = Date.now() - timerStart;
-  const remainingPercent = Math.max(0, 100 - (elapsed / 5000) * 100);
+  const elapsed = Date.now() - timerStart;
+  const remainingPercent = Math.max(0, 100 - (elapsed / 5000) * 100);
 
-  fill.style.transition = "none";
-  fill.style.width = `${remainingPercent}%`;
+  fill.style.transition = "none";
+  fill.style.width = `${remainingPercent}%`;
 }
 function playBip(selected_sound) {
-  try {
-    const audio = new Audio(`/static/sounds/${selected_sound}`);
-    audio.play();
-  } catch {
-    console.warn("🔇 Bip ignoré");
-  }
+  try {
+    const audio = new Audio(`/static/sounds/${selected_sound}`);
+    audio.play();
+  } catch {
+    console.warn("🔇 Bip ignoré");
+  }
 }
 /* ============================
-   QUIZ LOGIC
-   ============================ */
+   QUIZ LOGIC
+   ============================ */
 function getQuizModeForPage() {
-  const page = document.querySelector("[data-page]")?.dataset.page;
-  if (page === "intrus") return "intrus";
-  return getMode(); // qa / qb / qc / qd / qe
+  const page = document.querySelector("[data-page]")?.dataset.page;
+  if (page === "intrus") return "intrus";
+  return getMode(); // qa / qb / qc / qd / qe
 }
 async function loadQuiz() {
-  if (!quizRunning) return;
-  // playBip("ARROW.WAV")
-  questionStartTime = Date.now();
-  startTimer() ;
-  // const mode = getMode();
-  const mode = getQuizModeForPage();
+  if (!quizRunning) return;
+  // playBip("ARROW.WAV")
+  questionStartTime = Date.now();
+  startTimer() ;
+  // const mode = getMode();
+  const mode = getQuizModeForPage();
 
-  console.log("MODE ACTIF:", mode);
+  console.log("MODE ACTIF:", mode);
 
-  const res = await fetch(`${API_BASE_URL}/quiz?mode=${mode}`);
-  const data = await res.json();
-  
-  if (data.error) {
-    document.getElementById("multi_quiz").innerHTML = data.error;
-    return;
-  }
+  const res = await fetch(`${API_BASE_URL}/quiz?mode=${mode}`);
+  const data = await res.json();
+  
+  if (data.error) {
+    document.getElementById("multi_quiz").innerHTML = data.error;
+    return;
+  }
 
-  currentData = data;
-  currentQid = data.qid;
-  
-  console.log("timer end")
-  renderQuestion(data); 
+  currentData = data;
+  currentQid = data.qid;
+  
+  console.log("timer end")
+  renderQuestion(data); 
 }
 function renderQuestion(data) {
-  const quiz = document.getElementById("multi_quiz");
-  console.log("quiz.innerHTML = `<h2>${data.question}</h2>`");
-  quiz.innerHTML = `<h2>${data.question}</h2>`;
-  quiz.classList.remove("fade-in");
-  void quiz.offsetWidth;
-  quiz.classList.add("fade-in");
-  
+  const quiz = document.getElementById("multi_quiz");
+  console.log("quiz.innerHTML = `<h2>${data.question}</h2>`");
+  quiz.innerHTML = `<h2>${data.question}</h2>`;
+  quiz.classList.remove("fade-in");
+  void quiz.offsetWidth;
+  quiz.classList.add("fade-in");
+  
 
-  data.options.forEach(opt => {
-    const btn = document.createElement("button");
-    btn.innerText = opt;
-    btn.onclick = () => sendAnswer(opt);
-    quiz.appendChild(btn);
-  });
+  data.options.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.innerText = opt;
+    btn.onclick = () => sendAnswer(opt);
+    quiz.appendChild(btn);
+  });
 
-  document.getElementById("result").innerHTML = "";
+  document.getElementById("result").innerHTML = "";
 }
 async function sendAnswer(choice) {
-  if (!quizRunning) return;
-  
-  const rt_ms = questionStartTime
-    ? Date.now() - questionStartTime
-    : null;
+  if (!quizRunning) return;
+  
+  const rt_ms = questionStartTime
+    ? Date.now() - questionStartTime
+    : null;
 
-  const res = await fetch(`${API_BASE_URL}/answer`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      qid: currentQid,
-      choice,
-      rt_ms
-    })
-  });
+  const res = await fetch(`${API_BASE_URL}/answer`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      qid: currentQid,
+      choice,
+      rt_ms
+    })
+  });
 
-  const data = await res.json();
-   
-  showResult(data);
-  stopTimer()
-  if (data.correct) {
-  playBip("success.wav");
+  const data = await res.json();
+   
+  showResult(data);
+  stopTimer()
+  if (data.correct) {
+  playBip("success.wav");
 } else {
-  playBip("BOMB.WAV");
+  playBip("BOMB.WAV");
 }
-  let speed_factor = 1.0;
-  if (rt_ms > 5000) speed_factor = 1.8;
-  else if (rt_ms > 3000) speed_factor = 1.3;
-  console.log("rt_ms",rt_ms)
-   console.log("qid",currentQid )
-  // body: JSON.stringify({  qid,  choice,  rt_ms,  speed_factor})
-   //  "-----------------------------------------------"
-   let correct= true;
-  const finished = recordAnswer({
-    correct: data.correct,
-    rt_ms: rt_ms
-  });
-   console.log("end record proche du but",correct);   
-   const summary = endSessionIfNeeded();
-  //  const summary = setTimeout(endSessionIfNeeded, data.correct ? 2000 : 5000);
+  let speed_factor = 1.0;
+  if (rt_ms > 5000) speed_factor = 1.8;
+  else if (rt_ms > 3000) speed_factor = 1.3;
+  console.log("rt_ms",rt_ms)
+   console.log("qid",currentQid )
+  // body: JSON.stringify({  qid,  choice,  rt_ms,  speed_factor})
+   //  "-----------------------------------------------"
+   let correct= true;
+  const finished = recordAnswer({
+    correct: data.correct,
+    rt_ms: rt_ms
+  });
+   console.log("end record proche du but",correct);   
+   const summary = endSessionIfNeeded();
+  //  const summary = setTimeout(endSessionIfNeeded, data.correct ? 2000 : 5000);
 if (summary) {
-  quizRunning = false;
-  sessionStorage.setItem("lastSessionSummary", JSON.stringify(summary));
+  quizRunning = false;
+  sessionStorage.setItem("lastSessionSummary", JSON.stringify(summary));
 
-  // --------------------------------------------------  
-  const payload = {
-    player: getPlayer_setting(),          // 👈 important
-    mode:"-",
-    session_size:"-",
-    correct: summary.correct,
-    wrong: summary.wrong,
-    total_time_ms: summary.totalTime,
-    score_speed: summary.scoreOn100,
-    score_global: summary.scoreOn100,
-    started_at: summary.startedAt
-  };
-  console.log("session1",payload);
-  await fetch(`${API_BASE_URL}/session`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-  console.log("session",payload); 
-  sessionStorage.setItem(
-    "lastSessionSummary",
-    JSON.stringify(summary)
-  );
-  // ------------------------------------------------------
+  // --------------------------------------------------  
+  const payload = {
+    player: getPlayer_setting(),          // 👈 important
+    mode:"-",
+    session_size:"-",
+    correct: summary.correct,
+    wrong: summary.wrong,
+    total_time_ms: summary.totalTime,
+    score_speed: summary.scoreOn100,
+    score_global: summary.scoreOn100,
+    started_at: summary.startedAt
+  };
+  console.log("session1",payload);
+  await fetch(`${API_BASE_URL}/session`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  console.log("session",payload); 
+  sessionStorage.setItem(
+    "lastSessionSummary",
+    JSON.stringify(summary)
+  );
+  // ------------------------------------------------------
 
-  navigate("/session-end");
-  return;  
+  navigate("/session-end");
+  return;  
 }
-  // if (finished) {
-  //   quizRunning = false;
-  //   stopTimer();
-  //   document.getElementById("answer-zone"). = "______________________________";
-  //   showSessionEnd();
-  //   return;
-  // }
+  // if (finished) {
+  //   quizRunning = false;
+  //   stopTimer();
+  //   document.getElementById("answer-zone"). = "______________________________";
+  //   showSessionEnd();
+  //   return;
+  // }
 // "=----------------------------------------------------"
 }
 /* ============================
-   RESULT
-   ============================ */
+   RESULT
+   ============================ */
 function showResult(data) {
-  const result = document.getElementById("result");
+  const result = document.getElementById("result");
 
-  result.className = "";
-  void result.offsetWidth;
-  result.className = data.correct ? "correct" : "wrong";
-  result.innerHTML = data.correct ? "✓ 正解" : "✗ 違います";
+  result.className = "";
+  void result.offsetWidth;
+  result.className = data.correct ? "correct" : "wrong";
+  result.innerHTML = data.correct ? "✓ 正解" : "✗ 違います";
 
-  if (navigator.vibrate) {
-    navigator.vibrate(data.correct ? 30 : 80);
-  }
-  if (!data.correct) {
-    result.innerHTML += `<p>Bonne réponse : <b>${data.bonne}</b></p>`;
-  }
+  if (navigator.vibrate) {
+    navigator.vibrate(data.correct ? 30 : 80);
+  }
+  if (!data.correct) {
+    result.innerHTML += `<p>Bonne réponse : <b>${data.bonne}</b></p>`;
+  }
 
-  if (data.extras) {
-    let html = "<ul>";
-    for (const k in data.extras) {
-      html += `<li><b>${k}</b> : ${data.extras[k]}</li>`;
-    }
-    html += "</ul>";
-    result.innerHTML += html;
-  }
-  result.scrollIntoView({ behavior: "smooth", block: "start" });
-  timeoutId = setTimeout(loadQuiz, data.correct ? 2000 : 5000);
+  if (data.extras) {
+    let html = "<ul>";
+    for (const k in data.extras) {
+      html += `<li><b>${k}</b> : ${data.extras[k]}</li>`;
+    }
+    html += "</ul>";
+    result.innerHTML += html;
+  }
+  result.scrollIntoView({ behavior: "smooth", block: "start" });
+  timeoutId = setTimeout(loadQuiz, data.correct ? 2000 : 5000);
 }
 function showSessionEnd() {
-  const s = getSessionSummary();
+  const s = getSessionSummary();
 
-  const quiz = document.getElementById("multi_quiz");
-  console.log("improbable");
-  quiz.innerHTML = `
-    <h2>🎉 Session terminée</h2>
-    <p>✔️ ${s.correct} / ${s.size}</p>
-    <p>⏱ ${(s.totalTime / 1000).toFixed(1)} s</p>
-    <p>⚡ Score vitesse : ${s.scoreOn100} / 100</p>
+  const quiz = document.getElementById("multi_quiz");
+  console.log("improbable");
+  quiz.innerHTML = `
+    <h2>🎉 Session terminée</h2>
+    <p>✔️ ${s.correct} / ${s.size}</p>
+    <p>⏱ ${(s.totalTime / 1000).toFixed(1)} s</p>
+    <p>⚡ Score vitesse : ${s.scoreOn100} / 100</p>
 
-    <button id="restartSession">🔁 Rejouer</button>
-  `;
+    <button id="restartSession">🔁 Rejouer</button>
+  `;
 
-  document.getElementById("restartSession").onclick = () => {
-    resetSession();
-    startSession();
-    loadQuiz();
-  };
+  document.getElementById("restartSession").onclick = () => {
+    resetSession();
+    startSession();
+    loadQuiz();
+  };
 }
 // function iosTap() {
-//   const audio = new Audio();
-//   audio.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=";
-//   audio.play();
+//   const audio = new Audio();
+//   audio.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=";
+//   audio.play();
 // };
-
 
 ================================================================================
 FILE: .\frontend\static\js\player.js
@@ -2405,55 +2432,54 @@ console.log("SPA BOOT 122");
 
 // getPlayer();
 const routes = {
-  "/login": { page: "/pages/login.html", init: initLogin },
-  "/": { page: "/pages/home.html", init: initHome },
-  "/quiz-page": { page: "/pages/multi_quiz.html", init: initQuiz },
-  "/intrus-page": { page: "/pages/intrus.html", init: initIntrus },
-  "/stats-page": { page: "/pages/stats.html", init: initStats },
-  "/compose-page": { page: "/pages/compose.html", init: initCompose }, 
-   "/session-end": { page: "/pages/session_end.html", init: initSessionEnd },
-   "/ranking-page": {    page: "/pages/ranking.html",    init: initRanking  }// 🆕
+  "/login": { page: "/pages/login.html", init: initLogin },
+  "/": { page: "/pages/home.html", init: initHome },
+  "/quiz-page": { page: "/pages/multi_quiz.html", init: initQuiz },
+  "/intrus-page": { page: "/pages/intrus.html", init: initIntrus },
+  "/stats-page": { page: "/pages/stats.html", init: initStats },
+  "/compose-page": { page: "/pages/compose.html", init: initCompose }, 
+   "/session-end": { page: "/pages/session_end.html", init: initSessionEnd },
+   "/ranking-page": {    page: "/pages/ranking.html",    init: initRanking  }// 🆕
 };
 
 
 export async function navigate(path) {
-  if (!getPlayer() && path !== "/login") {
-    path = "/login";
-  }
-  const route = routes[path] || routes["/"];
-  const res = await fetch(route.page);
-  const html = await res.text();
+  if (!getPlayer() && path !== "/login") {
+    path = "/login";
+  }
+  const route = routes[path] || routes["/"];
+  const res = await fetch(route.page);
+  const html = await res.text();
 
-  document.getElementById("app").innerHTML = html;
-  history.pushState({}, "", path);
+  document.getElementById("app").innerHTML = html;
+  history.pushState({}, "", path);
 
-  setActiveLink(path);
-  console.log("🔥");
-  // 🔥 INIT PAGE
-  route.init?.();
+  setActiveLink(path);
+  console.log("🔥");
+  // 🔥 INIT PAGE
+  route.init?.();
 }
 
 function setActiveLink(path) {
-  document.querySelectorAll(".bottom-nav a").forEach(a => {
-    a.classList.toggle("active", a.getAttribute("href") === path);
-  });
+  document.querySelectorAll(".bottom-nav a").forEach(a => {
+    a.classList.toggle("active", a.getAttribute("href") === path);
+  });
 }
 
 document.addEventListener("click", e => {
-  const link = e.target.closest("a[data-link]");
-  if (!link) return;
+  const link = e.target.closest("a[data-link]");
+  if (!link) return;
 
-  e.preventDefault();
-  navigate(link.getAttribute("href"));
+  e.preventDefault();
+  navigate(link.getAttribute("href"));
 });
 
 window.addEventListener("popstate", () => {
-  navigate(location.pathname);
+  navigate(location.pathname);
 });
 
 // first load
 navigate(location.pathname);
-
 
 ================================================================================
 FILE: .\frontend\static\js\stats_js.js

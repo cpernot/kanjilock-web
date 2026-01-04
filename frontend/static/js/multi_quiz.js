@@ -1,3 +1,5 @@
+
+import { initEngine, getNextQuestion, checkLocalAnswer } from "./quizengine.js";
 import { getMode, initMode } from "./modeManager.js";
 import { getPlayer_setting } from "./settings.js";
 import {
@@ -13,16 +15,19 @@ console.log("multi_quiz.js chargé");
 /* ============================
    INIT PAGE QUIZ (SPA)
    ============================ */
-export function initQuiz() {
+export async function initQuiz() {
   console.log("Quiz init");
   initMode();
   bindQuizButtons();
+  await initEngine();
 }
 let currentData = null;
 let quizRunning = false;
 let questionStartTime = null;
 let currentQid = null;
 let timeoutId = null;
+let currentLocalQuestion = null;
+
 // let player = null;
 
 /* ============================
@@ -111,20 +116,10 @@ async function loadQuiz() {
   startTimer() ;
   // const mode = getMode();
   const mode = getQuizModeForPage();
+  const data = getNextQuestion(mode);
 
-  console.log("MODE ACTIF:", mode);
-
-  const res = await fetch(`${API_BASE_URL}/quiz?mode=${mode}`);
-  const data = await res.json();
-  
-  if (data.error) {
-    document.getElementById("multi_quiz").innerHTML = data.error;
-    return;
-  }
-
-  currentData = data;
-  currentQid = data.qid;
-  
+  currentLocalQuestion = data; // On garde ça en mémoire pour vérifier la réponse
+  
   console.log("timer end")
   renderQuestion(data); 
 }
@@ -134,8 +129,7 @@ function renderQuestion(data) {
   quiz.innerHTML = `<h2>${data.question}</h2>`;
   quiz.classList.remove("fade-in");
   void quiz.offsetWidth;
-  quiz.classList.add("fade-in");
-  
+  quiz.classList.add("fade-in");  
 
   data.options.forEach(opt => {
     const btn = document.createElement("button");
@@ -147,86 +141,80 @@ function renderQuestion(data) {
   document.getElementById("result").innerHTML = "";
 }
 async function sendAnswer(choice) {
-  if (!quizRunning) return;
-  
-  const rt_ms = questionStartTime
-    ? Date.now() - questionStartTime
-    : null;
+    if (!quizRunning) return;
+    
+    const rt_ms = Date.now() - questionStartTime;
 
-  const res = await fetch(`${API_BASE_URL}/answer`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      qid: currentQid,
-      choice,
-      rt_ms
-    })
-  });
+    // 1. Vérification locale (Instantané)
+    const data = checkLocalAnswer(currentLocalQuestion, choice, rt_ms);
 
-  const data = await res.json();
-   
-  showResult(data);
-  stopTimer()
-  if (data.correct) {
-  playBip("success.wav");
-} else {
-  playBip("BOMB.WAV");
-}
-  let speed_factor = 1.0;
-  if (rt_ms > 5000) speed_factor = 1.8;
-  else if (rt_ms > 3000) speed_factor = 1.3;
-  console.log("rt_ms",rt_ms)
-   console.log("qid",currentQid )
-  // body: JSON.stringify({  qid,  choice,  rt_ms,  speed_factor})
-   //  "-----------------------------------------------"
-   let correct= true;
-  const finished = recordAnswer({
-    correct: data.correct,
-    rt_ms: rt_ms
-  });
-   console.log("end record proche du but",correct);   
-   const summary = endSessionIfNeeded();
-  //  const summary = setTimeout(endSessionIfNeeded, data.correct ? 2000 : 5000);
-if (summary) {
-  quizRunning = false;
-  sessionStorage.setItem("lastSessionSummary", JSON.stringify(summary));
+    // 2. Affichage UI (Couleurs, Sons)
+    showResult(data);
+    stopTimer();
+    
+    if (data.correct) playBip("success.wav");
+    else playBip("BOMB.WAV");
 
-  // --------------------------------------------------  
-  const payload = {
-    player: getPlayer_setting(),          // 👈 important
-    mode:"-",
-    session_size:"-",
-    correct: summary.correct,
-    wrong: summary.wrong,
-    total_time_ms: summary.totalTime,
-    score_speed: summary.scoreOn100,
-    score_global: summary.scoreOn100,
-    started_at: summary.startedAt
-  };
-  console.log("session1",payload);
-  await fetch(`${API_BASE_URL}/session`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-  console.log("session",payload); 
-  sessionStorage.setItem(
-    "lastSessionSummary",
-    JSON.stringify(summary)
-  );
-  // ------------------------------------------------------
+    // 3. Enregistrement dans la session locale
+    const finished = recordAnswer({
+        correct: data.correct,
+        rt_ms: rt_ms,
+        kanji: currentLocalQuestion.kanji,
+        mode: getQuizModeForPage()
+    });
 
-  navigate("/session-end");
-  return;  
-}
-  // if (finished) {
-  //   quizRunning = false;
-  //   stopTimer();
-  //   document.getElementById("answer-zone"). = "______________________________";
-  //   showSessionEnd();
-  //   return;
-  // }
-// "=----------------------------------------------------"
+    // ==========================================
+    // 🛑 LOGIQUE DE FIN DE SESSION (Ce qu'il manquait)
+    // ==========================================
+    if (finished) {
+        quizRunning = false; // On arrête le jeu
+        
+        // On attend un peu (1.5s) pour que le joueur voie le résultat de la dernière question
+        setTimeout(async () => {
+            const summary = getSessionSummary();
+            
+            // Construction du Payload pour le serveur
+            const payload = {
+                player: getPlayer_setting(),
+                mode: getQuizModeForPage(),
+                session_size: summary.size,
+                correct: summary.correct,
+                wrong: summary.wrong,
+                total_time_ms: summary.totalTime,
+                score_global: summary.scoreOn100,
+                score_speed: summary.scoreOn100,
+                started_at: summary.startedAt,
+                // 👇 C'est ici qu'on envoie le détail pour le SRS !
+                answers: summary.history 
+            };
+
+            try {
+                // Envoi unique au serveur (Sauvegarde stats + SRS)
+                await fetch(`${API_BASE_URL}/session`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+            } catch (e) {
+                console.error("Erreur sauvegarde session:", e);
+            }
+
+            // Stockage pour la page de fin (Session End)
+            sessionStorage.setItem("lastSessionSummary", JSON.stringify(summary));
+
+            // Navigation
+            navigate("/session-end");
+
+        }, 1500); // Délai avant de changer de page
+
+        return; // IMPORTANT : On s'arrête là, on ne recharge pas de question
+    }
+
+    // ==========================================
+    // 🔄 SINON : QUESTION SUIVANTE
+    // ==========================================
+    // On attend un peu avant la prochaine question
+    setTimeout(loadQuiz, data.correct ? 1000 : 2500);
 }
 /* ============================
    RESULT

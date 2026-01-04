@@ -16,7 +16,8 @@ export function startSession() {
     wrong: 0,
     totalTime: 0,
     speedScore: 0,
-    startedAt: Date.now()
+    startedAt: Date.now(),
+    history: []
   };
 
   console.log("🧩 Session démarrée", session);
@@ -35,6 +36,13 @@ export function recordAnswer({ correct, rt_ms }) {
   else session.wrong++;
 
   session.speedScore += computeSpeedScore(rt_ms, settings);
+
+  session.history.push({
+        kanji: kanji,
+        correct: correct,
+        mode: mode,
+        speed_factor: (rt_ms < 3000) ? 1.0 : (rt_ms < 5000 ? 1.0 : 0.6) // Logique simplifiée
+    });
 
   return isSessionFinished();
 }

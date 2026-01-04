@@ -1,5 +1,5 @@
 import random, uuid
-from datetime import date
+from datetime import date, datetime
 from fastapi import APIRouter, Request, HTTPException
 
 from backend.data.progress import load_data, save_data
@@ -131,4 +131,21 @@ def quiz_api(request: Request, mode: str = "qa"):
         "question": question,
         "options": options,
         "mode": mode
+    }
+
+# backend/api/quiz.py (Ajout)
+
+@router.get("/quiz/init")
+def sync_init(request: Request):
+    # 1. Récupérer le cache statique (Kanjilock data)
+    kanji_cache = getattr(request.app.state, "kanji_cache", {})
+    
+    # 2. Récupérer la progression utilisateur (SRS)
+    # Note: Assure-toi que load_data renvoie bien le dict complet
+    user_data = load_data(USER_ID) 
+    
+    return {
+        "static_data": kanji_cache,  # Le contenu de kanjilock.json
+        "user_progress": user_data.get("srs", {}), # Niveaux, next_review, etc.
+        "server_time": datetime.now().isoformat() # Pour synchro les horloges
     }
