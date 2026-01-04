@@ -23,6 +23,7 @@ let quizRunning = false;
 let questionStartTime = null;
 let currentQid = null;
 let timeoutId = null;
+let nextQuestionData = null; 
 // let player = null;
 
 /* ============================
@@ -104,30 +105,37 @@ function getQuizModeForPage() {
   if (page === "intrus") return "intrus";
   return getMode(); // qa / qb / qc / qd / qe
 }
+
 async function loadQuiz() {
   if (!quizRunning) return;
-  // playBip("ARROW.WAV")
   questionStartTime = Date.now();
-  startTimer() ;
-  // const mode = getMode();
+  startTimer();
   const mode = getQuizModeForPage();
 
-  console.log("MODE ACTIF:", mode);
-
-  const res = await fetch(`${API_BASE_URL}/quiz?mode=${mode}`);
-  const data = await res.json();
-  
-  if (data.error) {
-    document.getElementById("multi_quiz").innerHTML = data.error;
-    return;
+  // Si on a déjà une question en cache, on l'utilise immédiatement !
+  if (nextQuestionData) {
+    currentData = nextQuestionData;
+    nextQuestionData = null;
+    renderQuestion(currentData);
+    // On lance tout de suite la préparation de la SUIVANTE en arrière-plan
+    prefetchNextQuestion(mode); 
+  } else {
+    // Premier chargement ou cache vide
+    const res = await fetch(`${API_BASE_URL}/quiz?mode=${mode}`);
+    currentData = await res.json();
+    renderQuestion(currentData);
+    prefetchNextQuestion(mode);
   }
-
-  currentData = data;
-  currentQid = data.qid;
-  
-  console.log("timer end")
-  renderQuestion(data); 
 }
+
+async function prefetchNextQuestion(mode) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/quiz?mode=${mode}`);
+    nextQuestionData = await res.json();
+    console.log("📦 Question suivante prête en cache");
+  } catch (e) { console.error("Erreur prefetch question", e); }
+}
+
 function renderQuestion(data) {
   const quiz = document.getElementById("multi_quiz");
   console.log("quiz.innerHTML = `<h2>${data.question}</h2>`");
