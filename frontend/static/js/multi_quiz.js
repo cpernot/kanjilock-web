@@ -12,6 +12,7 @@ import {
 import { navigate } from "./spa.js"; // ou ta fonction équivalente
 
 console.log("multi_quiz.js chargé");
+
 /* ============================
    INIT PAGE QUIZ (SPA)
    ============================ */
@@ -21,6 +22,7 @@ export async function initQuiz() {
   bindQuizButtons();
   await initEngine();
 }
+let isProcessingAnswer = false;
 let currentData = null;
 let quizRunning = false;
 let questionStartTime = null;
@@ -41,6 +43,7 @@ function bindQuizButtons() {
     startBtn.onclick = () => {
       quizRunning = true;
       startSession();
+console.warn("🔓 loadquiz du bouton");
       loadQuiz();
     };
   }
@@ -111,6 +114,9 @@ function getQuizModeForPage() {
 }
 async function loadQuiz() {
   if (!quizRunning) return;
+// Nettoyage de l'interface précédente pour éviter les flashs
+    const container = document.getElementById("options-container");
+    if (container) container.innerHTML = "";
   // playBip("ARROW.WAV")
   questionStartTime = Date.now();
   startTimer() ;
@@ -140,22 +146,26 @@ function renderQuestion(data) {
 
   document.getElementById("result").innerHTML = "";
 }
+
+let isProcessing = false; // Verrou anti-double-clic global au fichier
+
 async function sendAnswer(choice) {
-    if (!quizRunning) return;
+    // Si déjà en train de traiter ou quiz fini, on ignore
+    if (isProcessing || !quizRunning) return;
     
+    isProcessing = true; // On verrouille
+    console.warn("🔒 Traitement réponse...");
+
     const rt_ms = Date.now() - questionStartTime;
 
-    // 1. Vérification locale (Instantané)
+    // 1. Vérification locale
     const data = checkLocalAnswer(currentLocalQuestion, choice, rt_ms);
 
-    // 2. Affichage UI (Couleurs, Sons)
+    // 2. UI
     showResult(data);
-    stopTimer();
     
-    if (data.correct) playBip("success.wav");
-    else playBip("BOMB.WAV");
 
-    // 3. Enregistrement dans la session locale
+    // 3. Enregistrement
     const finished = recordAnswer({
         correct: data.correct,
         rt_ms: rt_ms,
@@ -163,17 +173,15 @@ async function sendAnswer(choice) {
         mode: getQuizModeForPage()
     });
 
-    // ==========================================
-    // 🛑 LOGIQUE DE FIN DE SESSION (Ce qu'il manquait)
-    // ==========================================
+    stopTimer();
+    
+    if (data.correct) playBip("success.wav");
+    else playBip("BOMB.WAV");
+
     if (finished) {
-        quizRunning = false; // On arrête le jeu
-        
-        // On attend un peu (1.5s) pour que le joueur voie le résultat de la dernière question
+        quizRunning = false;
         setTimeout(async () => {
             const summary = getSessionSummary();
-            
-            // Construction du Payload pour le serveur
             const payload = {
                 player: getPlayer_setting(),
                 mode: getQuizModeForPage(),
@@ -182,39 +190,30 @@ async function sendAnswer(choice) {
                 wrong: summary.wrong,
                 total_time_ms: summary.totalTime,
                 score_global: summary.scoreOn100,
-                score_speed: summary.scoreOn100,
-                started_at: summary.startedAt,
-                // 👇 C'est ici qu'on envoie le détail pour le SRS !
                 answers: summary.history 
             };
 
             try {
-                // Envoi unique au serveur (Sauvegarde stats + SRS)
                 await fetch(`${API_BASE_URL}/session`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
                 });
-            } catch (e) {
-                console.error("Erreur sauvegarde session:", e);
-            }
+            } catch (e) { console.error(e); }
 
-            // Stockage pour la page de fin (Session End)
             sessionStorage.setItem("lastSessionSummary", JSON.stringify(summary));
-
-            // Navigation
+            isProcessing = false; // Déverrouillage final
             navigate("/session-end");
-
-        }, 1500); // Délai avant de changer de page
-
-        return; // IMPORTANT : On s'arrête là, on ne recharge pas de question
+        }, 1500);
+        return; 
     }
 
-    // ==========================================
-    // 🔄 SINON : QUESTION SUIVANTE
-    // ==========================================
-    // On attend un peu avant la prochaine question
-    setTimeout(loadQuiz, data.correct ? 1000 : 2500);
+    // 🔄 QUESTION SUIVANTE
+    setTimeout(() => {
+        isProcessing = false; // On déverrouille JUSTE AVANT de charger la suite
+        console.warn("🔓 Prêt pour la suivante");
+        // loadQuiz();
+    }, data.correct ? 1000 : 2500);
 }
 /* ============================
    RESULT
@@ -243,7 +242,7 @@ function showResult(data) {
     result.innerHTML += html;
   }
   result.scrollIntoView({ behavior: "smooth", block: "start" });
-  timeoutId = setTimeout(loadQuiz, data.correct ? 2000 : 5000);
+  timeoutId = setTimeout(loadQuiz, data.correct ? 2000 : 5000);
 }
 function showSessionEnd() {
   const s = getSessionSummary();

@@ -16,9 +16,25 @@ const MODES = {
         a: (k) => k.kanji,
         extras: (k) => ({ romaji: k.romaji, boite: k.boite })
     },
-    // ... ajoute les autres modes (qc, qd, qe) ici
+    "qc": {
+        q: (k) => k.mot,
+        a: (k) => k.signification,
+        extras: (k) => ({ lecture_mot: k.lecture_mot, kanji: k.kanji, romaji: k.romaji, boite: k.boite })
+    },
+    "qd": {
+        q: (k) => k.kanji,
+        a: (k) => k.mot,
+        extras: (k) => ({ romaji: k.romaji, signification: k.signification })
+    },
+    "qe": {
+        q: (k) => k.kanji,
+        a: (k) => k.lecture_mot,
+        extras: (k) => ({ romaji: k.romaji, signification: k.signification })
+    }
 };
 
+            
+ 
 export async function initEngine() {
     console.log("📥 Chargement des données locales...");
     const res = await fetch(`${API_BASE_URL}/quiz/init`);
@@ -29,7 +45,7 @@ export async function initEngine() {
     console.log(`✅ Engine prêt : ${Object.keys(staticData).length} kanjis`);
 }
 
-export function getNextQuestion_ORIGINAL(mode) {
+export function getNextQuestion(mode) {
     // 1. Logique de sélection pondérée (Portage de selection.py)
     // Pour l'instant, faisons simple : prendre un kanji aléatoire disponible
     // Tu devras implémenter ici la logique de poids (1:5, 2:3, etc.)
@@ -75,7 +91,7 @@ function isAvailable(state) {
     return new Date(state.next_review) <= new Date();
 }
 
-export function getNextQuestion(mode) {
+export function getNextQuestion_NEW(mode) {
     const srsMode = userProgress[mode] || {};
     const availablePool = [];
     const newItems = [];

@@ -24,7 +24,9 @@ export function startSession() {
   return session;
 }
 
-export function recordAnswer({ correct, rt_ms }) {
+// frontend/static/js/quizSession.js
+
+export function recordAnswer({ correct, rt_ms, kanji, mode }) { // <--- AJOUTÉ kanji, mode ici
   if (!session) return;
 
   const settings = getSettings();
@@ -36,13 +38,16 @@ export function recordAnswer({ correct, rt_ms }) {
   else session.wrong++;
 
   session.speedScore += computeSpeedScore(rt_ms, settings);
+  const kanjiId = kanji || "unknown";
+  const quizMode = mode || "qa";
 
+  // Maintenant kanji et mode sont définis car extraits des arguments au dessus
   session.history.push({
-        kanji: kanji,
-        correct: correct,
-        mode: mode,
-        speed_factor: (rt_ms < 3000) ? 1.0 : (rt_ms < 5000 ? 1.0 : 0.6) // Logique simplifiée
-    });
+      kanji: kanjiId,
+      correct: correct,
+      mode: quizMode,
+      speed_factor: (rt_ms < 3000) ? 1.0 : (rt_ms < 5000 ? 0.8 : 0.6) 
+  });
 
   return isSessionFinished();
 }
