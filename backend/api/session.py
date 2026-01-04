@@ -8,50 +8,43 @@ from backend.core.config import USER_ID # Ou récupérer dynamiquement depuis pa
 router = APIRouter()
 
 @router.post("/session")
-def save_session(payload: dict):
-    print(f"💾 Fin de session reçue. Traitement SRS...")
-
-    # 1. Log classique (statistiques globales)
+async def save_session(payload: dict):
+    # 1. On log la session comme avant (pour les stats globales)
     log_session(payload)
     
-    # 2. Mise à jour SRS en masse
+    # 2. On récupère l'historique des réponses
     answers = payload.get("answers", [])
     if not answers:
-        return {"status": "ok", "msg": "No answers to process"}
+        return {"status": "ok", "message": "No answers to process"}
 
-    # On charge les données UNE SEULE FOIS
-    # (Si tu gères plusieurs utilisateurs, utilise payload['player'] ici au lieu de USER_ID)
-    player_id = USER_ID 
-    data = load_data(player_id)
-    srs_root = data.setdefault("srs", {})
+    # 3. Chargement de la progression utilisateur (Supabase/JSON)
+    user_data = load_data(USER_ID)
+    srs_data = user_data.setdefault("srs", {})
 
-    changes_count = 0
-
+    # 4. Traitement de chaque réponse
     for ans in answers:
-        mode = ans.get("mode", "qa")
         kanji = ans.get("kanji")
+        mode = ans.get("mode", "qa")
         correct = ans.get("correct")
-        speed = ans.get("speed_factor", 1.0)
+        speed_factor = ans.get("speed_factor", 1.0)
 
-        if not kanji: continue
+        if not kanji:
+            continue
 
-        # Initialisation si le mode ou le kanji n'existe pas
-        if mode not in srs_root: srs_root[mode] = {}
+        # Initialisation du dictionnaire pour ce mode si inexistant
+        if mode not in srs_data:
+            srs_data[mode] = {}
         
-        # On récupère l'état actuel ou on crée un défaut (Level 1)
-        state = srs_root[mode].get(kanji, {"level": 1, "next_review": ""})
-        
-        # Calcul du nouveau niveau via ta logique existante (backend/core/srs.py)
-        # Note: update_kanji_srs modifie l'objet 'state' directement en place (mutable)
-        update_kanji_srs(state, correct, speed)
-        
-        # On remet l'état mis à jour dans le dictionnaire
-        srs_root[mode][kanji] = state
-        changes_count += 1
+        # Récupération de l'état actuel du kanji ou état par défaut (Level 1)
+        state = srs_data[mode].get(kanji, {"level": 1, "next_review": None})
 
-    # 3. Sauvegarde UNE SEULE FOIS après la boucle
-    if changes_count > 0:
-        save_data(player_id, data)
-        print(f"✅ {changes_count} kanjis mis à jour pour {player_id}")
+        # Utilisation de ta fonction SRS existante pour modifier 'state' en place
+        update_kanji_srs(state, correct, speed_factor)
 
-    return {"status": "ok", "updated": changes_count}
+        # Sauvegarde du nouvel état
+        srs_data[mode][kanji] = state
+
+    # 5. Sauvegarde finale (Une seule écriture pour toute la session !)
+    save_data(USER_ID, user_data)
+
+    return {"status": "success", "updated_kanjis": len(answers)}
