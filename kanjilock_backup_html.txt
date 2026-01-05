@@ -1,0 +1,2899 @@
+
+================================================================================
+FILE: .\.gitignore
+================================================================================
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# VS Code
+.vscode/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs locaux (puisqu'on passe sur Supabase)
+*.log
+main_data/*
+
+# Excel temporaire
+~$*
+
+# Données sensibles ou lourdes (Optionnel : tu peux garder les JSON de main_data sur git si tu veux une sauvegarde, 
+# mais si tu veux que Supabase soit la seule source de vérité, tu peux les ignorer aussi).
+# Pour l'instant, je te conseille de NE PAS ignorer main_data/kanjilock.json (garde-le en backup sur git)
+# Par contre, ignore les données perso :
+main_data/progress.json
+main_data/sessions.jsonl
+
+================================================================================
+FILE: .\start.py
+================================================================================
+import uvicorn
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "backend.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True
+    )
+
+================================================================================
+FILE: .\backend\main.py
+================================================================================
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from backend.core.config import FRONTEND_DIR, USER_ID
+from backend.data.progress import load_data
+
+# 1. DEFINITION DU LIFESPAN
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from backend.core.config import supabase
+    print("🚀 STARTUP: Initialisation du serveur...")
+    
+    # --- Chargement des données ---
+    try:
+        load_data(USER_ID)
+        print(f"✅ Données utilisateur chargées pour : {USER_ID}")
+    except Exception as e:
+        print(f"⚠️ Erreur chargement user: {e}")
+
+    try:
+        all_data = []
+        chunk_size = 1000
+        start = 0
+        while True:
+            res = supabase.table('kanji').select("*").range(start, start + chunk_size - 1).execute()
+            all_data.extend(res.data)
+            if len(res.data) < chunk_size: break
+            start += chunk_size
+        
+        app.state.kanji_cache = {item['kanji']: item['data'] for item in all_data}
+        print(f"✅ {len(app.state.kanji_cache)} kanjis en cache.")
+    except Exception as e:
+        print(f"❌ Erreur chargement cache kanji: {e}")
+        app.state.kanji_cache = {}
+
+    # --- AFFICHAGE DES ROUTES (Le print que tu aimes) ---
+    print("\n--- 🛣️ ROUTES ENREGISTRÉES ---")
+    for route in app.routes:
+        methods = getattr(route, "methods", "N/A")
+        print(f"Path: {route.path} | Methods: {methods}")
+    print("------------------------------\n")
+
+    yield
+    print("🛑 SHUTDOWN: Fermeture du serveur...")
+
+# 2. CRÉATION DE L'APP (Indispensable à la racine pour Uvicorn)
+app = FastAPI(lifespan=lifespan)
+
+# 3. MIDDLEWARE
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 4. IMPORTS ET INCLUSION DES ROUTERS
+# (On les importe ici pour s'assurer que l'objet 'app' existe déjà)
+from backend.api.quiz import router as quiz_router
+from backend.api.answer import router as answer_router
+from backend.api.stats import router as stats_router
+from backend.api.quiz_compose import router as compose_router
+from backend.api.session import router as session_router
+from backend.api.ranking import router as ranking_router
+
+app.include_router(quiz_router, prefix="/api")
+app.include_router(answer_router, prefix="/api")
+app.include_router(stats_router, prefix="/api")
+app.include_router(compose_router, prefix="/api")
+app.include_router(session_router, prefix="/api")
+app.include_router(ranking_router, prefix="/api")
+
+# 5. FICHIERS STATIQUES ET ROUTES SPA
+if FRONTEND_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR / "static")), name="static")
+    app.mount("/pages", StaticFiles(directory=str(FRONTEND_DIR / "pages")), name="static_pages")
+
+@app.get("/")
+@app.get("/quiz-page")
+@app.get("/intrus-page")
+@app.get("/stats-page")
+@app.get("/compose-page")
+@app.get("/ranking-page")
+def spa_index():
+    index_file = FRONTEND_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    return {"error": "Frontend files not found"}
+
+
+================================================================================
+FILE: .\backend\__init__.py
+================================================================================
+
+
+================================================================================
+FILE: .\backend\api\answer.py
+================================================================================
+from datetime import date, datetime
+from backend.data.progress import load_data, save_data
+from backend.core.logging import log_event
+from backend.core.srs import update_kanji_srs
+from backend.core.config import QUIZ_SESSIONS, USER_ID
+
+from fastapi import APIRouter
+
+router = APIRouter()
+
+@router.post("/answer")
+def answer(payload: dict):   
+    qid = payload.get("qid")
+    choice = payload.get("choice")
+    rt_ms = payload.get("rt_ms")
+    speed_factor = payload.get("speed_factor", 1.0)
+
+    # Récupération de la session en RAM (instantané)
+    session = QUIZ_SESSIONS.pop(qid, None)
+    if not session:
+        return {"error": "session expirée"}
+
+    correct = choice == session["answer"]
+    mode = session["mode"]
+    kanji = session.get("kanji")
+
+    response = {
+        "correct": correct,
+        "mode": mode,
+        "bonne": session["answer"],
+        "extras": session.get("extras", {}),
+        "rt_ms": rt_ms
+    }
+
+    # =========================
+    # MISE À JOUR SRS & STATS
+    # =========================
+    if mode != "intrus" and kanji:
+        # 1. On charge uniquement les données nécessaires
+        data = load_data(USER_ID)
+        
+        # Structure compatible avec tes fonctions SRS existantes
+        # load_data renvoie {"srs": {mode: {kanji: stats}}}
+        srs_root = data.get("srs", {})
+        mode_data = srs_root.get(mode, {})
+        state = mode_data.get(kanji)
+
+        if state:
+            # 2. Calcul du nouveau niveau SRS (en local, rapide)
+            update_kanji_srs(state, correct, speed_factor)
+
+            # 3. Mise à jour des stats quotidiennes 
+            # (Note: Tu pourrais créer une table 'daily_stats' sur Supabase plus tard 
+            # pour éviter de stocker ça dans un gros JSON)
+            today = date.today().isoformat()
+            daily_stats = data.setdefault("daily_stats", {})
+            today_stats = daily_stats.setdefault(today, {"1": 0, "2": 0, "3": 0, "4": 0})
+            
+            lvl_str = str(state["level"])
+            if lvl_str in today_stats:
+                today_stats[lvl_str] += 1
+
+            # 4. Sauvegarde CIBLÉE
+            # On ne renvoie pas tout, on utilise l'UPSERT sur la ligne précise
+            save_data(USER_ID, data)
+
+    # =========================
+    # LOG (Supabase gère l'écriture asynchrone très bien)
+    # =========================
+    log_event({
+        "event": "answer",
+        "user": USER_ID,
+        "kanji": kanji,
+        "mode": mode,
+        "correct": correct,
+        "rt_ms": rt_ms,
+        "ts": datetime.now().isoformat()
+    })
+
+    return response
+
+================================================================================
+FILE: .\backend\api\quiz.py
+================================================================================
+import random, uuid
+from datetime import date, datetime
+from fastapi import APIRouter, Request, HTTPException
+
+from backend.data.progress import load_data, save_data
+from backend.core.selection import choose_weighted_kanji
+from backend.core.logging import log_event
+# On n'importe plus load_kanjilock qui lit un fichier, on va utiliser le cache
+from backend.api.quiz_modes import quiz_intrus
+from backend.core.config import USER_ID, QUIZ_SESSIONS, QUIZ_MODES
+
+router = APIRouter()
+
+def is_kanji_valid(k, mode_def):
+    if "is_valid" in mode_def:
+        return mode_def["is_valid"](k)
+    return True
+
+@router.get("/quiz")
+def quiz_api(request: Request, mode: str = "qa"):
+    # 1. Utilisation du Cache global (évite l'appel réseau lourd)
+    kanji_cache = getattr(request.app.state, "kanji_cache", {})
+    
+    if not kanji_cache:
+        raise HTTPException(status_code=503, detail="Le cache des kanjis est en cours de chargement")
+
+    today = date.today().isoformat()
+    
+    # 2. Chargement de la progression (Appel Supabase optimisé via load_data)
+    # On ne charge QUE les données de l'utilisateur concerné
+    data = load_data(USER_ID)
+    
+    # Structure de données pour la compatibilité avec ton code existant
+    user = data.get("srs", {}) # load_data renvoie déjà {"srs": {...}}
+    
+    # Initialisation si vide (pour le premier quiz)
+    if mode not in user:
+        user[mode] = {}
+    srs = user[mode]
+
+    # =========================
+    # 🕵️ MODE INTRUS
+    # =========================
+    if mode == "intrus":
+        # On utilise "qa" par défaut pour les stats de l'intrus
+        user_srs_intrus = user.get("qa", {})
+        payload = quiz_intrus(kanji_cache, user_srs_intrus, show_box=True)
+
+        if not payload:
+            return {"error": "Pas assez de données"}
+
+        qid = str(uuid.uuid4())
+        QUIZ_SESSIONS[qid] = {
+            "mode": "intrus",
+            "answer": payload["answer"],
+            "options": payload["options"], 
+            "source": "intrus"
+        }
+        
+        return {
+            "qid": qid,
+            "question": payload["question"],
+            "options": payload["options"],
+            "mode": "intrus"
+        }
+
+    # =========================
+    # 3️⃣ QUIZ NORMAL
+    # =========================
+    mode_def = QUIZ_MODES[mode]
+    
+    # Filtrage des kanjis valides (sur le cache en mémoire, donc instantané)
+    filtered_kanjis = {
+        k_char: k_data for k_char, k_data in kanji_cache.items() 
+        if is_kanji_valid(k_data, mode_def)
+    }
+
+    all_kanji_keys = set(filtered_kanjis.keys())
+    seen_keys = set(srs.keys())
+    new_keys = list(all_kanji_keys - seen_keys)
+
+    kanji = None
+    source = None
+
+    # Sélection intelligente
+    if (k := choose_weighted_kanji(srs, filtered_kanjis, today)):
+        kanji = k
+        source = "review"
+    elif new_keys:
+        kanji = random.choice(new_keys)
+        # On initialise le nouveau kanji dans le dictionnaire local
+        srs[kanji] = {"level": 1, "next_review": today}
+        source = "new"
+        # ⚡ OPTIMISATION : On sauvegarde immédiatement ce nouveau kanji
+        save_data(USER_ID, {"srs": {mode: {kanji: srs[kanji]}}})
+    else:
+        return {"done": True}
+
+    # Préparation de la question
+    k_info = filtered_kanjis[kanji]
+    question = mode_def["question"](kanji, k_info)
+    answer = mode_def["answer"](kanji, k_info)
+    
+    # Génération des mauvaises réponses
+    autres = [
+        mode_def["answer"](k2, v2)
+        for k2, v2 in filtered_kanjis.items()
+        if k2 != kanji
+    ]
+    wrong = random.sample(autres, min(3, len(autres)))
+    options = wrong + [answer]
+    random.shuffle(options)
+    extras = mode_def["extras"](kanji, k_info)
+
+    # Stockage de la session en mémoire vive
+    qid = str(uuid.uuid4())
+    QUIZ_SESSIONS[qid] = {
+        "mode": mode,
+        "kanji": kanji,
+        "answer": answer,
+        "options": options,
+        "extras": extras,
+        "source": source
+    }
+
+    # Log asynchrone (optionnel)
+    log_event({"event": "quiz_shown", "user": USER_ID, "kanji": kanji, "mode": mode})
+
+    return {
+        "qid": qid,
+        "question": question,
+        "options": options,
+        "mode": mode
+    }
+
+# backend/api/quiz.py (Ajout)
+
+@router.get("/quiz/init")
+def sync_init(request: Request):
+    # 1. Récupérer le cache statique (Kanjilock data)
+    kanji_cache = getattr(request.app.state, "kanji_cache", {})
+    
+    # 2. Récupérer la progression utilisateur (SRS)
+    # Note: Assure-toi que load_data renvoie bien le dict complet
+    user_data = load_data(USER_ID) 
+    
+    return {
+        "static_data": kanji_cache,  # Le contenu de kanjilock.json
+        "user_progress": user_data.get("srs", {}), # Niveaux, next_review, etc.
+        "server_time": datetime.now().isoformat() # Pour synchro les horloges
+    }
+
+================================================================================
+FILE: .\backend\api\quiz_compose.py
+================================================================================
+from fastapi import APIRouter, Request
+import random, uuid
+from backend.core.logging import log_event
+
+router = APIRouter()
+
+@router.get("/quiz_compose")
+def quiz_compose(request: Request): # <--- Ajoute request: Request ici
+    # Récupère le cache depuis l'état de l'app sans importer main
+    kanji_cache = getattr(request.app.state, "kanji_cache", {})
+    
+    if not kanji_cache:
+        return {"error": "Le cache des kanjis est vide"}
+
+    # Filtrer les kanjis qui ont des mots composés
+    # (Assure-toi que ta table Supabase contient bien une colonne 'liste_de_mots' dans le JSON 'data')
+    pool_compose = [k for k, v in kanji_cache.items() if v.get("liste_de_mots")]
+    
+    if not pool_compose:
+        return {"error": "Aucune donnée de composition trouvée dans Supabase"}
+
+    kanji = random.choice(pool_compose)
+    k_data = kanji_cache[kanji]
+
+    # Extraction des mots corrects
+    mots_corrects = [
+        w.strip() 
+        for w in k_data.get("liste_de_mots", "").split(",") 
+        if w.strip()
+    ]
+
+    # Création des leurres à partir des autres kanjis du cache
+    tous_les_mots = []
+    for data in kanji_cache.values():
+        mots = data.get("liste_de_mots", "").split(",")
+        tous_les_mots.extend([m.strip() for m in mots if m.strip()])
+    
+    leurres = list(set(tous_les_mots) - set(mots_corrects))
+    random.shuffle(leurres)
+    options = mots_corrects + leurres[:max(0, 6 - len(mots_corrects))]
+    random.shuffle(options)
+
+    qid = str(uuid.uuid4())
+    # Note: Dans une version Cloud, on devrait stocker qid dans Redis ou une DB, 
+    # mais pour l'instant, gardons le dictionnaire global (attention au redémarrage serveur)
+    from backend.api.quiz_compose import COMPOSE_SESSIONS
+    COMPOSE_SESSIONS[qid] = {
+        "kanji": kanji,
+        "correct": set(mots_corrects)
+    }
+
+    return {
+        "qid": qid,
+        "kanji": kanji,
+        "signification": k_data.get("signification", ""),
+        "options": options
+    }
+
+# Garde le reste du fichier (validate) tel quel, 
+# mais assure-toi que COMPOSE_SESSIONS est défini au niveau du module
+COMPOSE_SESSIONS = {}
+
+================================================================================
+FILE: .\backend\api\quiz_modes.py
+================================================================================
+import random
+
+def quiz_intrus(kanjis, user_srs, show_box=True):
+    boxes = {}
+    #source = user_srs if len(user_srs) >= 20 else kanjis
+    kanji_list = (
+        list(user_srs.keys())
+        if len(user_srs) >= 20
+        else list(kanjis.keys())
+    )       
+    # On utilise LA BOÎTE DU KANJILOCK
+    for kanji in kanji_list: #user_srs:
+        if kanji not in kanjis:
+            continue
+    
+        box = str(kanjis[kanji].get("boite", "unknown"))
+        boxes.setdefault(box, []).append(kanji)
+
+    # boîtes avec au moins 3 kanji
+    valid_boxes = [b for b, items in boxes.items() if len(items) >= 3]
+    if not valid_boxes:
+        return None
+
+    target_box = random.choice(valid_boxes)
+    same_box = random.sample(boxes[target_box], 3)
+
+    other_boxes = [b for b in boxes if b != target_box]
+    if not other_boxes:
+        return None
+
+    intruder_box = random.choice(other_boxes)
+    intruder = random.choice(boxes[intruder_box])
+
+    options = same_box + [intruder]
+    random.shuffle(options)
+
+    question = "Quel est l’intrus ?"
+    if show_box:
+        question += f" (Boîte cible : {target_box})"
+
+    return {
+        "question": question,
+        "options": options,
+        "answer": intruder,
+        "intruder_box": intruder_box,
+        "target_box": target_box
+    }
+
+
+================================================================================
+FILE: .\backend\api\ranking.py
+================================================================================
+from fastapi import APIRouter, Request
+from backend.core.config import supabase
+
+router = APIRouter()
+
+def compute_ranking(db_sessions):
+    players = {}
+
+    for row in db_sessions:
+        # On extrait les données de la colonne 'details' stockée dans Supabase
+        s = row.get("details", {})
+        
+        # On récupère le nom du joueur (ou l'USER_ID)
+        p = s.get("player", "Inconnu")
+        
+        players.setdefault(p, {
+            "player": p,
+            "sessions": 0,
+            "score": 0,
+            "correct": 0,
+            "time_ms": 0
+        })
+
+        players[p]["sessions"] += 1
+        players[p]["score"] += s.get("score_global", 0)
+        players[p]["correct"] += s.get("correct", 0)
+        players[p]["time_ms"] += s.get("total_time_ms", 0)
+        
+    # Calcul des moyennes et tri
+    for p_name in players:
+        p_data = players[p_name]
+        p_data["avg_score"] = p_data["score"] / p_data["sessions"] if p_data["sessions"] > 0 else 0
+
+    ranking = list(players.values())
+    ranking.sort(key=lambda x: (x["score"], x["correct"]), reverse=True)
+    
+    return ranking
+
+@router.get("/ranking/global")
+def ranking_global():
+    # On récupère toutes les lignes de la table sessions
+    response = supabase.table("sessions").select("*").execute()
+    return compute_ranking(response.data)
+
+@router.get("/ranking/month/{year_month}")
+def ranking_month(year_month: str):
+    """
+    year_month = '2026-01'
+    On utilise une requête Supabase pour filtrer par date directement dans le Cloud
+    """
+    # Filtre sur la colonne 'session_date' (format ISO: 2026-01-...)
+    response = supabase.table("sessions") \
+        .select("*") \
+        .gte("session_date", f"{year_month}-01") \
+        .lt("session_date", f"{year_month}-32") \
+        .execute()
+        
+    return compute_ranking(response.data)
+
+================================================================================
+FILE: .\backend\api\session.py
+================================================================================
+# backend/api/session.py
+from fastapi import APIRouter
+from backend.data.session_log import log_session
+from backend.data.progress import load_data, save_data
+from backend.core.srs import update_kanji_srs
+from backend.core.config import USER_ID # Ou récupérer dynamiquement depuis payload['player']
+
+router = APIRouter()
+
+@router.post("/session")
+async def save_session(payload: dict):
+    # 1. On log la session comme avant (pour les stats globales)
+    log_session(payload)
+    
+    # 2. On récupère l'historique des réponses
+    answers = payload.get("answers", [])
+    if not answers:
+        return {"status": "ok", "message": "No answers to process"}
+
+    # 3. Chargement de la progression utilisateur (Supabase/JSON)
+    user_data = load_data(USER_ID)
+    srs_data = user_data.setdefault("srs", {})
+
+    # 4. Traitement de chaque réponse
+    for ans in answers:
+        kanji = ans.get("kanji")
+        mode = ans.get("mode", "qa")
+        correct = ans.get("correct")
+        speed_factor = ans.get("speed_factor", 1.0)
+
+        if not kanji:
+            continue
+
+        # Initialisation du dictionnaire pour ce mode si inexistant
+        if mode not in srs_data:
+            srs_data[mode] = {}
+        
+        # Récupération de l'état actuel du kanji ou état par défaut (Level 1)
+        state = srs_data[mode].get(kanji, {"level": 1, "next_review": None})
+
+        # Utilisation de ta fonction SRS existante pour modifier 'state' en place
+        update_kanji_srs(state, correct, speed_factor)
+
+        # Sauvegarde du nouvel état
+        srs_data[mode][kanji] = state
+
+    # 5. Sauvegarde finale (Une seule écriture pour toute la session !)
+    save_data(USER_ID, user_data)
+
+    return {"status": "success", "updated_kanjis": len(answers)}
+
+================================================================================
+FILE: .\backend\api\stats.py
+================================================================================
+from backend.data.progress import load_data
+from backend.core.config import USER_ID
+from fastapi import APIRouter, Request
+
+router = APIRouter()
+
+@router.get("/stats")
+def stats_api(request: Request, mode: str = "qa"):
+    # 1. On importe le cache depuis main pour éviter de relire le fichier JSON
+    kanji_cache = getattr(request.app.state, "kanji_cache", {})
+    
+    # 2. On charge la progression depuis Supabase via load_data (avec l'ID !)
+    # load_data(USER_ID) renvoie déjà {"srs": {...}, "daily_stats": {...}}
+    data = load_data(USER_ID)
+
+    if not data:
+        return {"srs_levels": {1: 0, 2: 0, 3: 0, 4: 0}, "kanjis": []}
+
+    # 3. Extraction des données SRS pour le mode choisi
+    # La structure de data est maintenant simplifiée par load_data
+    srs_all_modes = data.get("srs", {})
+    srs = srs_all_modes.get(mode, {})
+
+    # 4. Calcul des niveaux SRS
+    srs_levels = {1: 0, 2: 0, 3: 0, 4: 0}
+    for v in srs.values():
+        lvl = v.get("level", 1)
+        if lvl in srs_levels:
+            srs_levels[lvl] += 1
+
+    # 5. Construction de la liste détaillée des Kanjis
+    kanji_list = []
+    for k_char, v_stats in srs.items():
+        # On récupère les infos statiques (signification, etc.) dans le cache
+        k_info = kanji_cache.get(k_char, {})
+        
+        kanji_entry = {
+            "kanji": k_char,
+            "level": v_stats.get("level"),
+            "next_review": v_stats.get("next_review"),
+        }
+        # On fusionne avec les infos du dictionnaire kanjilock
+        kanji_entry.update(k_info)
+        kanji_list.append(kanji_entry)
+
+    return {
+        "srs_levels": srs_levels,
+        "daily_stats": data.get("daily_stats", {}),
+        "kanjis": kanji_list
+    }
+
+================================================================================
+FILE: .\backend\api\__init__.py
+================================================================================
+
+
+================================================================================
+FILE: .\backend\core\config.py
+================================================================================
+# backend/core/config.py
+from pathlib import Path
+import os
+from dotenv import load_dotenv
+from supabase import create_client, Client
+
+load_dotenv()
+
+url: str = os.environ.get("SUPABASE_URL")
+# Ici, utilise la clé 'anon' pour le backend de l'appli (plus sûr)
+key: str = os.environ.get("SUPABASE_KEY") 
+
+supabase: Client = create_client(url, key)
+
+# 📁 Racine du projet
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+# 📁 Dossiers
+BACKEND_DIR = PROJECT_ROOT / "backend"
+FRONTEND_DIR = PROJECT_ROOT / "frontend"
+DATA_DIR = PROJECT_ROOT / "main_data"
+
+# 📄 Fichiers
+KANJI_FILE = DATA_DIR / "kanjilock.json"
+PROGRESS_FILE = DATA_DIR / "progress.json"
+LOG_FILE = DATA_DIR / "events.log.jsonl"
+SESSION_FILE = DATA_DIR/ "sessions.jsonl"
+
+TIMER_TIME = 5000
+
+WEIGHTS = {    1: 5,    2: 3,    3: 1,    4: 0.2}
+# 👤 User (temporaire)
+USER_ID = "1449281248039141440"
+QUIZ_SESSIONS = {}
+from datetime import timedelta
+
+SRS_INTERVALS = [
+    timedelta(minutes=10),   # level 0
+    timedelta(hours=1),      # level 1
+    timedelta(days=1),       # level 2
+    timedelta(days=3),       # level 3
+    timedelta(days=7),       # level 4
+    timedelta(days=21),      # level 5
+]
+QUIZ_MODES = {
+    "qa": {
+        "question": lambda kanji, k: kanji,
+        "answer":   lambda kanji, k: k["signification"],
+        "extras":   lambda kanji, k: {
+            "romaji": k["romaji"],
+            "mot": k["mot"],
+            "signification_mot": k["signification_mot"],
+            "lecture_mot": k["lecture_mot"],
+            "boite": k["boite"]
+        }
+    },
+
+    "qb": {
+        "question": lambda kanji, k: k["signification"],
+        "answer":   lambda kanji, k: kanji,
+        "extras":   lambda kanji, k: {
+            "romaji": k["romaji"],
+            "mot": k["mot"],
+            "signification_mot": k["signification_mot"],
+            "lecture_mot": k["lecture_mot"],
+            "boite": k["boite"]
+        }
+    },
+
+    "qc": {
+        "question": lambda kanji, k: k["mot"],
+        "answer":   lambda kanji, k: k["signification_mot"],
+        "extras":   lambda kanji, k: {
+            "lecture_mot": k["lecture_mot"],
+            "kanji": kanji,
+            "romaji": k["romaji"],
+            "boite": k["boite"]
+        }
+    },
+    
+    "qd": {
+        "question": lambda kanji, k: kanji,
+        "answer":   lambda kanji, k: k["boite"],
+        "extras":   lambda kanji, k: {
+            "signification": k["signification"],
+            "romaji": k["romaji"],
+            "lecture_mot": k["lecture_mot"],
+            "signification_mot": k["signification_mot"], 
+        }
+    },
+    "qe": {
+        "question": lambda kanji, k: kanji,
+        "answer":   lambda kanji, k: k["romaji"],
+        "extras":   lambda kanji, k: {
+            "signification": k["signification"],
+            "lecture_mot": k["lecture_mot"],
+            "signification_mot": k["signification_mot"], 
+            "boite": k["boite"],
+            
+        },
+        "is_valid": lambda k: bool(k.get("romaji"))
+    },
+    "intrus": {}
+
+}
+
+================================================================================
+FILE: .\backend\core\logging.py
+================================================================================
+from datetime import datetime
+from backend.core.config import supabase
+
+# def log_event(event: dict):
+#     """
+#     Enregistre un événement (ex: clic, affichage de question) dans Supabase.
+#     """
+#     try:
+#         # On ajoute le timestamp au dictionnaire
+#         event["ts"] = datetime.now().isoformat()
+
+#         # On prépare l'insertion
+#         # On utilise .insert().execute() 
+#         # Note : Pour les logs massifs, on pourrait ne pas attendre la réponse
+#         supabase.table("logs").insert({"event_data": event}).execute()
+        
+#     except Exception as e:
+#         # On ne veut pas que l'app plante si les logs ne passent pas
+#         print(f"⚠️ LOG ERROR (Non-critique): {e}")
+
+import threading
+
+def log_event(event: dict):
+    # On lance la sauvegarde dans un fil séparé
+    threading.Thread(target=_send_to_supabase, args=(event,)).start()
+
+def _send_to_supabase(event):
+    try:
+        event["ts"] = datetime.now().isoformat()
+        supabase.table("logs").insert({"event_data": event}).execute()
+    except:
+        pass # Discret en cas d'erreur
+
+================================================================================
+FILE: .\backend\core\selection.py
+================================================================================
+import random
+from datetime import datetime
+from backend.core.srs import is_available
+from backend.core.config import WEIGHTS
+from backend.core.logging import log_event
+now = datetime.now().isoformat()
+
+def choose_weighted_kanji(srs, kanjis, today):
+    now = datetime.now()
+    pool = []
+    for kanji, state in srs.items():
+        log_event({
+    "event": "kanji_selected",
+    "kanji": kanji,
+    "next_review": state["next_review"],
+    "now": datetime.now().isoformat(),
+    "level": state["level"]
+})
+        if kanji not in kanjis:
+            continue
+        next_review = datetime.fromisoformat(state["next_review"])
+        if next_review > now:
+            continue  # ⛔ pas encore dispo
+        level = state["level"]
+        weight = WEIGHTS.get(level, 1)
+        pool.extend([kanji] * int(weight * 10))
+    return random.choice(pool) if pool else None
+
+
+================================================================================
+FILE: .\backend\core\srs.py
+================================================================================
+
+from datetime import date, timedelta,datetime 
+from backend.core.config import SRS_INTERVALS
+def compute_next_review(state, response_time):
+    base_delay = timedelta(days=2 ** state["level"])
+    if response_time < 3:
+        coef = 1.2
+    elif response_time < 5:
+        coef = 1.0
+    else:
+        coef = 0.6
+    return base_delay * coef
+
+def update_kanji_srs(state, correct, speed_factor=1.0):
+    now = datetime.now()
+    if correct:
+        state["level"] = min(state["level"] + 1, 4)
+        base_days = SRS_INTERVALS[state["level"]]
+        adjusted_delay = base_days / speed_factor
+        state["next_review"] = (date.today() + adjusted_delay).isoformat()
+        # state["next_review"] = (date.today() + timedelta(days=adjusted_days)).isoformat()
+        # state["level"] = min(state["level"] + 1, 4)
+        # level = state["level"]
+        # base_days = SRS_INTERVALS[min(level, len(SRS_INTERVALS) - 1)]
+        # adjusted_days = base_days #int(base_days / speed_factor)
+        # state["next_review"] = (date.today() + timedelta(days=adjusted_days)).isoformat()
+        #state["next_review"] = (now + timedelta(days=state["level"])).isoformat()
+        #-------------------251231---------------------------------------------------------
+    else:
+        state["level"] = max(state["level"] - 1, 1)
+        # ⛔ cooldown immédiat (ex : 10 minutes)
+        state["next_review"] = (now + timedelta(minutes=10)).isoformat()
+    
+def is_available(state, now):
+    return state.get("retry_after", "1970-01-01") <= now
+
+
+================================================================================
+FILE: .\frontend\icon-192.png
+================================================================================
+[Erreur lecture: 'utf-8' codec can't decode byte 0x89 in position 0: invalid start byte]
+
+================================================================================
+FILE: .\frontend\icon-512.png
+================================================================================
+[Erreur lecture: 'utf-8' codec can't decode byte 0x89 in position 0: invalid start byte]
+
+================================================================================
+FILE: .\frontend\index.html
+================================================================================
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <title>KanjiLock</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="KanjiLock">
+    
+    <link rel="icon" href="/static/favicon.ico">
+    <link rel="apple-touch-icon" href="/static/icon-512.png">
+    <link rel="stylesheet" href="/static/css/style.css">
+   
+</head>
+
+<body>
+    <main id="app"></main>
+
+    <nav class="bottom-nav">
+        <a href="/" data-link data-mode="home">🏠</a>
+        <a href="/quiz-page" data-link data-mode="qa">🧩</a>
+        <a href="/intrus-page" data-link>🔍</a>
+        <a href="/compose-page" data-link>⚠️</a>
+        <a href="/stats-page" data-link data-mode="stats">📊</a>  
+        <a href="/ranking-page" data-link>🏆</a>
+    </nav>
+
+    <script src="/static/js/config.js"></script>
+    <script type="module" src="/static/js/spa.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
+
+================================================================================
+FILE: .\frontend\vercel.json
+================================================================================
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
+
+================================================================================
+FILE: .\frontend\pages\compose.html
+================================================================================
+<head>
+  <meta charset="utf-8">
+  <title>Kanji composition</title>
+
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+
+
+<main>
+<h1>⚠️ Quiz – Composition des Kanjis</h1>
+
+<div id="compose-quiz">
+  <p id="compose-question"></p>
+
+  <div id="multi_quiz"></div>
+ 
+
+  <div id="compose-options"></div>
+<button id="validateBtn">✅ Valider</button>
+<div id="compose-result"></div>
+
+</div>
+
+</main>
+
+
+
+================================================================================
+FILE: .\frontend\pages\export_html_to_txt.py
+================================================================================
+import os
+
+OUTPUT_FILE = "kanjilock_backup_html.txt"
+EXCLUDE_DIRS = {"main_data", "__pycache__", ".git", ".venv", "venv", "node_modules", "data"}
+EXCLUDE_EXT = {".pyc", ".log", ".env", ".md", ".txt",
+               ".xlsx", "migrate_to_supabase.py", "export_project_to_txt.py","extract_requirements.py", "project_structure.py"}
+
+def should_skip(path):
+    parts = set(path.split(os.sep))
+    return bool(parts & EXCLUDE_DIRS)
+
+with open(OUTPUT_FILE, "w", encoding="utf-8") as out:
+    for root, dirs, files in os.walk("."):
+        if should_skip(root):
+            continue
+
+        dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
+
+        for file in files:
+            if any(file.endswith(ext) for ext in EXCLUDE_EXT):
+                continue
+
+            path = os.path.join(root, file)
+
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    content = f.read()
+            except Exception as e:
+                content = f"[Erreur lecture: {e}]"
+
+            out.write("\n" + "=" * 80 + "\n")
+            out.write(f"FILE: {path}\n")
+            out.write("=" * 80 + "\n")
+            out.write(content + "\n")
+
+print(f"✅ Projet exporté dans {OUTPUT_FILE}")
+
+
+================================================================================
+FILE: .\frontend\pages\home.html
+================================================================================
+<head>
+  <meta charset="utf-8">
+  <title>KanjiLock</title>
+
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+
+  <main>
+    <h1>🔒 Kanji Lock</h1>
+    <p>"L'affaire est toute simple, tout le secret tient en deux mots : <b>constance et continuité</b>", FÉDOR DOSTOÏEVSKI (L’Adolescent, 1875) </p>
+    <!-- Arkadi Makarovitch Dolgorouk  -->
+    <div id="controls_home">
+        <button onclick="location.href='/quiz-page'">
+          ▶️ Démarrer un quiz
+        </button>
+        <button onclick="location.href='/intrus-page'">
+          ▶️ Chercher l'intrus
+        </button>
+        <button onclick="location.href='/compose-page'">
+          ▶️ Kanji composition quiz
+        </button>
+        <button onclick="location.href='/stats-page'">
+          ▶️ Les statistiques
+        </button>
+        <button onclick="location.href='/ranking-page'">
+          ▶️ Les Classements
+        </button>
+     </div>  
+     <div id="currentPlayer"></div>
+      <button id="changePlayer">Changer de joueur</button>
+
+  </main>
+
+
+
+
+
+================================================================================
+FILE: .\frontend\pages\intrus.html
+================================================================================
+
+<head>
+  <meta charset="utf-8">
+  <title>Quiz - Intrus</title>
+
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+
+
+  <main>
+    <div id="intrus-page" data-page="intrus">
+      <h1>🔍 Chercher l’intrus</h1>
+      <div id="quiz-zone"></div>
+    </div>
+
+    <!-- <p>perséverance et continuité</p> -->
+    <div id="controls">
+      <button id="startBtn">▶️ Start</button>
+      <button id="stopBtn">⏹ Stop</button>
+    </div>
+
+    <div class="time-bar">
+         <div class="time-fill" id="timeFill"></div>
+    </div>
+
+    <div id="app">
+        <div id="multi_quiz"></div>
+        <div id="answer-zone">
+           <div id="result"></div>
+        </div>
+    </div>
+  </main>
+
+
+
+
+
+
+
+================================================================================
+FILE: .\frontend\pages\login.html
+================================================================================
+<head>
+  <meta charset="utf-8">
+  <title>KanjiLock</title>
+
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+
+
+<section class="login">
+  <h1>🔥 Bienvenue sur KanjiLock 🔥</h1>
+
+  <p>Entre ton pseudo pour commencer :</p>
+
+  <input
+    id="playerInput"
+    placeholder="Ton pseudo"
+    maxlength="16"
+    autofocus
+  />
+
+  <button id="loginBtn">Commencer</button>
+</section>
+
+
+================================================================================
+FILE: .\frontend\pages\multi_quiz.html
+================================================================================
+<head>
+  <meta charset="utf-8">
+  <title>Multi_Quiz_KanjiLock</title>
+
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+
+  <main>
+    <h1>🧩 Quiz</h1>
+   
+    <div id="controls">
+    <select id="modeSelect">
+      <option value="qa">Kanji → Sens</option>
+      <option value="qb">Sens → Kanji</option>
+      <option value="qc">Mot → Sens</option>
+      <option value="qd">Kanji → Boite</option>
+      <option value="qe">Kanji → Romaji</option>
+    </select>
+      <button id="startBtn">▶️ Start</button>
+      <button id="stopBtn">⏹ Stop</button>
+    </div>
+     <div class="time-bar">
+         <div class="time-fill" id="timeFill"></div>
+    </div>
+      
+
+    <div id="app">
+        <div id="multi_quiz"></div>        
+        <div id="answer-zone">
+           <div id="result"></div>
+        </div>
+    </div>
+  </main>
+
+
+
+
+================================================================================
+FILE: .\frontend\pages\ranking.html
+================================================================================
+<head>
+  <meta charset="utf-8">
+  <title>Ranking_KanjiLock</title>
+
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+
+<h2>🏆 Classement</h2>
+
+<div class="ranking-controls">
+  <button data-range="global">Global</button>
+  <button data-range="month">Ce mois</button>
+</div>
+
+<table id="rankingTable">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Joueur</th>
+      <th>Score</th>
+      <th>Correct</th>
+      <th>Sessions</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+
+================================================================================
+FILE: .\frontend\pages\session_end.html
+================================================================================
+<head>
+  <meta charset="utf-8">
+  <title>KanjiLock</title>
+
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+
+<section class="session-end">
+  <h2>🎉 Session terminée !</h2>
+
+  <div id="session-summary"></div>
+
+  <button id="continueBtn">Continuer</button>
+</section>
+
+
+
+================================================================================
+FILE: .\frontend\pages\settings.html
+================================================================================
+
+
+================================================================================
+FILE: .\frontend\pages\stats.html
+================================================================================
+<head>
+  <meta charset="utf-8">
+  <title>Quiz - Intrus</title>
+
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+
+  <div id="controls">
+    <button id="dailyBtn">🗓 Activité quotidienne</button>
+    <div id="heatmap" style="display:grid;grid-template-columns:repeat(14,20px);gap:4px"></div>
+    <h2>Progression SRS</h2>
+   
+    <select id="modeSelect">
+      <option value="qa">Kanji → Sens</option>
+      <option value="qb">Sens → Kanji</option>
+      <option value="qc">Mot → Sens</option>
+      <option value="qd">Kanji → Boite</option>
+      <option value="qe">Kanji → Romaji</option>
+    </select>
+     <!-- <button id="statsBtn">📊 Stats</button>     
+      <button id="weakkanjiBtn">⚠️ Faiblesses</button> -->
+  </div>
+
+<!-- <h2>Activité quotidienne</h2> -->
+<canvas id="srsChart" width="400" height="200"></canvas>
+<div id="weakKanjis"></div>
+
+
+
+
+
+
+================================================================================
+FILE: .\frontend\static\favicon.ico
+================================================================================
+[Erreur lecture: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte]
+
+================================================================================
+FILE: .\frontend\static\icon-512.png
+================================================================================
+[Erreur lecture: 'utf-8' codec can't decode byte 0x89 in position 0: invalid start byte]
+
+================================================================================
+FILE: .\frontend\static\manifest.json
+================================================================================
+{
+  "name": "Kanji Lock PWA",
+  "short_name": "KanjiLock",
+  "start_url": "/",
+  "display": "standalone",
+  "scope": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "icons": [   
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+
+
+================================================================================
+FILE: .\frontend\static\service-worker.js
+================================================================================
+const CACHE_NAME = "kanjilock-v1";
+const PAGES = [
+  "/",
+  "/quiz-page",
+  "/intrus-page",
+  "/stats-page",
+  "/compose-page",
+  "/ranking-page"
+];
+
+self.addEventListener("install", e => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(cache =>
+      cache.addAll(PAGES)
+    )
+  );
+});
+
+
+
+================================================================================
+FILE: .\frontend\static\css\style.css
+================================================================================
+:root {
+  --paper: #f9f6f1;
+  --ink: #1c1c1c;
+  --ink-soft: #444;
+  --accent: #8b0000; /* rouge sceau japonais */
+  --bottom-nav-height: 64px;
+}
+
+/* RESET */
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Mincho ProN",
+               "Yu Mincho", "Helvetica Neue", serif;
+  /* padding:
+    env(safe-area-inset-top)
+    env(safe-area-inset-right)
+    env(safe-area-inset-bottom)
+    env(safe-area-inset-left); */
+}
+/* body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.02),
+      rgba(0,0,0,0.02) 1px,
+      transparent 1px,
+      transparent 4px
+    );
+  pointer-events: none;
+} */
+/* CONTENU */
+
+header {
+  text-align: center;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+/* Boutons */
+#controls_home button{
+  padding: 50px 52px;
+  margin: 4px 4px;
+  width: 40%;
+  font-size: 12px;
+  border-radius: 15px;
+  border: none;
+  background: #222;
+  color: #fff;
+}
+#controls select{
+  text-align: left;
+  padding: 10px 12px;
+  margin: 4px 0;
+  width: 55%;
+  font-size: 12px;
+  border-radius: 8px;
+  border: none;
+  background: #222;
+  color: #fff;}
+#controls button{
+  text-align: left;
+  padding: 10px 12px;
+  margin: 4px 0;
+  width: 55%;
+  font-size: 12px;
+  border-radius: 8px;
+  border: none;
+  background: #222;
+  color: #fff;
+}
+
+
+/* BOTTOM NAV */
+.bottom-nav {
+  position: fixed;
+  /* bottom: env(safe-area-inset-bottom); */
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--bottom-nav-height);
+  background: #111;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  border-top: 1px solid #333;
+}
+
+.bottom-nav a {
+  color: #aaa;
+  text-decoration: none;
+  font-size: 22px;
+  padding: 8px;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.bottom-nav a.active {
+  color: #fff;
+  transform: scale(1.25);
+  border-bottom: 3px solid #111;
+}
+
+main {
+  padding-bottom: calc(
+    var(--bottom-nav-height) + env(safe-area-inset-bottom)
+  );
+}
+
+#multi_quiz h2 {
+  font-size: 46px;
+  text-align: center;
+  margin: 24px 0;
+  letter-spacing: 4px;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.05);}
+/* Boutons */
+#multi_quiz button {
+  display: block;
+  width: 92%;
+  margin: 14px auto;
+  padding: 18px;
+  font-size: 18px;
+  border-radius: 14px;
+  border: 1px solid #ddd;
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+#multi_quiz button:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+#result {
+  text-align: center;
+  font-size: 20px;
+  padding: 12px;
+  margin-bottom: 1rem;
+}
+
+footer {
+  padding: 10px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.correct {
+  animation: flashGreen 1s;
+}
+.wrong {
+  animation: shake 0.7s;
+}
+
+@keyframes flashGreen {
+  0% { background:#fff; }
+  100% { background:#c8f7c5; }
+}
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  50% { transform: translateX(10px); }
+  100% { transform: translateX(0); }
+}
+#answer-zone {
+  min-height: 220px;          /* ajuste à ton design */
+  margin-top: 1rem;
+  padding: 0.5rem;
+  transition: opacity 0.1s ease;
+  /* background: rgba(255,255,255,0.85); */
+  /* border-left: 1px solid rgb(57, 56, 56); */
+}
+
+#result:empty {
+  opacity: 0;
+}
+
+#result {
+  opacity: 1;
+}
+#compose-options button {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+}
+#compose-options button.selected {
+  background: #ffd;
+}
+
+.time-bar {
+  height: 6px;
+  width: 100%;
+  background: #ddd;
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 10px 0;
+}
+
+.time-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #4caf50, #ff9800, #f44336);
+  transform-origin: left;
+  transform: scaleX(1);
+}
+
+
+/* 
+.compose .options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.compose .option {
+  padding: 10px;
+  font-size: 1rem;
+}
+
+.compose .option.selected {
+  background: #4caf50;
+  color: white;
+}
+
+.compose .validate {
+  width: 100%;
+  padding: 12px;
+  font-size: 1.1rem;
+}
+
+.success { color: green; }
+.error { color: red; } */
+.session-end {
+  text-align: center;
+  padding: 20px;
+}
+
+.session-end h2 {
+  font-size: 46px;
+  text-align: center;
+  margin: 24px 0;
+  letter-spacing: 4px;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.05);}
+
+.session-end  button {
+  /* margin: 10px;
+  padding: 10px 16px;
+  font-size: 1em; */
+  text-align: middle;
+  padding: 14px 16px;
+  margin: 4px 0;
+  width: 20%;
+  font-size: 12px;
+  border-radius: 8px;
+  border: none;
+  background: #222;
+  color: #fff;
+}
+
+.ranking h2 {
+  font-size: 46px;
+  text-align: center;
+  margin: 24px 0;
+  letter-spacing: 4px;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.05);}
+
+.ranking  button {
+  text-align: middle;
+  padding: 14px 16px;
+  margin: 4px 0;
+  width: 20%;
+  font-size: 10px;
+  border-radius: 8px;
+  border: none;
+  background: #222;
+  color: #fff;}
+
+.login.login  button {
+  text-align: middle;
+  padding: 14px 16px;
+  margin: 4px 0;
+  width: 20%;
+  font-size: 10px;
+  border-radius: 8px;
+  border: none;
+  background: #222;
+  color: #fff;}
+
+
+================================================================================
+FILE: .\frontend\static\js\app.js
+================================================================================
+
+
+================================================================================
+FILE: .\frontend\static\js\common.js
+================================================================================
+
+export const session = {
+  total: 10,
+  current: 0,
+  correct: 0,
+  wrong: 0,
+  totalTime: 0, // ms
+  speedScore: 0 // score pondéré
+};
+
+
+
+================================================================================
+FILE: .\frontend\static\js\compose_quiz.js
+================================================================================
+/* ============================
+   COMPOSE QUIZ
+   ============================ */
+let currentQid = null;
+let selectedWords = new Set();
+let composeTimeout = null;
+
+/* ============================
+   INIT
+   ============================ */
+export function initCompose() {
+  console.log("Compose quiz init3");
+  // startSession();
+  loadComposeQuiz();
+  console.log("Compose quiz init4")
+}
+
+/* ============================
+   LOAD QUESTION
+   ============================ */
+async function loadComposeQuiz() {
+  selectedWords.clear();
+
+  const res = await fetch(`${API_BASE_URL}/quiz_compose`);
+  const data = await res.json();
+
+  currentQid = data.qid;
+
+  document.getElementById("compose-question").textContent =
+    `Quel(s) mot(s) correspondent au kanji signifiant "${data.signification}" ?`;
+
+  const container = document.getElementById("compose-options");
+  container.innerHTML = "";
+
+  data.options.forEach(word => {
+    const btn = document.createElement("button");
+    btn.textContent = word;
+
+    btn.onclick = () => toggleSelection(btn, word);
+
+    container.appendChild(btn);
+  });
+
+  document.getElementById("validateBtn").onclick = validateAnswer;
+
+  document.getElementById("compose-result").innerHTML = "";
+}
+
+/* ============================
+   SELECTION
+   ============================ */
+function toggleSelection(btn, word) {
+  if (selectedWords.has(word)) {
+    selectedWords.delete(word);
+    btn.classList.remove("selected");
+  } else {
+    selectedWords.add(word);
+    btn.classList.add("selected");
+  }
+}
+
+/* ============================
+   VALIDATE
+   ============================ */
+async function validateAnswer() {
+  const res = await fetch(`${API_BASE_URL}/quiz_compose/validate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      qid: currentQid,
+      selected: Array.from(selectedWords)
+    })
+  });
+
+  const data = await res.json();
+  showComposeResult(data);
+}
+
+/* ============================
+   RESULT
+   ============================ */
+function showComposeResult(data) {
+  const result = document.getElementById("compose-result");
+
+  // sécurité anti-crash
+  const correctWords = data.correct ?? [];
+
+  result.className = "";
+  void result.offsetWidth;
+  result.className = data.success ? "correct" : "wrong";
+
+  result.innerHTML = `
+    <p>${data.success ? "✓ 正解" : "✗ 違います"}</p>
+
+    <p><strong>Kanji :</strong> ${data.kanji ?? "-"}</p>
+    <p><strong>Mots corrects :</strong> ${correctWords.join(", ")}</p>
+
+    <div class="extras">
+      <p><strong>Romaji :</strong> ${data.extras?.romaji || "-"}</p>
+      <p><strong>Mot composé :</strong> ${data.extras?.mot || "-"}</p>
+      <p><strong>Lecture :</strong> ${data.extras?.lecture_mot || "-"}</p>
+      <p><strong>Signification :</strong> ${data.extras?.signification_mot || "-"}</p>      
+      <p><strong>Boîte :</strong> ${data.extras?.boite ?? "-"}</p>
+    </div>
+  `;
+
+  result.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // désactiver boutons
+  document
+    .querySelectorAll("#compose-options button")
+    .forEach(b => (b.disabled = true));
+
+  clearTimeout(composeTimeout);
+  composeTimeout = setTimeout(loadComposeQuiz, 5000);
+}
+
+
+================================================================================
+FILE: .\frontend\static\js\config.js
+================================================================================
+const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+
+// On ajoute /api à la fin de l'URL de base
+window.API_BASE_URL = isLocal 
+    ? "http://127.0.0.1:8000/api" 
+    : "https://kanjilock-web.onrender.com/api";
+
+console.log("Mode:", isLocal ? "Local" : "Production", "| API Root:", window.API_BASE_URL);
+
+================================================================================
+FILE: .\frontend\static\js\home.js
+================================================================================
+import { initMode } from "./modeManager.js";
+import { clearPlayer ,getPlayer} from "./player.js";
+import { navigate } from "./spa.js";
+
+
+
+export function initHome() {   
+     initMode();
+   console.log("Home init Done!");   
+   
+  document.getElementById("currentPlayer").textContent =
+    `Pseudo: "${getPlayer()}" `;
+
+   document.getElementById("changePlayer").onclick = () => {
+  clearPlayer();
+  navigate("/login");
+}; 
+}
+
+
+================================================================================
+FILE: .\frontend\static\js\intrus.js
+================================================================================
+import {  setMode } from "./modeManager.js";
+import { initQuiz } from "./multi_quiz.js";
+
+export function initIntrus() {
+  console.log("Intrus init");
+  initQuiz();          // réutilise la logique quiz
+}
+
+
+================================================================================
+FILE: .\frontend\static\js\login.js
+================================================================================
+import { setPlayer } from "./player.js";
+import { navigate } from "./spa.js";
+
+export function initLogin() {
+  const input = document.getElementById("playerInput");
+  const btn = document.getElementById("loginBtn");
+
+  btn.onclick = () => {
+    const name = input.value.trim();
+    if (!name) return alert("Entre un pseudo 🙂");
+
+    setPlayer(name);
+    navigate("/"); // ou /quiz-page
+  };
+
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") btn.click();
+  });
+}
+
+================================================================================
+FILE: .\frontend\static\js\modeManager.js
+================================================================================
+const MODE_KEY = "kanjilock_mode";
+const DEFAULT_MODE = "qa";
+const QUIZ_MODES = ["qa", "qb", "qc", "qd","qe"];
+
+/* ============================
+   GET MODE
+   ============================ */
+export function getMode() {
+  const saved = localStorage.getItem(MODE_KEY);
+  if (QUIZ_MODES.includes(saved)) {
+    return saved;
+  }
+  return DEFAULT_MODE;
+}
+
+/* ============================
+   SET MODE
+   ============================ */
+export function setMode(mode) {
+  localStorage.setItem(MODE_KEY, mode);
+
+  const select = document.getElementById("modeSelect");
+  if (select && QUIZ_MODES.includes(mode)) {
+    select.value = mode;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("modechange", { detail: { mode } })
+  );
+}
+
+/* ============================
+   INIT MODE (à appeler après chargement HTML)
+   ============================ */
+export function initMode() {
+  console.log("get modeready");  
+  const mode = getMode();
+  syncSelect(mode);
+  console.log("get mode: ", mode);  
+  const select = document.getElementById("modeSelect");
+  if (select) {
+    select.addEventListener("change", () => {
+      setMode(select.value);
+    });
+  }
+}
+
+/* ============================
+   UI HELPERS
+   ============================ */
+function syncSelect(mode) {
+  const select = document.getElementById("modeSelect");
+  if (select && QUIZ_MODES.includes(mode)) {
+    select.value = mode;
+  }
+}
+
+
+================================================================================
+FILE: .\frontend\static\js\multi_quiz.js
+================================================================================
+
+import { initEngine, getNextQuestion, checkLocalAnswer } from "./quizengine.js";
+import { getMode, initMode } from "./modeManager.js";
+import { getPlayer_setting } from "./settings.js";
+import {
+  startSession,
+  recordAnswer,
+  getSessionSummary,
+  resetSession,
+  endSessionIfNeeded 
+} from "./quizSession.js";
+import { navigate } from "./spa.js"; // ou ta fonction équivalente
+
+console.log("multi_quiz.js chargé");
+
+/* ============================
+   INIT PAGE QUIZ (SPA)
+   ============================ */
+export async function initQuiz() {
+  console.log("Quiz init");
+  initMode();
+  bindQuizButtons();
+  await initEngine();
+}
+let isProcessingAnswer = false;
+let currentData = null;
+let quizRunning = false;
+let questionStartTime = null;
+let currentQid = null;
+let timeoutId = null;
+let currentLocalQuestion = null;
+
+// let player = null;
+
+/* ============================
+   BINDINGS UI
+   ============================ */
+function bindQuizButtons() {
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn = document.getElementById("stopBtn");
+
+  if (startBtn) {
+    startBtn.onclick = () => {
+      quizRunning = true;
+      startSession();
+console.warn("🔓 loadquiz du bouton");
+      loadQuiz();
+    };
+  }
+
+  if (stopBtn) {
+    stopBtn.onclick = () => {
+      quizRunning = false;
+      stopTimer();
+      document.getElementById("multi_quiz").innerHTML = "⏸ Quiz arrêté";
+    };
+  }
+}
+/* ============================
+   QUIZ TIMER
+   ============================ */
+let timerInterval = null;
+let bipTimeout = null;
+let timerStart = null;
+
+function startTimer() {
+  const fill = document.getElementById("timeFill");
+  if (!fill) return;
+
+  timerStart = Date.now();
+
+  fill.style.transition = "none";
+  fill.style.width = "100%";
+  void fill.offsetWidth;
+
+  requestAnimationFrame(() => {
+    fill.style.transition = "width 5s linear";
+    fill.style.width = "0%";
+  });
+  bipTimeout = setTimeout(() => {
+    playBip("BOMB.WAV");
+  }, 5000);
+}
+function stopTimer() {
+  if (bipTimeout) {
+    clearTimeout(bipTimeout);
+    bipTimeout = null;
+  }
+
+  const fill = document.getElementById("timeFill");
+  if (!fill || !timerStart) return;
+
+  const elapsed = Date.now() - timerStart;
+  const remainingPercent = Math.max(0, 100 - (elapsed / 5000) * 100);
+
+  fill.style.transition = "none";
+  fill.style.width = `${remainingPercent}%`;
+}
+function playBip(selected_sound) {
+  try {
+    const audio = new Audio(`/static/sounds/${selected_sound}`);
+    audio.play();
+  } catch {
+    console.warn("🔇 Bip ignoré");
+  }
+}
+/* ============================
+   QUIZ LOGIC
+   ============================ */
+function getQuizModeForPage() {
+  const page = document.querySelector("[data-page]")?.dataset.page;
+  if (page === "intrus") return "intrus";
+  return getMode(); // qa / qb / qc / qd / qe
+}
+async function loadQuiz() {
+  if (!quizRunning) return;
+// Nettoyage de l'interface précédente pour éviter les flashs
+    const container = document.getElementById("options-container");
+    if (container) container.innerHTML = "";
+  // playBip("ARROW.WAV")
+  questionStartTime = Date.now();
+  startTimer() ;
+  // const mode = getMode();
+  const mode = getQuizModeForPage();
+  const data = getNextQuestion(mode);
+
+  currentLocalQuestion = data; // On garde ça en mémoire pour vérifier la réponse
+  
+  console.log("timer end")
+  renderQuestion(data); 
+}
+function renderQuestion(data) {
+  const quiz = document.getElementById("multi_quiz");
+  console.log("quiz.innerHTML = `<h2>${data.question}</h2>`");
+  quiz.innerHTML = `<h2>${data.question}</h2>`;
+  quiz.classList.remove("fade-in");
+  void quiz.offsetWidth;
+  quiz.classList.add("fade-in");  
+
+  data.options.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.innerText = opt;
+    btn.onclick = () => sendAnswer(opt);
+    quiz.appendChild(btn);
+  });
+
+  document.getElementById("result").innerHTML = "";
+}
+
+let isProcessing = false; // Verrou anti-double-clic global au fichier
+
+async function sendAnswer(choice) {
+    // Si déjà en train de traiter ou quiz fini, on ignore
+    if (isProcessing || !quizRunning) return;
+    
+    isProcessing = true; // On verrouille
+    console.warn("🔒 Traitement réponse...");
+
+    const rt_ms = Date.now() - questionStartTime;
+
+    // 1. Vérification locale
+    const data = checkLocalAnswer(currentLocalQuestion, choice, rt_ms);
+
+    // 2. UI
+    showResult(data);
+    
+
+    // 3. Enregistrement
+    const finished = recordAnswer({
+        correct: data.correct,
+        rt_ms: rt_ms,
+        kanji: currentLocalQuestion.kanji,
+        mode: getQuizModeForPage()
+    });
+
+    stopTimer();
+    
+    if (data.correct) playBip("success.wav");
+    else playBip("BOMB.WAV");
+
+    if (finished) {
+        quizRunning = false;
+        setTimeout(async () => {
+            const summary = getSessionSummary();
+            const payload = {
+                player: getPlayer_setting(),
+                mode: getQuizModeForPage(),
+                session_size: summary.size,
+                correct: summary.correct,
+                wrong: summary.wrong,
+                total_time_ms: summary.totalTime,
+                score_global: summary.scoreOn100,
+                answers: summary.history 
+            };
+
+            try {
+                await fetch(`${API_BASE_URL}/session`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+            } catch (e) { console.error(e); }
+
+            sessionStorage.setItem("lastSessionSummary", JSON.stringify(summary));
+            isProcessing = false; // Déverrouillage final
+            navigate("/session-end");
+        }, 1500);
+        return; 
+    }
+
+    // 🔄 QUESTION SUIVANTE
+    setTimeout(() => {
+        isProcessing = false; // On déverrouille JUSTE AVANT de charger la suite
+        console.warn("🔓 Prêt pour la suivante");
+        // loadQuiz();
+    }, data.correct ? 1000 : 2500);
+}
+/* ============================
+   RESULT
+   ============================ */
+function showResult(data) {
+  const result = document.getElementById("result");
+
+  result.className = "";
+  void result.offsetWidth;
+  result.className = data.correct ? "correct" : "wrong";
+  result.innerHTML = data.correct ? "✓ 正解" : "✗ 違います";
+
+  if (navigator.vibrate) {
+    navigator.vibrate(data.correct ? 30 : 80);
+  }
+  if (!data.correct) {
+    result.innerHTML += `<p>Bonne réponse : <b>${data.bonne}</b></p>`;
+  }
+
+  if (data.extras) {
+    let html = "<ul>";
+    for (const k in data.extras) {
+      html += `<li><b>${k}</b> : ${data.extras[k]}</li>`;
+    }
+    html += "</ul>";
+    result.innerHTML += html;
+  }
+  result.scrollIntoView({ behavior: "smooth", block: "start" });
+  timeoutId = setTimeout(loadQuiz, data.correct ? 2000 : 5000);
+}
+function showSessionEnd() {
+  const s = getSessionSummary();
+
+  const quiz = document.getElementById("multi_quiz");
+  console.log("improbable");
+  quiz.innerHTML = `
+    <h2>🎉 Session terminée</h2>
+    <p>✔️ ${s.correct} / ${s.size}</p>
+    <p>⏱ ${(s.totalTime / 1000).toFixed(1)} s</p>
+    <p>⚡ Score vitesse : ${s.scoreOn100} / 100</p>
+
+    <button id="restartSession">🔁 Rejouer</button>
+  `;
+
+  document.getElementById("restartSession").onclick = () => {
+    resetSession();
+    startSession();
+    loadQuiz();
+  };
+}
+// function iosTap() {
+//   const audio = new Audio();
+//   audio.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=";
+//   audio.play();
+// };
+
+================================================================================
+FILE: .\frontend\static\js\player.js
+================================================================================
+const PLAYER_KEY = "kanjilock_player";
+
+export function getPlayer() {
+  return localStorage.getItem(PLAYER_KEY);
+}
+
+export function setPlayer(name) {
+  localStorage.setItem(PLAYER_KEY, name.trim());
+}
+
+export function clearPlayer() {
+  localStorage.removeItem(PLAYER_KEY);
+}
+
+
+================================================================================
+FILE: .\frontend\static\js\quizengine.js
+================================================================================
+// frontend/static/js/quizEngine.js
+
+let staticData = {}; // kanjilock.json
+let userProgress = {}; // SRS states
+let currentSession = []; 
+
+// Configuration des Modes (Portage de quiz_modes.py)
+const MODES = {
+    "qa": {
+        q: (k) => k.kanji,
+        a: (k) => k.signification,
+        extras: (k) => ({ romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot })
+    },
+    "qb": {
+        q: (k) => k.signification,
+        a: (k) => k.kanji,
+        extras: (k) => ({ romaji: k.romaji, boite: k.boite })
+    },
+    "qc": {
+        q: (k) => k.mot,
+        a: (k) => k.signification,
+        extras: (k) => ({ lecture_mot: k.lecture_mot, kanji: k.kanji, romaji: k.romaji, boite: k.boite })
+    },
+    "qd": {
+        q: (k) => k.kanji,
+        a: (k) => k.mot,
+        extras: (k) => ({ romaji: k.romaji, signification: k.signification })
+    },
+    "qe": {
+        q: (k) => k.kanji,
+        a: (k) => k.lecture_mot,
+        extras: (k) => ({ romaji: k.romaji, signification: k.signification })
+    }
+};
+
+            
+ 
+export async function initEngine() {
+    console.log("📥 Chargement des données locales...");
+    const res = await fetch(`${API_BASE_URL}/quiz/init`);
+    const data = await res.json();
+    
+    staticData = data.static_data;
+    userProgress = data.user_progress;
+    console.log(`✅ Engine prêt : ${Object.keys(staticData).length} kanjis`);
+}
+
+export function getNextQuestion(mode) {
+    // 1. Logique de sélection pondérée (Portage de selection.py)
+    // Pour l'instant, faisons simple : prendre un kanji aléatoire disponible
+    // Tu devras implémenter ici la logique de poids (1:5, 2:3, etc.)
+    
+    const keys = Object.keys(staticData);
+    const kanjiKey = keys[Math.floor(Math.random() * keys.length)];
+    const kData = staticData[kanjiKey];
+    
+    // Si pas de définition de mode, fallback sur QA
+    const modeDef = MODES[mode] || MODES["qa"];
+
+    // 2. Générer la question
+    const question = modeDef.q({kanji: kanjiKey, ...kData});
+    const correctAnswer = modeDef.a({kanji: kanjiKey, ...kData});
+
+    // 3. Générer les leurres (Options)
+    let options = [correctAnswer];
+    while (options.length < 4) {
+        const randomK = staticData[keys[Math.floor(Math.random() * keys.length)]];
+        const wrongAnswer = modeDef.a({kanji: keys[Math.floor(Math.random() * keys.length)], ...randomK});
+        if (!options.includes(wrongAnswer)) {
+            options.push(wrongAnswer);
+        }
+    }
+    
+    // Mélanger
+    options.sort(() => Math.random() - 0.5);
+
+    return {
+        qid: crypto.randomUUID(), // Génère un ID unique en local
+        kanji: kanjiKey,
+        question: question,
+        options: options,
+        correctAnswer: correctAnswer, // Gardé secret côté JS (mais accessible si on triche)
+        extras: modeDef.extras({kanji: kanjiKey, ...kData})
+    };
+}
+const WEIGHTS = { 1: 5, 2: 3, 3: 1, 4: 0.2 };
+
+// Vérifie si un kanji est dispo (date < maintenant)
+function isAvailable(state) {
+    if (!state || !state.next_review) return true; // Dispo si nouveau
+    return new Date(state.next_review) <= new Date();
+}
+
+export function getNextQuestion_NEW(mode) {
+    const srsMode = userProgress[mode] || {};
+    const availablePool = [];
+    const newItems = [];
+
+    // 1. Filtrer les kanjis éligibles
+    Object.keys(staticData).forEach(kanji => {
+        const state = srsMode[kanji];
+        
+        if (!state) {
+            // Pas d'historique = Nouveau Kanji
+            newItems.push(kanji);
+        } else if (isAvailable(state)) {
+            // Kanji connu et date de révision dépassée
+            const weight = WEIGHTS[state.level] || 1;
+            // On ajoute le kanji X fois dans le pool selon son poids
+            // (Technique simple de "Weighted Random")
+            const count = Math.ceil(weight * 10); 
+            for (let i = 0; i < count; i++) {
+                availablePool.push(kanji);
+            }
+        }
+    });
+
+    let selectedKanji;
+    
+    // 2. Priorité : Mélange items à revoir et nouveaux
+    // Si on a beaucoup de révisions, on tape dedans, sinon on prend un nouveau
+    if (availablePool.length > 0) {
+         // Petite chance d'introduire un nouveau mot même si on a des révisions (facultatif, pour le fun)
+         if (newItems.length > 0 && Math.random() < 0.2) {
+             selectedKanji = newItems[Math.floor(Math.random() * newItems.length)];
+         } else {
+             selectedKanji = availablePool[Math.floor(Math.random() * availablePool.length)];
+         }
+    } else if (newItems.length > 0) {
+        selectedKanji = newItems[Math.floor(Math.random() * newItems.length)];
+    } else {
+        // Fallback : Si tout est fait, on prend n'importe quoi au hasard (mode "révision forcée")
+        const keys = Object.keys(staticData);
+        selectedKanji = keys[Math.floor(Math.random() * keys.length)];
+    }
+
+    // 3. Construction de la question (comme vu précédemment)
+    const kData = staticData[selectedKanji];
+    const modeDef = getModeDefinition(mode); // Ta fonction helper pour qa, qb...
+
+    const question = modeDef.q({kanji: selectedKanji, ...kData});
+    const correctAnswer = modeDef.a({kanji: selectedKanji, ...kData});
+
+    // Génération des leurres...
+    let options = [correctAnswer];
+    const keys = Object.keys(staticData);
+    while (options.length < 4) {
+        let rk = keys[Math.floor(Math.random() * keys.length)];
+        // Évite de prendre le même kanji
+        if (rk === selectedKanji) continue; 
+        
+        let wrong = modeDef.a({kanji: rk, ...staticData[rk]});
+        if (!options.includes(wrong)) options.push(wrong);
+    }
+    options.sort(() => Math.random() - 0.5);
+
+    return {
+        qid: crypto.randomUUID(),
+        kanji: selectedKanji, // Important pour le SRS
+        question: question,
+        options: options,
+        correctAnswer: correctAnswer,
+        extras: modeDef.extras({kanji: selectedKanji, ...kData})
+    };
+}
+
+// Helper pour récupérer les définitions de mode (à mettre dans le même fichier ou importer)
+function getModeDefinition(mode) {
+    const MODES = {
+        "qa": { q: k=>k.kanji, a: k=>k.signification, extras: k=>({romaji:k.romaji, mot:k.mot, lecture_mot: k.lecture_mot}) },
+        "qb": { q: k=>k.signification, a: k=>k.kanji, extras: k=>({romaji:k.romaji, boite:k.boite}) },
+        // ... ajoute tes autres modes ici (qc, qd, qe)
+    };
+    return MODES[mode] || MODES["qa"];
+}
+
+export function checkLocalAnswer(questionObj, userChoice, rt_ms) {
+    const isCorrect = (userChoice === questionObj.correctAnswer);
+    
+    // Ici tu peux aussi faire la mise à jour SRS locale temporaire
+    // updateLocalSRS(questionObj.kanji, isCorrect);
+
+    return {
+        correct: isCorrect,
+        bonne: questionObj.correctAnswer,
+        extras: questionObj.extras,
+        rt_ms: rt_ms
+    };
+}
+
+================================================================================
+FILE: .\frontend\static\js\quizSession.js
+================================================================================
+/* ============================
+   QUIZ SESSION MANAGER
+   ============================ */
+
+import { getSettings } from "./settings.js";
+
+let session = null;
+
+export function startSession() {
+  const settings = getSettings();
+
+  session = {
+    size: settings.sessionSize,
+    current: 0,
+    correct: 0,
+    wrong: 0,
+    totalTime: 0,
+    speedScore: 0,
+    startedAt: Date.now(),
+    history: []
+  };
+
+  console.log("🧩 Session démarrée", session);
+  return session;
+}
+
+// frontend/static/js/quizSession.js
+
+export function recordAnswer({ correct, rt_ms, kanji, mode }) { // <--- AJOUTÉ kanji, mode ici
+  if (!session) return;
+
+  const settings = getSettings();
+
+  session.current++;
+  session.totalTime += rt_ms ?? settings.maxTimeMs;
+
+  if (correct) session.correct++;
+  else session.wrong++;
+
+  session.speedScore += computeSpeedScore(rt_ms, settings);
+  const kanjiId = kanji || "unknown";
+  const quizMode = mode || "qa";
+
+  // Maintenant kanji et mode sont définis car extraits des arguments au dessus
+  session.history.push({
+      kanji: kanjiId,
+      correct: correct,
+      mode: quizMode,
+      speed_factor: (rt_ms < 3000) ? 1.0 : (rt_ms < 5000 ? 0.8 : 0.6) 
+  });
+
+  return isSessionFinished();
+}
+
+export function isSessionFinished() {
+  return session && session.current >= session.size;
+}
+
+export function getSessionSummary() {
+  if (!session) return null;
+
+  return {
+    ...session,
+    scoreOn10: Math.round((session.correct / session.size) * 10),
+    scoreOn100: Math.min(
+      100,
+      Math.round((session.speedScore / (session.size * 10)) * 100)
+    )
+  };
+}
+
+export function resetSession() {
+  session = null;
+}
+
+function computeSpeedScore(rt_ms, settings) {
+  if (!rt_ms) return settings.speedScores.slow;
+
+  if (rt_ms <= settings.speedThresholds.fast)
+    return settings.speedScores.fast;
+
+  if (rt_ms <= settings.speedThresholds.medium)
+    return settings.speedScores.medium;
+
+  return settings.speedScores.slow;
+}
+
+export function endSessionIfNeeded() {
+  if (isSessionFinished()) {
+    return getSessionSummary();
+  }
+  return null;
+}
+
+
+================================================================================
+FILE: .\frontend\static\js\ranking.js
+================================================================================
+export function initRanking() {
+  loadRanking("global");
+
+  document.querySelectorAll(".ranking-controls button")
+    .forEach(btn => {
+      btn.onclick = () => {
+        const range = btn.dataset.range;
+        loadRanking(range);
+      };
+    });
+}
+
+async function loadRanking(range) {
+  // 1. On initialise l'URL avec la variable globale API_BASE_URL
+  let url = `${API_BASE_URL}/ranking/global`;
+
+  if (range === "month") {
+    const now = new Date();
+    const ym = now.toISOString().slice(0, 7); // YYYY-MM
+    url = `${API_BASE_URL}/ranking/month/${ym}`;
+  }
+
+  try {
+    const res = await fetch(url);
+    
+    // Sécurité : si le serveur répond 404 ou 500
+    if (!res.ok) {
+        console.error("Erreur serveur:", res.status);
+        renderTable([]); // On affiche un tableau vide
+        return;
+    }
+
+    const data = await res.json();
+
+    // Sécurité : on vérifie que data est bien un tableau avant le forEach
+    if (Array.isArray(data)) {
+        renderTable(data);
+    } else {
+        console.error("Format de données invalide", data);
+        renderTable([]);
+    }
+  } catch (error) {
+    console.error("Erreur de connexion au backend:", error);
+    renderTable([]);
+  }
+}
+
+function renderTable(data) {
+  const tbody = document.querySelector("#rankingTable tbody");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+
+  data.forEach((p, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${p.player}</td>
+      <td>${p.score}</td>
+      <td>${p.correct}</td>
+      <td>${p.sessions}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+
+================================================================================
+FILE: .\frontend\static\js\session_end.js
+================================================================================
+import { resetSession, startSession } from "./quizSession.js";
+import { navigate } from "./spa.js";
+
+export function initSessionEnd() {
+  const raw = sessionStorage.getItem("lastSessionSummary");
+  if (!raw) return;
+
+  const s = JSON.parse(raw);
+
+  const container = document.getElementById("session-summary");
+  container.innerHTML = `
+    <p>✔️ Bonnes réponses : ${s.correct} / ${s.size}</p>
+    <p>❌ Erreurs : ${s.wrong}</p>
+    <p>⏱ Temps total : ${(s.totalTime / 1000).toFixed(1)} s</p>
+    <p>🎯 Score /10 : ${s.scoreOn10}</p>
+    <p>🔥 Score /100 : ${s.scoreOn100}</p>
+  `;
+  
+  document.getElementById("continueBtn").onclick = () => {
+    sessionStorage.removeItem("lastSessionSummary");
+    resetSession();
+    startSession();
+    navigate("/quiz-page"); // ou home, ou dernier quiz
+  };
+}
+
+================================================================================
+FILE: .\frontend\static\js\settings.js
+================================================================================
+/* ============================
+   SETTINGS – FRONTEND
+   ============================ */
+
+export const DEFAULT_SETTINGS = {
+  sessionSize: 5,
+  maxTimeMs: 5000,
+
+  speedThresholds: {
+    fast: 3000,
+    medium: 5000
+  },
+
+  speedScores: {
+    fast: 10,
+    medium: 6,
+    slow: 3
+  },
+
+  sounds: {
+    success: "success.wav",
+    timeout: "BOMB.WAV"
+  },
+
+  vibration: true
+};
+
+export function getSettings() {
+  const stored = localStorage.getItem("kanjilock_settings");
+  return stored
+    ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) }
+    : { ...DEFAULT_SETTINGS };
+}
+
+export function saveSettings(settings) {
+  localStorage.setItem("kanjilock_settings", JSON.stringify(settings));
+}
+
+const PLAYER_KEY = "kanjilock_player";
+
+export function getPlayer_setting() {
+  let player = localStorage.getItem(PLAYER_KEY);
+  console.log("pseudo: ",player);
+  if (!player) {
+    player = prompt("Ton pseudo ?");
+    localStorage.setItem(PLAYER_KEY, player);
+    console.log("NEW pseudo: ",player);
+  }  
+  return player;
+}
+
+export function resetPlayer() {
+  localStorage.removeItem(PLAYER_KEY);
+  console.log("RESET pseudo: ");
+}
+
+
+
+
+
+================================================================================
+FILE: .\frontend\static\js\spa.js
+================================================================================
+import { initQuiz } from "./multi_quiz.js";
+import { initStats } from "./stats_js.js";
+import { initHome } from "./home.js";
+import { initIntrus } from "./intrus.js";
+import { initMode } from "./modeManager.js";
+import { initCompose } from "./compose_quiz.js";
+import { initSessionEnd } from "./session_end.js";
+import { initRanking} from "./ranking.js";
+import { resetPlayer } from "./settings.js";
+import { getPlayer } from "./player.js";
+import { initLogin} from "./login.js";
+
+console.log("SPA BOOT 122");
+
+// getPlayer();
+const routes = {
+  "/login": { page: "/pages/login.html", init: initLogin },
+  "/": { page: "/pages/home.html", init: initHome },
+  "/quiz-page": { page: "/pages/multi_quiz.html", init: initQuiz },
+  "/intrus-page": { page: "/pages/intrus.html", init: initIntrus },
+  "/stats-page": { page: "/pages/stats.html", init: initStats },
+  "/compose-page": { page: "/pages/compose.html", init: initCompose }, 
+   "/session-end": { page: "/pages/session_end.html", init: initSessionEnd },
+   "/ranking-page": {    page: "/pages/ranking.html",    init: initRanking  }// 🆕
+};
+
+
+export async function navigate(path) {
+  if (!getPlayer() && path !== "/login") {
+    path = "/login";
+  }
+  const route = routes[path] || routes["/"];
+  const res = await fetch(route.page);
+  const html = await res.text();
+
+  document.getElementById("app").innerHTML = html;
+  history.pushState({}, "", path);
+
+  setActiveLink(path);
+  console.log("🔥");
+  // 🔥 INIT PAGE
+  route.init?.();
+}
+
+function setActiveLink(path) {
+  document.querySelectorAll(".bottom-nav a").forEach(a => {
+    a.classList.toggle("active", a.getAttribute("href") === path);
+  });
+}
+
+document.addEventListener("click", e => {
+  const link = e.target.closest("a[data-link]");
+  if (!link) return;
+
+  e.preventDefault();
+  navigate(link.getAttribute("href"));
+});
+
+window.addEventListener("popstate", () => {
+  navigate(location.pathname);
+});
+
+// first load
+navigate(location.pathname);
+
+================================================================================
+FILE: .\frontend\static\js\stats_js.js
+================================================================================
+import { initMode, getMode } from "./modeManager.js";
+
+export function initStats() {
+  console.log("Stats init");
+  initMode();
+  loadStats();   // affichage auto
+}
+
+console.log("stats_js.js chargé");
+
+
+// 🔁 Réagir aux changements de mode (quiz → stats, nav, select…)
+window.addEventListener("modechange", (e) => {
+  console.log("Mode changé → reload stats", e.detail.mode);
+  loadStats();
+});
+
+// 📊 Boutons UI
+document.getElementById("statsBtn")?.addEventListener("click", loadStats);
+
+document.getElementById("dailyBtn")?.addEventListener("click", async () => {
+  const mode = getMode();
+  const res = await fetch(`${API_BASE_URL}/stats?mode=${mode}`);
+  const data = await res.json();
+  renderHeatmap(data.daily_stats);
+});
+
+document.getElementById("weakkanjiBtn")?.addEventListener("click", loadWeakKanjis);
+
+
+// =======================
+// 📊 FONCTIONS
+// =======================
+
+async function loadStats() {
+  const mode = getMode();
+  console.log("MODE UTILISÉ:", mode);
+
+  const res = await fetch(`${API_BASE_URL}/stats?mode=${mode}`);
+  const data = await res.json();
+
+  drawSrsChart(data.srs_levels);
+  renderHeatmap(data.daily_stats);
+  showWeakKanjis(data.kanjis);
+}
+
+function drawSrsChart(srsLevels) {
+  const levels = Object.keys(srsLevels);
+  const values = Object.values(srsLevels);
+
+  const canvas = document.getElementById("srsChart");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const max = Math.max(...values, 1);
+  const barWidth = 60;
+
+  values.forEach((v, i) => {
+    const height = (v / max) * 150;
+    ctx.fillRect(50 + i * 80, 180 - height, barWidth, height);
+    ctx.fillText(`N${levels[i]}`, 65 + i * 80, 195);
+    ctx.fillText(v, 70 + i * 80, 170 - height);
+  });
+}
+
+function renderHeatmap(dailyStats) {
+  const container = document.getElementById("heatmap");
+  if (!container) return;
+  container.innerHTML = "";
+  const days = Object.keys(dailyStats).sort();
+
+  days.forEach(day => {
+    const total = Object.values(dailyStats[day]).reduce((a, b) => a + b, 0);
+    const cell = document.createElement("div");
+
+    cell.title = `${day} : ${total} réponses`;
+    cell.style.backgroundColor = `rgb(0, ${Math.min(total * 20, 255)}, 0)`;
+    cell.style.width = "20px";
+    cell.style.height = "20px";
+
+    container.appendChild(cell);
+  });
+}
+
+function showWeakKanjis(kanjis) {
+  const div = document.getElementById("weakKanjis");
+  if (!div) return;
+  div.innerHTML = "<h3>⚠️ Kanjis faibles du jour</h3>";
+
+  const now = new Date();
+  const weak = kanjis.filter(k => {
+    if (!k.next_review) return false;
+    return k.level <= 2 && new Date(k.next_review) <= now;
+  });
+  if (weak.length === 0) {
+    div.innerHTML += "<p>🎉 Rien de critique aujourd’hui</p>";
+    return;
+  }
+  weak.forEach(k => {
+    div.innerHTML += `
+      <div>
+        <b>${k.kanji}</b> — ${k.signification}
+        | ${k.romaji} | ${k.mot}
+        (${k.lecture_mot}) → ${k.signification_mot}
+        | boîte ${k.boite}
+      </div>
+    `;
+  });
+}
+
+async function loadWeakKanjis() {
+  const mode = getMode();
+  const res = await fetch(`${API_BASE_URL}/stats?mode=${mode}`);
+  const data = await res.json();
+  showWeakKanjis(data.kanjis);
+}
+
+
+================================================================================
+FILE: .\frontend\static\sounds\APPLAUSE.WAV
+================================================================================
+[Erreur lecture: 'utf-8' codec can't decode byte 0xa2 in position 4: invalid start byte]
+
+================================================================================
+FILE: .\frontend\static\sounds\ARROW.WAV
+================================================================================
+[Erreur lecture: 'utf-8' codec can't decode byte 0xee in position 4: invalid continuation byte]
+
+================================================================================
+FILE: .\frontend\static\sounds\BOMB.WAV
+================================================================================
+[Erreur lecture: 'utf-8' codec can't decode byte 0xf6 in position 5: invalid start byte]
+
+================================================================================
+FILE: .\frontend\static\sounds\CHIMES.WAV
+================================================================================
+[Erreur lecture: 'utf-8' codec can't decode byte 0xb6 in position 4: invalid start byte]
+
+================================================================================
+FILE: .\frontend\static\sounds\error.wav
+================================================================================
+[Erreur lecture: 'utf-8' codec can't decode byte 0xac in position 4: invalid start byte]
+
+================================================================================
+FILE: .\frontend\static\sounds\success.wav
+================================================================================
+[Erreur lecture: 'utf-8' codec can't decode byte 0xac in position 25: invalid start byte]
+
+================================================================================
+FILE: .\frontend\static\sounds\Windows Notify Messaging.wav
+================================================================================
+[Erreur lecture: 'utf-8' codec can't decode byte 0xec in position 4: invalid continuation byte]
