@@ -34,15 +34,26 @@ const MODES = {
 };
 
             
- 
+ // Dans frontend/static/js/quizengine.js
+
 export async function initEngine() {
-    console.log("📥 Chargement des données locales...");
-    const res = await fetch(`${API_BASE_URL}/quiz/init`);
-    const data = await res.json();
-    
-    staticData = data.static_data;
-    userProgress = data.user_progress;
-    console.log(`✅ Engine prêt : ${Object.keys(staticData).length} kanjis`);
+    // OPTIMISATION : Si on a déjà des données (plus de 0 clés), on ne recharge pas !
+    if (Object.keys(staticData).length > 0) {
+        console.log("⚡ Données déjà en mémoire, pas de rechargement.");
+        return; 
+    }
+
+    console.log("📥 Chargement des données locales (depuis le serveur)...");
+    try {
+        const res = await fetch(`${API_BASE_URL}/quiz/init`);
+        const data = await res.json();
+        
+        staticData = data.static_data;
+        userProgress = data.user_progress;
+        console.log(`✅ Engine prêt : ${Object.keys(staticData).length} kanjis`);
+    } catch (e) {
+        console.error("Erreur chargement engine:", e);
+    }
 }
 
 export function getNextQuestion(mode) {

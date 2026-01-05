@@ -62,3 +62,5 @@ window.addEventListener("popstate", () => {
 
 // first load
 navigate(location.pathname);
+
+window.navigate = navigate;
