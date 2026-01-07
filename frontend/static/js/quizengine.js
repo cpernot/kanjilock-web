@@ -30,6 +30,11 @@ const MODES = {
         q: (k) => k.kanji,
         a: (k) => k.romaji,
         extras: (k) => ({ signification: k.signification, mot: k.mot ,lecture: k.lecture_mot, signification_mot: k.signification_mot,boite: k.boite})
+    },
+     "intrus": {
+        q: (k) => k.kanji,
+        a: (k) => k.boite,
+        extras: (k) => ({ boite: k.boite, signification: k.signification, mot: k.mot ,lecture: k.lecture_mot, signification_mot: k.signification_mot})
     }
 };
 
@@ -178,9 +183,36 @@ export function getNextQuestion_NEW(mode) {
 // Helper pour récupérer les définitions de mode (à mettre dans le même fichier ou importer)
 function getModeDefinition(mode) {
     const MODES = {
-        "qa": { q: k=>k.kanji, a: k=>k.signification, extras: k=>({romaji:k.romaji, mot:k.mot, lecture_mot: k.lecture_mot}) },
-        "qb": { q: k=>k.signification, a: k=>k.kanji, extras: k=>({romaji:k.romaji, boite:k.boite}) },
-        // ... ajoute tes autres modes ici (qc, qd, qe)
+        "qa": {
+        q: (k) => k.kanji,
+        a: (k) => k.signification,
+        extras: (k) => ({ romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot, boite: k.boite  })
+    },
+    "qb": {
+        q: (k) => k.signification,
+        a: (k) => k.kanji,
+        extras: (k) => ({  romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot,boite: k.boite  })
+    },
+    "qc": {
+        q: (k) => k.mot,
+        a: (k) => k.signification_mot,
+        extras: (k) => ({ lecture_mot: k.lecture_mot, kanji: k.kanji, signification: k.signification , romaji: k.romaji,  boite: k.boite })
+    },
+    "qd": {
+        q: (k) => k.kanji,
+        a: (k) => k.boite ,
+        extras: (k) => ({ signification: k.signification , romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot })
+    },
+    "qe": {
+        q: (k) => k.kanji,
+        a: (k) => k.romaji,
+        extras: (k) => ({ signification: k.signification, mot: k.mot ,lecture: k.lecture_mot, signification_mot: k.signification_mot,boite: k.boite})
+    },
+     "intrus": {
+        q: (k) => k.kanji,
+        a: (k) => k.boite,
+        extras: (k) => ({ boite: k.boite, signification: k.signification, mot: k.mot ,lecture: k.lecture_mot, signification_mot: k.signification_mot})
+    }
     };
     return MODES[mode] || MODES["qa"];
 }
@@ -196,5 +228,96 @@ export function checkLocalAnswer(questionObj, userChoice, rt_ms) {
         bonne: questionObj.correctAnswer,
         extras: questionObj.extras,
         rt_ms: rt_ms
+    };
+}
+export function getComposeQuestionLocal() {
+    const keys = Object.keys(staticData);
+
+    // 1. FILTRAGE : On ne garde QUE ceux qui ont la propriété 'comp_words'
+    // (C'est-à-dire ceux qui étaient présents dans ton CSV kanji_mot)
+    const pool = keys.filter(key => {
+        const k = staticData[key];
+        // On vérifie que la clé existe et n'est pas vide
+        return k.comp_words && k.comp_words.trim().length > 0;
+    });
+
+    if (pool.length === 0) {
+        console.warn("Aucun kanji de composition trouvé !");
+        return null;
+    }
+
+    // 2. Sélection
+    const selectedKey = pool[Math.floor(Math.random() * pool.length)];
+    const kData = staticData[selectedKey];
+
+    // 3. Extraction des mots corrects depuis 'comp_words'
+    // On sépare par la virgule (ton format CSV)
+    const correctWords = kData.comp_words.split(',')
+        .map(w => w.trim())
+        .filter(w => w.length > 0);
+
+    // 4. Génération des leurres (Distractors)
+    const distractors = [];
+    let attempts = 0;
+    
+    // Pour les leurres, on pioche aussi dans le pool 'composition' 
+    // pour avoir des mots crédibles
+    while (distractors.length < 5 && attempts < 50) {
+        attempts++;
+        const randomKey = pool[Math.floor(Math.random() * pool.length)]; // On pioche dans le pool filtré
+        if (randomKey === selectedKey) continue;
+
+        const otherData = staticData[randomKey];
+        if (!otherData.comp_words) continue;
+
+        const otherWords = otherData.comp_words.split(',').map(w => w.trim());
+        const randomWord = otherWords[Math.floor(Math.random() * otherWords.length)];
+
+        if (randomWord && !correctWords.includes(randomWord) && !distractors.includes(randomWord)) {
+            distractors.push(randomWord);
+        }
+    }
+
+    // 5. Mélange
+    const nbLeurres = Math.max(2, 6 - correctWords.length); 
+    const options = [...correctWords, ...distractors.slice(0, nbLeurres)];
+    options.sort(() => Math.random() - 0.5);
+
+    return {
+        qid: crypto.randomUUID(),
+        kanji: selectedKey,
+        signification: kData.signification, // Vient de la table principale
+        options: options,
+        correctAnswers: correctWords,
+        extras: {
+            romaji: kData.romaji,           // Vient de la table principale
+            lecture_mot: kData.lecture_mot, // Vient de la table principale
+            mot: kData.mot, 
+            signification_mot: kData.signification_mot, 
+            boite: kData.boite
+        }
+    };
+}
+// Ajouter checkComposeAnswer pour valider localement
+export function checkComposeAnswer(questionData, selectedWords) {
+    // On vérifie si TOUS les mots sélectionnés sont corrects 
+    // et si on a trouvé TOUS les mots corrects.
+    
+    const correctSet = new Set(questionData.correctAnswers);
+    const selectedSet = new Set(selectedWords);
+
+    // 1. Est-ce que tous les mots choisis sont bons ?
+    const noErrors = selectedWords.every(w => correctSet.has(w));
+    
+    // 2. A-t-on tout trouvé ?
+    const allFound = correctSet.size === selectedSet.size;
+
+    const isSuccess = noErrors && allFound;
+
+    return {
+        success: isSuccess,
+        kanji: questionData.kanji,
+        correct: questionData.correctAnswers, // pour l'affichage
+        extras: questionData.extras
     };
 }

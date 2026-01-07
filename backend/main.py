@@ -20,6 +20,7 @@ async def lifespan(app: FastAPI):
         print(f"⚠️ Erreur chargement user: {e}")
 
     try:
+        # 1. Récupérer TOUS les kanjis (pagination)
         all_data = []
         chunk_size = 1000
         start = 0
@@ -28,11 +29,33 @@ async def lifespan(app: FastAPI):
             all_data.extend(res.data)
             if len(res.data) < chunk_size: break
             start += chunk_size
-        
-        app.state.kanji_cache = {item['kanji']: item['data'] for item in all_data}
-        print(f"✅ {len(app.state.kanji_cache)} kanjis en cache.")
+
+        # 2. Récupérer la table de composition (CSV importé)
+        # Note: Si la table est très grande, il faudrait aussi paginer, 
+        # mais pour un fichier CSV de kanjis ça devrait passer d'un coup.
+        response_comp = supabase.table("kanji_mot").select("*").execute()
+        comp_map = {item['kanji']: item['liste_de_mots'] for item in response_comp.data}
+
+        # 3. Construction du cache final
+        final_cache = {}
+
+        for row in all_data:
+            k_char = row['kanji']      # Le caractère (Clé)
+            k_infos = row['data']      # Le contenu JSON (romaji, signification...) [cite: 17]
+
+            # FUSION : On injecte la liste de mots DANS l'objet d'infos
+            # C'est important pour que le frontend puisse faire 'staticData[k].comp_words'
+            if k_char in comp_map:
+                k_infos['comp_words'] = comp_map[k_char]
+            
+            final_cache[k_char] = k_infos
+
+        app.state.kanji_cache = final_cache
+        print(f"✅ {len(app.state.kanji_cache)} kanjis en cache (avec composition).")
+
     except Exception as e:
         print(f"❌ Erreur chargement cache kanji: {e}")
+        # En cas d'erreur critique, on évite que l'app plante, mais le quiz sera vide
         app.state.kanji_cache = {}
 
     # --- AFFICHAGE DES ROUTES (Le print que tu aimes) ---

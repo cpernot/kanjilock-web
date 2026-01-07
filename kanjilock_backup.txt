@@ -910,6 +910,41 @@ FILE: .\frontend\icon-512.png
 ================================================================================
 FILE: .\frontend\index.html
 ================================================================================
+<!-- <!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <title>KanjiLock</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="KanjiLock">
+    
+    <link rel="icon" href="/static/favicon.ico">
+    <link rel="apple-touch-icon" href="/static/icon-512.png">
+    <link rel="stylesheet" href="/static/css/style.css">
+   
+</head>
+
+<body>
+    <main id="app"></main>
+
+    <nav class="bottom-nav">
+        <a href="/" data-link data-mode="home">🏠</a>
+        <a href="/quiz-page" data-link data-mode="qa">🧩</a>
+        <a href="/intrus-page" data-link>🔍</a>
+        <a href="/compose-page" data-link>⚠️</a>
+        <a href="/stats-page" data-link data-mode="stats">📊</a>  
+        <a href="/ranking-page" data-link>🏆</a>
+    </nav>
+
+    <script src="/static/js/config.js"></script>
+    <script type="module" src="/static/js/spa.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html> -->
 
 
 <!DOCTYPE html>
@@ -1047,22 +1082,22 @@ FILE: .\frontend\pages\home.html
     <p>"L'affaire est toute simple, tout le secret tient en deux mots : <b>constance et continuité</b>", FÉDOR DOSTOÏEVSKI (L’Adolescent, 1875) </p>
     <!-- Arkadi Makarovitch Dolgorouk  -->
     <div id="controls_home">
-        <button onclick="location.href='/quiz-page'">
-          ▶️ Démarrer un quiz
-        </button>
-        <button onclick="location.href='/intrus-page'">
-          ▶️ Chercher l'intrus
-        </button>
-        <button onclick="location.href='/compose-page'">
-          ▶️ Kanji composition quiz
-        </button>
-        <button onclick="location.href='/stats-page'">
-          ▶️ Les statistiques
-        </button>
-        <button onclick="location.href='/ranking-page'">
-          ▶️ Les Classements
-        </button>
-     </div>  
+      <button onclick="window.navigate('/quiz-page')">
+        ▶️ Démarrer un quiz
+      </button>
+      <button onclick="window.navigate('/intrus-page')">
+        ▶️ Chercher l'intrus
+      </button>
+      <button onclick="window.navigate('/compose-page')">
+        ▶️ Kanji composition quiz
+      </button>
+      <button onclick="window.navigate('/stats-page')">
+        ▶️ Les statistiques
+      </button>
+      <button onclick="window.navigate('/ranking-page')">
+        ▶️ Les Classements
+      </button>
+  </div>
      <div id="currentPlayer"></div>
       <button id="changePlayer">Changer de joueur</button>
 
@@ -2219,40 +2254,56 @@ const MODES = {
     "qa": {
         q: (k) => k.kanji,
         a: (k) => k.signification,
-        extras: (k) => ({ romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot })
+        extras: (k) => ({ romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot, boite: k.boite  })
     },
     "qb": {
         q: (k) => k.signification,
         a: (k) => k.kanji,
-        extras: (k) => ({ romaji: k.romaji, boite: k.boite })
+        extras: (k) => ({  romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot,boite: k.boite  })
     },
     "qc": {
         q: (k) => k.mot,
-        a: (k) => k.signification,
-        extras: (k) => ({ lecture_mot: k.lecture_mot, kanji: k.kanji, romaji: k.romaji, boite: k.boite })
+        a: (k) => k.signification_mot,
+        extras: (k) => ({ lecture_mot: k.lecture_mot, kanji: k.kanji, signification: k.signification , romaji: k.romaji,  boite: k.boite })
     },
     "qd": {
         q: (k) => k.kanji,
-        a: (k) => k.mot,
-        extras: (k) => ({ romaji: k.romaji, signification: k.signification })
+        a: (k) => k.boite ,
+        extras: (k) => ({ signification: k.signification , romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot })
     },
     "qe": {
         q: (k) => k.kanji,
-        a: (k) => k.lecture_mot,
-        extras: (k) => ({ romaji: k.romaji, signification: k.signification })
+        a: (k) => k.romaji,
+        extras: (k) => ({ signification: k.signification, mot: k.mot ,lecture: k.lecture_mot, signification_mot: k.signification_mot,boite: k.boite})
+    },
+     "intrus": {
+        q: (k) => k.kanji,
+        a: (k) => k.boite,
+        extras: (k) => ({ boite: k.boite, signification: k.signification, mot: k.mot ,lecture: k.lecture_mot, signification_mot: k.signification_mot})
     }
 };
 
             
- 
+ // Dans frontend/static/js/quizengine.js
+
 export async function initEngine() {
-    console.log("📥 Chargement des données locales...");
-    const res = await fetch(`${API_BASE_URL}/quiz/init`);
-    const data = await res.json();
-    
-    staticData = data.static_data;
-    userProgress = data.user_progress;
-    console.log(`✅ Engine prêt : ${Object.keys(staticData).length} kanjis`);
+    // OPTIMISATION : Si on a déjà des données (plus de 0 clés), on ne recharge pas !
+    if (Object.keys(staticData).length > 0) {
+        console.log("⚡ Données déjà en mémoire, pas de rechargement.");
+        return; 
+    }
+
+    console.log("📥 Chargement des données locales (depuis le serveur)...");
+    try {
+        const res = await fetch(`${API_BASE_URL}/quiz/init`);
+        const data = await res.json();
+        
+        staticData = data.static_data;
+        userProgress = data.user_progress;
+        console.log(`✅ Engine prêt : ${Object.keys(staticData).length} kanjis`);
+    } catch (e) {
+        console.error("Erreur chargement engine:", e);
+    }
 }
 
 export function getNextQuestion(mode) {
@@ -2377,9 +2428,36 @@ export function getNextQuestion_NEW(mode) {
 // Helper pour récupérer les définitions de mode (à mettre dans le même fichier ou importer)
 function getModeDefinition(mode) {
     const MODES = {
-        "qa": { q: k=>k.kanji, a: k=>k.signification, extras: k=>({romaji:k.romaji, mot:k.mot, lecture_mot: k.lecture_mot}) },
-        "qb": { q: k=>k.signification, a: k=>k.kanji, extras: k=>({romaji:k.romaji, boite:k.boite}) },
-        // ... ajoute tes autres modes ici (qc, qd, qe)
+        "qa": {
+        q: (k) => k.kanji,
+        a: (k) => k.signification,
+        extras: (k) => ({ romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot, boite: k.boite  })
+    },
+    "qb": {
+        q: (k) => k.signification,
+        a: (k) => k.kanji,
+        extras: (k) => ({  romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot,boite: k.boite  })
+    },
+    "qc": {
+        q: (k) => k.mot,
+        a: (k) => k.signification_mot,
+        extras: (k) => ({ lecture_mot: k.lecture_mot, kanji: k.kanji, signification: k.signification , romaji: k.romaji,  boite: k.boite })
+    },
+    "qd": {
+        q: (k) => k.kanji,
+        a: (k) => k.boite ,
+        extras: (k) => ({ signification: k.signification , romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot })
+    },
+    "qe": {
+        q: (k) => k.kanji,
+        a: (k) => k.romaji,
+        extras: (k) => ({ signification: k.signification, mot: k.mot ,lecture: k.lecture_mot, signification_mot: k.signification_mot,boite: k.boite})
+    },
+     "intrus": {
+        q: (k) => k.kanji,
+        a: (k) => k.boite,
+        extras: (k) => ({ boite: k.boite, signification: k.signification, mot: k.mot ,lecture: k.lecture_mot, signification_mot: k.signification_mot})
+    }
     };
     return MODES[mode] || MODES["qa"];
 }
@@ -2725,6 +2803,8 @@ window.addEventListener("popstate", () => {
 
 // first load
 navigate(location.pathname);
+
+window.navigate = navigate;
 
 ================================================================================
 FILE: .\frontend\static\js\stats_js.js

@@ -52,7 +52,7 @@ console.warn("🔓 loadquiz du bouton");
     stopBtn.onclick = () => {
       quizRunning = false;
       stopTimer();
-      document.getElementById("multi_quiz").innerHTML = "⏸ Quiz arrêté !";
+      document.getElementById("multi_quiz").innerHTML = "⏸ Quiz arrêté";
     };
   }
 }

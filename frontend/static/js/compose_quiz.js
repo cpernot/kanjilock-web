@@ -1,31 +1,42 @@
 /* ============================
-   COMPOSE QUIZ
+   COMPOSE QUIZ (LOCAL & ROBUSTE)
    ============================ */
-let currentQid = null;
+import { initEngine, getComposeQuestionLocal, checkComposeAnswer } from "./quizengine.js";
+
+let currentQuestionData = null; // On stocke la question en cours
 let selectedWords = new Set();
 let composeTimeout = null;
 
 /* ============================
    INIT
    ============================ */
-export function initCompose() {
-  console.log("Compose quiz init3");
-  // startSession();
+export async function initCompose() {
+  console.log("🧩 Init Compose Quiz (Local)");
+  
+  // 1. On s'assure que les données sont là
+  await initEngine();
+
+  // 2. On lance le jeu
   loadComposeQuiz();
-  console.log("Compose quiz init4")
 }
 
 /* ============================
    LOAD QUESTION
    ============================ */
-async function loadComposeQuiz() {
+function loadComposeQuiz() {
   selectedWords.clear();
+  
+  // Appel LOCAL (Instantané)
+  const data = getComposeQuestionLocal();
 
-  const res = await fetch(`${API_BASE_URL}/quiz_compose`);
-  const data = await res.json();
+  if (!data) {
+    document.getElementById("compose-quiz").innerHTML = "<p>Erreur: Pas de données de composition disponibles.</p>";
+    return;
+  }
 
-  currentQid = data.qid;
+  currentQuestionData = data; // Sauvegarde pour validation
 
+  // Mise à jour UI
   document.getElementById("compose-question").textContent =
     `Quel(s) mot(s) correspondent au kanji signifiant "${data.signification}" ?`;
 
@@ -35,13 +46,20 @@ async function loadComposeQuiz() {
   data.options.forEach(word => {
     const btn = document.createElement("button");
     btn.textContent = word;
-
+    // Animation d'entrée
+    btn.style.opacity = "0"; 
     btn.onclick = () => toggleSelection(btn, word);
-
     container.appendChild(btn);
+    
+    // Petit effet d'apparition
+    requestAnimationFrame(() => btn.style.opacity = "1");
   });
 
-  document.getElementById("validateBtn").onclick = validateAnswer;
+  // Reset boutons et résultats
+  const validateBtn = document.getElementById("validateBtn");
+  validateBtn.style.display = "block"; // Réafficher le bouton
+  validateBtn.onclick = validateAnswer;
+  validateBtn.disabled = false;
 
   document.getElementById("compose-result").innerHTML = "";
 }
@@ -62,55 +80,60 @@ function toggleSelection(btn, word) {
 /* ============================
    VALIDATE
    ============================ */
-async function validateAnswer() {
-  const res = await fetch(`${API_BASE_URL}/quiz_compose/validate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      qid: currentQid,
-      selected: Array.from(selectedWords)
-    })
-  });
+function validateAnswer() {
+  if (!currentQuestionData) return;
 
-  const data = await res.json();
-  showComposeResult(data);
+  // Validation LOCALE
+  const resultData = checkComposeAnswer(
+      currentQuestionData, 
+      Array.from(selectedWords)
+  );
+
+  showComposeResult(resultData);
 }
 
 /* ============================
    RESULT
    ============================ */
 function showComposeResult(data) {
-  const result = document.getElementById("compose-result");
+  const resultEl = document.getElementById("compose-result");
+  const validateBtn = document.getElementById("validateBtn");
+  
+  // Masquer le bouton valider pour éviter le spam
+  validateBtn.style.display = "none";
 
-  // sécurité anti-crash
-  const correctWords = data.correct ?? [];
+  resultEl.className = "";
+  void resultEl.offsetWidth; // Trigger reflow pour animation css
+  resultEl.className = data.success ? "correct" : "wrong";
 
-  result.className = "";
-  void result.offsetWidth;
-  result.className = data.success ? "correct" : "wrong";
+  resultEl.innerHTML = `
+    <h2 style="margin:0">${data.success ? "✓ Bravo !" : "✗ Raté..."}</h2>
 
-  result.innerHTML = `
-    <p>${data.success ? "✓ 正解" : "✗ 違います"}</p>
-
-    <p><strong>Kanji :</strong> ${data.kanji ?? "-"}</p>
-    <p><strong>Mots corrects :</strong> ${correctWords.join(", ")}</p>
-
-    <div class="extras">
-      <p><strong>Romaji :</strong> ${data.extras?.romaji || "-"}</p>
-      <p><strong>Mot composé :</strong> ${data.extras?.mot || "-"}</p>
-      <p><strong>Lecture :</strong> ${data.extras?.lecture_mot || "-"}</p>
-      <p><strong>Signification :</strong> ${data.extras?.signification_mot || "-"}</p>      
-      <p><strong>Boîte :</strong> ${data.extras?.boite ?? "-"}</p>
+    <div style="margin-top:15px; text-align:left; background:rgba(255,255,255,0.5); padding:10px; border-radius:8px;">
+        <p><strong>Kanji :</strong> ${data.kanji}</p>
+        <p><strong>Mots attendus :</strong> ${data.correct.join(", ")}</p>
+        <hr style="border:0; border-top:1px solid #ccc; margin:10px 0;">
+        <p><strong>Romaji :</strong> ${data.extras?.romaji || "-"}</p>
+        <p><strong>Mot compose:</strong> ${data.extras?.mot || "-"}</p>
+        <p><strong>Lecture :</strong> ${data.extras?.lecture_mot || "-"}</p>
+        <p><strong>Signification :</strong> ${data.extras?.signification_mot || "-"}</p>
+        <p><strong>Boite :</strong> ${data.extras?.boite || "-"}</p>
     </div>
   `;
 
-  result.scrollIntoView({ behavior: "smooth", block: "start" });
+  resultEl.scrollIntoView({ behavior: "smooth", block: "center" });
 
-  // désactiver boutons
-  document
-    .querySelectorAll("#compose-options button")
-    .forEach(b => (b.disabled = true));
+  // Désactiver les boutons de choix
+  document.querySelectorAll("#compose-options button").forEach(b => {
+      b.disabled = true;
+      // Mettre en évidence les bonnes réponses qu'on a manqué
+      if (data.correct.includes(b.textContent) && !b.classList.contains("selected")) {
+          b.style.border = "2px solid green";
+      }
+  });
 
   clearTimeout(composeTimeout);
-  composeTimeout = setTimeout(loadComposeQuiz, 5000);
+  
+  // On passe à la suivante après un délai
+  composeTimeout = setTimeout(loadComposeQuiz, data.success ? 2500 : 5000);
 }
