@@ -9,27 +9,27 @@ const MODES = {
     "qa": {
         q: (k) => k.kanji,
         a: (k) => k.signification,
-        extras: (k) => ({ romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot })
+        extras: (k) => ({ romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot, boite: k.boite  })
     },
     "qb": {
         q: (k) => k.signification,
         a: (k) => k.kanji,
-        extras: (k) => ({ romaji: k.romaji, boite: k.boite })
+        extras: (k) => ({  romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot,boite: k.boite  })
     },
     "qc": {
         q: (k) => k.mot,
-        a: (k) => k.signification,
-        extras: (k) => ({ lecture_mot: k.lecture_mot, kanji: k.kanji, romaji: k.romaji, boite: k.boite })
+        a: (k) => k.signification_mot,
+        extras: (k) => ({ lecture_mot: k.lecture_mot, kanji: k.kanji, signification: k.signification , romaji: k.romaji,  boite: k.boite })
     },
     "qd": {
         q: (k) => k.kanji,
-        a: (k) => k.mot,
-        extras: (k) => ({ romaji: k.romaji, signification: k.signification })
+        a: (k) => k.boite ,
+        extras: (k) => ({ signification: k.signification , romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot })
     },
     "qe": {
         q: (k) => k.kanji,
-        a: (k) => k.lecture_mot,
-        extras: (k) => ({ romaji: k.romaji, signification: k.signification })
+        a: (k) => k.romaji,
+        extras: (k) => ({ signification: k.signification, mot: k.mot ,lecture: k.lecture_mot, signification_mot: k.signification_mot,boite: k.boite})
     }
 };
 
