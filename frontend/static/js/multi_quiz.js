@@ -10,6 +10,7 @@ import {
   endSessionIfNeeded 
 } from "./quizSession.js";
 import { navigate } from "./spa.js"; // ou ta fonction équivalente
+import { updateEngineAfterAnswer } from "./quizengine.js";
 
 console.log("multi_quiz.js chargé");
 
@@ -160,7 +161,11 @@ async function sendAnswer(choice) {
 
     // 1. Vérification locale
     const data = checkLocalAnswer(currentLocalQuestion, choice, rt_ms);
-
+    updateEngineAfterAnswer(
+        currentLocalQuestion.kanji, 
+        data.correct, 
+        getQuizModeForPage() // ou le mode courant
+    );
     // 2. UI
     showResult(data);
     

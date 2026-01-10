@@ -30,7 +30,7 @@ TIMER_TIME = 5000
 
 WEIGHTS = {    1: 5,    2: 3,    3: 1,    4: 0.2}
 # 👤 User (temporaire)
-USER_ID = "1449281248039141440"
+# USER_ID = "1449281248039141440"
 QUIZ_SESSIONS = {}
 from datetime import timedelta
 

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from backend.core.config import FRONTEND_DIR, USER_ID
+from backend.core.config import FRONTEND_DIR
 from backend.data.progress import load_data
 
 # 1. DEFINITION DU LIFESPAN
@@ -13,11 +13,11 @@ async def lifespan(app: FastAPI):
     print("🚀 STARTUP: Initialisation du serveur...")
     
     # --- Chargement des données ---
-    try:
-        load_data(USER_ID)
-        print(f"✅ Données utilisateur chargées pour : {USER_ID}")
-    except Exception as e:
-        print(f"⚠️ Erreur chargement user: {e}")
+    # try:
+    #     load_data(USER_ID)
+    #     print(f"✅ Données utilisateur chargées pour : {USER_ID}")
+    # except Exception as e:
+    #     print(f"⚠️ Erreur chargement user: {e}")
 
     try:
         # 1. Récupérer TOUS les kanjis (pagination)
@@ -83,14 +83,14 @@ app.add_middleware(
 # 4. IMPORTS ET INCLUSION DES ROUTERS
 # (On les importe ici pour s'assurer que l'objet 'app' existe déjà)
 from backend.api.quiz import router as quiz_router
-from backend.api.answer import router as answer_router
+#from backend.api.answer import router as answer_router
 from backend.api.stats import router as stats_router
 from backend.api.quiz_compose import router as compose_router
 from backend.api.session import router as session_router
 from backend.api.ranking import router as ranking_router
 
 app.include_router(quiz_router, prefix="/api")
-app.include_router(answer_router, prefix="/api")
+#app.include_router(answer_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")
 app.include_router(compose_router, prefix="/api")
 app.include_router(session_router, prefix="/api")

@@ -7,7 +7,7 @@ from backend.core.selection import choose_weighted_kanji
 from backend.core.logging import log_event
 # On n'importe plus load_kanjilock qui lit un fichier, on va utiliser le cache
 from backend.api.quiz_modes import quiz_intrus
-from backend.core.config import USER_ID, QUIZ_SESSIONS, QUIZ_MODES
+from backend.core.config import  QUIZ_SESSIONS, QUIZ_MODES #USER_ID,
 
 router = APIRouter()
 
@@ -17,7 +17,7 @@ def is_kanji_valid(k, mode_def):
     return True
 
 @router.get("/quiz")
-def quiz_api(request: Request, mode: str = "qa"):
+def quiz_api(request: Request, mode: str = "qa",player: str = "Anonymous"):
     # 1. Utilisation du Cache global (évite l'appel réseau lourd)
     kanji_cache = getattr(request.app.state, "kanji_cache", {})
     
@@ -28,7 +28,7 @@ def quiz_api(request: Request, mode: str = "qa"):
     
     # 2. Chargement de la progression (Appel Supabase optimisé via load_data)
     # On ne charge QUE les données de l'utilisateur concerné
-    data = load_data(USER_ID)
+    data = load_data(player)
     
     # Structure de données pour la compatibilité avec ton code existant
     user = data.get("srs", {}) # load_data renvoie déjà {"srs": {...}}
@@ -133,19 +133,19 @@ def quiz_api(request: Request, mode: str = "qa"):
         "mode": mode
     }
 
-# backend/api/quiz.py (Ajout)
+
 
 @router.get("/quiz/init")
-def sync_init(request: Request):
-    # 1. Récupérer le cache statique (Kanjilock data)
+def sync_init(request: Request, player: str): # <--- Ajout du paramètre 'player'
+    # 1. Cache statique (inchangé)
     kanji_cache = getattr(request.app.state, "kanji_cache", {})
     
-    # 2. Récupérer la progression utilisateur (SRS)
-    # Note: Assure-toi que load_data renvoie bien le dict complet
-    user_data = load_data(USER_ID) 
+    # 2. Progression dynamique
+    # On utilise le pseudo reçu en paramètre au lieu de USER_ID fixe
+    user_data = load_data(player) 
     
     return {
-        "static_data": kanji_cache,  # Le contenu de kanjilock.json
-        "user_progress": user_data.get("srs", {}), # Niveaux, next_review, etc.
-        "server_time": datetime.now().isoformat() # Pour synchro les horloges
+        "static_data": kanji_cache,
+        "user_progress": user_data.get("srs", {}),
+        "server_time": datetime.now().isoformat()
     }

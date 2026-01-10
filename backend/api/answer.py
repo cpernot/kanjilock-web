@@ -2,7 +2,7 @@ from datetime import date, datetime
 from backend.data.progress import load_data, save_data
 from backend.core.logging import log_event
 from backend.core.srs import update_kanji_srs
-from backend.core.config import QUIZ_SESSIONS, USER_ID
+from backend.core.config import QUIZ_SESSIONS #, USER_ID
 
 from fastapi import APIRouter
 

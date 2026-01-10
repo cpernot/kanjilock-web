@@ -1,4 +1,5 @@
 import { initMode, getMode } from "./modeManager.js";
+import { getPlayer_setting } from "./settings.js";
 
 export function initStats() {
   console.log("Stats init");
@@ -34,9 +35,11 @@ document.getElementById("weakkanjiBtn")?.addEventListener("click", loadWeakKanji
 
 async function loadStats() {
   const mode = getMode();
+  const player = getPlayer_setting();
   console.log("MODE UTILISÉ:", mode);
+  console.log("JOUEUR:", player);
 
-  const res = await fetch(`${API_BASE_URL}/stats?mode=${mode}`);
+  const res = await fetch(`${API_BASE_URL}/stats?mode=${mode}&player=${encodeURIComponent(player)}`);
   const data = await res.json();
 
   drawSrsChart(data.srs_levels);
