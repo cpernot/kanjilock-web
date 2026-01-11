@@ -1,50 +1,44 @@
 import { initMode, getMode } from "./modeManager.js";
 import { getPlayer_setting } from "./settings.js";
+import { getUserProgress } from "./quizengine.js";
 
 export function initStats() {
   console.log("Stats init");
   initMode();
   loadStats();   // affichage auto
 }
-
 console.log("stats_js.js chargé");
-
-
 // 🔁 Réagir aux changements de mode (quiz → stats, nav, select…)
 window.addEventListener("modechange", (e) => {
   console.log("Mode changé → reload stats", e.detail.mode);
   loadStats();
 });
-
 // 📊 Boutons UI
 document.getElementById("statsBtn")?.addEventListener("click", loadStats);
-
 document.getElementById("dailyBtn")?.addEventListener("click", async () => {
   const mode = getMode();
   const res = await fetch(`${API_BASE_URL}/stats?mode=${mode}`);
   const data = await res.json();
   renderHeatmap(data.daily_stats);
 });
-
 document.getElementById("weakkanjiBtn")?.addEventListener("click", loadWeakKanjis);
-
-
 // =======================
 // 📊 FONCTIONS
 // =======================
-
 async function loadStats() {
   const mode = getMode();
   const player = getPlayer_setting();
   console.log("MODE UTILISÉ:", mode);
   console.log("JOUEUR:", player);
-
+try {
   const res = await fetch(`${API_BASE_URL}/stats?mode=${mode}&player=${encodeURIComponent(player)}`);
   const data = await res.json();
-
   drawSrsChart(data.srs_levels);
   renderHeatmap(data.daily_stats);
-  showWeakKanjis(data.kanjis);
+  showWeakKanjis(data.kanjis,mode);
+}catch (e) {
+    console.error("Erreur chargement stats:", e);
+  }
 }
 
 function drawSrsChart(srsLevels) {
@@ -72,45 +66,86 @@ function renderHeatmap(dailyStats) {
   const container = document.getElementById("heatmap");
   if (!container) return;
   container.innerHTML = "";
+  if (!dailyStats || Object.keys(dailyStats).length === 0) {
+    container.innerHTML = "<p style='font-size:0.8em; color:gray;'>Aucune activité enregistrée</p>";
+    return;
+  }
   const days = Object.keys(dailyStats).sort();
+days.forEach(day => {
+    // Calcul du total des réponses pour ce jour (Niveaux 1+2+3+4)
+    const dayData = dailyStats[day];
+    const total = Object.values(dayData).reduce((a, b) => a + (Number(b) || 0), 0);
+    
+    if (total === 0) return; // Ne pas afficher les jours vides
 
-  days.forEach(day => {
-    const total = Object.values(dailyStats[day]).reduce((a, b) => a + b, 0);
     const cell = document.createElement("div");
-
+    cell.className = "heatmap-cell"; // Utilise une classe CSS si possible
     cell.title = `${day} : ${total} réponses`;
-    cell.style.backgroundColor = `rgb(0, ${Math.min(total * 20, 255)}, 0)`;
+
+    // Intensité du vert selon le nombre de réponses
+    const intensity = Math.min(20 + (total * 5), 255); 
+    cell.style.backgroundColor = `rgb(0, ${intensity}, 0)`;
     cell.style.width = "20px";
     cell.style.height = "20px";
+    cell.style.borderRadius = "3px";
+    cell.style.display = "inline-block";
+    cell.style.margin = "2px";
 
     container.appendChild(cell);
   });
 }
 
-function showWeakKanjis(kanjis) {
+function showWeakKanjis(serverKanjis, mode) {
   const div = document.getElementById("weakKanjis");
   if (!div) return;
-  div.innerHTML = "<h3>⚠️ Kanjis faibles du jour</h3>";
+  div.innerHTML = "<h3>⚠️ Kanjis à réviser (Niveau 1 )</h3>";
 
+  // 🆕 RÉCUPÉRER LA PROGRESSION LOCALE (Mise à jour par updateEngineAfterAnswer)
+  const localProgress = getUserProgress()[mode] || {};
   const now = new Date();
-  const weak = kanjis.filter(k => {
-    if (!k.next_review) return false;
-    return k.level <= 2 && new Date(k.next_review) <= now;
+
+  console.log("Données reçues du serveur:", serverKanjis.length);
+  console.log("Progression locale pour ce mode:", localProgress);
+
+  // 1. On combine les infos statiques du serveur avec les niveaux mis à jour localement
+  const kanjisToDisplay = serverKanjis.map(serverK => {
+    const local = localProgress[serverK.kanji];
+    if (local) {
+      return { ...serverK, level: local.level, next_review: local.next_review };
+    }
+    return serverK;
   });
+ 
+  // 2. Filtrer les kanjis faibles (Level 1 ou 2) ET qui sont dus (date passée)
+  const weak = kanjisToDisplay.filter(k => {
+    if (!k.next_review) return true; // Nouveau kanji = faible par défaut
+    const isWeak = (Number(k.level) <= 1);
+    const isDue = new Date(k.next_review) <= now;
+    return isWeak || isDue;
+  });
+
   if (weak.length === 0) {
-    div.innerHTML += "<p>🎉 Rien de critique aujourd’hui</p>";
+    div.innerHTML += "<p>🎉 Tout est sous contrôle pour ce mode !</p>";
     return;
   }
-  weak.forEach(k => {
-    div.innerHTML += `
-      <div>
-        <b>${k.kanji}</b> — ${k.signification}
-        | ${k.romaji} | ${k.mot}
-        (${k.lecture_mot}) → ${k.signification_mot}
-        | boîte ${k.boite}
-      </div>
+
+  // 3. Affichage
+  const list = document.createElement("div");
+  list.className = "weak-list";
+  
+  weak.slice(0, 15).forEach(k => { // Limiter à 15 pour ne pas surcharger
+    const item = document.createElement("div");
+    item.style.padding = "8px";
+    item.style.borderBottom = "1px solid #eee";
+    item.innerHTML = `
+      <span style="font-size:1.2em; font-weight:bold;">${k.kanji}</span> 
+      <span style="color:#666;">(${k.romaji})</span> : ${k.signification}
+      <br><small style="color:orange;">Niveau SRS: ${k.level || 1} • Boite: ${k.boite || '?'}</small>
     `;
+    list.appendChild(item);
   });
+
+  div.appendChild(list);
 }
 
 async function loadWeakKanjis() {

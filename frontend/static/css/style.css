@@ -292,3 +292,19 @@ footer {
   border: none;
   background: #222;
   color: #fff;}
+#heatmap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  background: #f9f9f9;
+  padding: 10px;
+  border-radius: 8px;
+  min-height: 50px;
+}
+.heatmap-cell {
+  transition: transform 0.2s;
+}
+.heatmap-cell:hover {
+  transform: scale(1.2);
+  z-index: 10;
+}

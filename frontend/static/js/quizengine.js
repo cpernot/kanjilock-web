@@ -281,7 +281,6 @@ export function updateEngineAfterAnswer(kanji, isCorrect, mode) {
         penaltyQueue.set(kanji, COOLDOWN_ERROR);
         console.log(`🚫 ${kanji} mis au coin pour ${COOLDOWN_ERROR} tours.`);
     }
-
     // 2. Gestion de la réussite (Succès -> Repoussé à demain MINIMUM)
     if (isCorrect) {
         // On met à jour userProgress en mémoire TOUT DE SUITE
@@ -443,3 +442,7 @@ export function checkComposeAnswer(questionData, selectedWords) {
         extras: questionData.extras
     };
 }
+export function getUserProgress() {
+    return userProgress; // Retourne l'objet global userProgress mis à jour en temps réel
+}
+
