@@ -22,5 +22,5 @@ def load_sessions_old():
 def filter_month(sessions, year_month):
     return [
         s for s in sessions
-        if s["timestamp"].startswith(year_month)
+        if s.get("session_date", "").startswith(year_month) # Changé 'timestamp' par 'session_date'
     ]

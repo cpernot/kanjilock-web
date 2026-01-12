@@ -62,43 +62,43 @@ function drawSrsChart(srsLevels) {
   });
 }
 
-function renderHeatmap(dailyStats) {
-  const container = document.getElementById("heatmap");
-  if (!container) return;
-  container.innerHTML = "";
-  if (!dailyStats || Object.keys(dailyStats).length === 0) {
-    container.innerHTML = "<p style='font-size:0.8em; color:gray;'>Aucune activité enregistrée</p>";
-    return;
-  }
-  const days = Object.keys(dailyStats).sort();
-days.forEach(day => {
-    // Calcul du total des réponses pour ce jour (Niveaux 1+2+3+4)
-    const dayData = dailyStats[day];
-    const total = Object.values(dayData).reduce((a, b) => a + (Number(b) || 0), 0);
+// function renderHeatmap(dailyStats) {
+//   const container = document.getElementById("heatmap");
+//   if (!container) return;
+//   container.innerHTML = "";
+//   if (!dailyStats || Object.keys(dailyStats).length === 0) {
+//     container.innerHTML = "<p style='font-size:0.8em; color:gray;'>Aucune activité enregistrée</p>";
+//     return;
+//   }
+//   const days = Object.keys(dailyStats).sort();
+// days.forEach(day => {
+//     // Calcul du total des réponses pour ce jour (Niveaux 1+2+3+4)
+//     const dayData = dailyStats[day];
+//     const total = Object.values(dayData).reduce((a, b) => a + (Number(b) || 0), 0);
     
-    if (total === 0) return; // Ne pas afficher les jours vides
+//     if (total === 0) return; // Ne pas afficher les jours vides
 
-    const cell = document.createElement("div");
-    cell.className = "heatmap-cell"; // Utilise une classe CSS si possible
-    cell.title = `${day} : ${total} réponses`;
+//     const cell = document.createElement("div");
+//     cell.className = "heatmap-cell"; // Utilise une classe CSS si possible
+//     cell.title = `${day} : ${total} réponses`;
 
-    // Intensité du vert selon le nombre de réponses
-    const intensity = Math.min(20 + (total * 5), 255); 
-    cell.style.backgroundColor = `rgb(0, ${intensity}, 0)`;
-    cell.style.width = "20px";
-    cell.style.height = "20px";
-    cell.style.borderRadius = "3px";
-    cell.style.display = "inline-block";
-    cell.style.margin = "2px";
+//     // Intensité du vert selon le nombre de réponses
+//     const intensity = Math.min(20 + (total * 5), 255); 
+//     cell.style.backgroundColor = `rgb(0, ${intensity}, 0)`;
+//     cell.style.width = "20px";
+//     cell.style.height = "20px";
+//     cell.style.borderRadius = "3px";
+//     cell.style.display = "inline-block";
+//     cell.style.margin = "2px";
 
-    container.appendChild(cell);
-  });
-}
+//     container.appendChild(cell);
+//   });
+// }
 
 function showWeakKanjis(serverKanjis, mode) {
   const div = document.getElementById("weakKanjis");
   if (!div) return;
-  div.innerHTML = "<h3>⚠️ Kanjis à réviser (Niveau 1 )</h3>";
+  div.innerHTML = "<h3>⚠️ Kanjis à réviser (Niveau 1 OU en retard)</h3>";
 
   // 🆕 RÉCUPÉRER LA PROGRESSION LOCALE (Mise à jour par updateEngineAfterAnswer)
   const localProgress = getUserProgress()[mode] || {};
@@ -147,10 +147,79 @@ function showWeakKanjis(serverKanjis, mode) {
 
   div.appendChild(list);
 }
-
 async function loadWeakKanjis() {
   const mode = getMode();
   const res = await fetch(`${API_BASE_URL}/stats?mode=${mode}`);
   const data = await res.json();
   showWeakKanjis(data.kanjis);
+}
+
+function renderHeatmap(dailyStats) {
+  const container = document.getElementById("heatmap");
+  if (!container) return;
+  container.innerHTML = "";
+  
+  console.log("Données Heatmap reçues:", dailyStats);
+
+  const days = Object.keys(dailyStats).sort();
+  if (days.length === 0) {
+    container.innerHTML = "<p>Aucune activité.</p>";
+    return;
+  }
+
+  days.forEach(day => {
+    const total = dailyStats[day]; // C'est maintenant directement un nombre
+    
+    const cell = document.createElement("div");
+    cell.title = `${day} : ${total} points`;
+    
+    // Calcul de l'intensité du vert
+    const level = Math.min(Math.floor(total / 10), 4); // 0 à 4 selon l'activité
+    const colors = ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"];
+    
+    cell.style.backgroundColor = colors[level] || colors[4];
+    cell.style.width = "15px";
+    cell.style.height = "15px";
+    cell.style.borderRadius = "2px";
+
+    container.appendChild(cell);
+  });
+}
+
+function renderHeatmap_ORIGINAL(dailyStats) {
+console.log("Données reçues pour Heatmap:", dailyStats);
+console.log("Nombre de jours trouvés:", Object.keys(dailyStats).length);
+  const container = document.getElementById("heatmap");
+  if (!container) return;
+  container.innerHTML = "";
+  
+  const days = Object.keys(dailyStats).sort();
+  if (days.length === 0) {
+      container.innerHTML = "Aucune donnée d'activité.";
+      return;
+  }
+
+  days.forEach(day => {
+    const dayData = dailyStats[day];
+    // On additionne les valeurs. Attention: s'assurer que b est un nombre.
+    const total = Object.values(dayData).reduce((a, b) => a + (parseInt(b) || 0), 0);
+    
+    if (total > 0) {
+        const cell = document.createElement("div");
+        cell.title = `${day} : ${total} réponses`;
+        
+        // Couleur : on part d'un gris très clair pour 0 et on verdit
+        const intensity = Math.min(50 + (total * 15), 255);
+        cell.style.backgroundColor = `rgb(0, ${intensity}, 0)`;
+        
+        // SECURITE : Forcer les dimensions
+        cell.style.width = "20px";
+        cell.style.height = "20px";
+        cell.style.minHeight = "20px"; // Ajouté
+        cell.style.minWidth = "20px";  // Ajouté
+        cell.style.border = "1px solid rgba(0,0,0,0.1)"; // Pour voir si les cases existent
+        
+        container.appendChild(cell);
+    }
+  });
 }
