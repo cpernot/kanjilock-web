@@ -11,14 +11,6 @@ from backend.data.progress import load_data
 async def lifespan(app: FastAPI):
     from backend.core.config import supabase
     print("🚀 STARTUP: Initialisation du serveur...")
-    
-    # --- Chargement des données ---
-    # try:
-    #     load_data(USER_ID)
-    #     print(f"✅ Données utilisateur chargées pour : {USER_ID}")
-    # except Exception as e:
-    #     print(f"⚠️ Erreur chargement user: {e}")
-
     try:
         # 1. Récupérer TOUS les kanjis (pagination)
         all_data = []
