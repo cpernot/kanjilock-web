@@ -3,8 +3,6 @@ import json
 from backend.core.config import PROGRESS_FILE 
 from backend.core.config import supabase
 
-from backend.core.config import supabase
-
 def load_data(user_id: str):
     """
     Récupère la progression et reconstruit la structure dictionnaire
@@ -49,12 +47,9 @@ def load_data(user_id: str):
         return {"srs": {}}
 
 def save_data(user_id, data):
-    from backend.core.config import supabase
-    
     # On prépare les lignes à mettre à jour
     rows = []
-    srs_data = data.get("srs", {})
-    
+    srs_data = data.get("srs", {})    
     for mode, kanjis in srs_data.items():
         for kanji, stats in kanjis.items():
             rows.append({
@@ -62,23 +57,10 @@ def save_data(user_id, data):
                 "kanji": kanji,
                 "mode": mode,
                 "stats": stats
-            })
-    
+            })    
     # Supabase fait un "Upsert" : il met à jour seulement ce qui a changé
     if rows:
         supabase.table("progress").upsert(rows, on_conflict="user_id,kanji,mode").execute()
-
-def load_data_old():
-    if not os.path.exists(PROGRESS_FILE):
-        return {}
-    with open(PROGRESS_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
-    
-    
-def save_data_old(data):
-    with open(PROGRESS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
 
 def get_user(data, user_id):
     return data.setdefault(user_id, {

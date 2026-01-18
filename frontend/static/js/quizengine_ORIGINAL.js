@@ -1,35 +1,60 @@
 // frontend/static/js/quizEngine.js
 
-let staticData = {};     // kanjilock.json cache
-let userProgress = {};   // SRS states cache
-let sessionHistory = new Set(); 
-let penaltyQueue = new Map();   
-let boxProgress = {};
-export let currentBoxFilter = null; // null = Global mode (SRS)
-import { getPlayer_setting } from "./settings.js"; 
+let staticData = {}; // kanjilock.json
+let userProgress = {}; // SRS states
+let currentSession = []; 
+// 🆕 VARIABLES DE GESTION DE FLUX
+let sessionHistory = new Set(); // Kanjis déjà vus dans cette session (pour éviter doublon immédiat)
+let penaltyQueue = new Map();   // Kanji -> Nombre de tours à attendre (pour les erreurs)
+let boxProgress = {}; 
 
-// 1. SETTINGS & MODES
-const WEIGHTS = { 1: 5, 2: 3, 3: 1, 4: 0.2 };
-const COOLDOWN_ERROR = 20;
-export const MODES = {
+// Configuration des Modes (Portage de quiz_modes.py)
+const MODES = {
     "qa": {
         q: (k) => k.kanji,
         a: (k) => k.signification,
-        extras: (k) => ({ romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot, boite: k.boite })
+        extras: (k) => ({ romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot, boite: k.boite  })
     },
     "qb": {
         q: (k) => k.signification,
         a: (k) => k.kanji,
-        extras: (k) => ({ romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot, boite: k.boite })
+        extras: (k) => ({  romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot,boite: k.boite  })
     },
     "qc": {
         q: (k) => k.mot,
         a: (k) => k.signification_mot,
-        extras: (k) => ({ lecture_mot: k.lecture_mot, kanji: k.kanji, romaji: k.romaji, boite: k.boite })
+        extras: (k) => ({ lecture_mot: k.lecture_mot, kanji: k.kanji, signification: k.signification , romaji: k.romaji,  boite: k.boite })
+    },
+    "qd": {
+        q: (k) => k.kanji,
+        a: (k) => k.boite ,
+        extras: (k) => ({ signification: k.signification , romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot })
+    },
+    "qe": {
+        q: (k) => k.kanji,
+        a: (k) => k.romaji,
+        extras: (k) => ({ signification: k.signification, mot: k.mot ,lecture: k.lecture_mot, signification_mot: k.signification_mot,boite: k.boite})
+    },
+     "intrus": {
+        q: (k) => k.kanji,
+        a: (k) => k.boite,
+        extras: (k) => ({ boite: k.boite, signification: k.signification, mot: k.mot ,lecture: k.lecture_mot, signification_mot: k.signification_mot})
     }
 };
-
-// 3 ENGINE CORE
+const WEIGHTS = { 1: 5, 2: 3, 3: 1, 4: 0.2 };
+const COOLDOWN_ERROR = 20; // Nombre de questions à attendre après une erreur
+import { getPlayer_setting } from "./settings.js"; 
+export let currentBoxFilter = null; 
+// 1 SETTER FOR BOX
+export function setBoxContext(boxId) {
+    currentBoxFilter = boxId ? String(boxId) : null;
+    console.log("📦 Box Context set to:", currentBoxFilter);
+}
+// 2 RESET BOX CONTEXT
+export function resetBoxContext() {
+    currentBoxFilter = null;
+}
+// 3 INIT ENGINE (Fetch data from server)
 export async function initEngine() {
     // OPTIMISATION : Si on a déjà des données (plus de 0 clés), on ne recharge pas !
     if (Object.keys(staticData).length > 0) {
@@ -37,77 +62,55 @@ export async function initEngine() {
         return; 
     }
     const player = getPlayer_setting();
-    const storageKey = "kanjilock_boxes_" + player;
-    const savedBoxes = localStorage.getItem(storageKey);    
-    // Safety check: if it's null/empty, initialize as empty object
-    try {
-        boxProgress = savedBoxes ? JSON.parse(savedBoxes) : {};
-    } catch (e) {
-        console.error("Failed to parse boxProgress, resetting.", e);
-        boxProgress = {};
-    }
-    console.log("📦 Box Progress Loaded:", boxProgress);    
-
     console.log("📥 Chargement des données locales (depuis le serveur)...");
     try {
         const res = await fetch(`${API_BASE_URL}/quiz/init?player=${encodeURIComponent(player)}`);
         const data = await res.json();
         staticData = data.static_data;
         userProgress = data.user_progress;
-        // const savedBoxes = localStorage.getItem("kanjilock_boxes_" + player);
-        // boxProgress = savedBoxes ? JSON.parse(savedBoxes) : {};
-        console.log(`✅ Engine prêt : ${Object.keys(staticData).length} kanjis. `);
+        const savedBoxes = localStorage.getItem("kanjilock_boxes_" + player);
+        boxProgress = savedBoxes ? JSON.parse(savedBoxes) : {};
+        console.log(`✅ Engine prêt : ${Object.keys(staticData).length} kanjis. Box Progress:`, boxProgress);
     } catch (e) {
         console.error("Erreur chargement engine:", e);
     }
-}
-// 1 SETTER FOR BOX
-export function setBoxContext(boxId) {
-    // If boxId is "" (from "No selection"), currentBoxFilter becomes null
-    currentBoxFilter = (boxId === "" || boxId === null) ? null : String(boxId);    
-    console.log("--------------------------------");
-    console.log("📦 ENGINE MODE UPDATED");
-    console.log("Target Box:", currentBoxFilter || "GLOBAL (SRS Mode)");
-    console.log("--------------------------------");
-}
-// 2 RESET BOX CONTEXT
-export function resetBoxContext() {
-    currentBoxFilter = null;
-    sessionHistory.clear();
-    penaltyQueue.clear();
 }
 // 4 RESET ENGINE SESSION
 export function resetEngineSession() {
     sessionHistory.clear();
     // On ne vide pas penaltyQueue ici pour que la punition persiste entre deux quiz rapides
 }
+// 5 GET BOX LEVEL
+export function getBoxLevel(boxId) {
+    const b = boxProgress[String(boxId)];
+    return b ? b.level : 0;
+}
+// 6 HELPER: IS AVAILABLE
+function isAvailable(state) {
+    if (!state || !state.next_review) return true; // Dispo si nouveau
+    return new Date(state.next_review) < new Date();
+}
 // 7 GET NEXT QUESTION
 export function getNextQuestion(mode) {
-    const now = new Date();
-    const modeDef = MODES[mode] || MODES["qa"];
-    const srs = userProgress[mode] || {};
-    
+     // 1. Get ALL possible keys from your data
     let allKeys = Object.keys(staticData);
-
-    // FILTER: Filter by Box if a specific box is selected
+    // 2. APPLY FILTER (Only if currentBoxFilter is set)
+    // If currentBoxFilter is null, candidates = allKeys (Original behavior)
     let candidates = currentBoxFilter 
         ? allKeys.filter(k => String(staticData[k].boite) === currentBoxFilter)
         : allKeys;
-        console.log(`🎯 Box Mode Active [${currentBoxFilter}]: ${candidates.length} kanjis available.`);
-
-    if (candidates.length === 0) return { done: true, message: "No kanjis found for this selection." };
-    if (candidates.length === 0) {
-        console.warn("⚠️ No kanjis found for filter, falling back to all.");
-        candidates = allKeys;
+    // 3. Fallback: If for some reason the box is empty, use all keys
+    if (candidates.length === 0) candidates = allKeys;
+    
+    // 1. Gérer le décrément des pénalités (on réduit le compteur de 1 pour tout le monde)
+    for (const [k, turns] of penaltyQueue) {
+        if (turns <= 1) penaltyQueue.delete(k); // Libéré !
+        else penaltyQueue.set(k, turns - 1);
     }
+    const srsMode = userProgress[mode] || {};
+    // const availablePool = [];
+    const newItems = [];
 
-    // Update penalty queue (decrement waits)
-    for (let [k, count] of penaltyQueue) {
-        if (count <= 1) penaltyQueue.delete(k);
-        else penaltyQueue.set(k, count - 1);
-    }
-
-    // Pool candidates (exclude history and penalties)
     let availablePool = candidates.filter(k => !sessionHistory.has(k) && !penaltyQueue.has(k));
 
     if (availablePool.length === 0) {
@@ -115,89 +118,95 @@ export function getNextQuestion(mode) {
         availablePool = candidates;
     }
 
-    let selectedKanji = null;
+    // 4. SELECTION Logic
+// 2. Filtrer les kanjis éligibles
+    // Object.keys(staticData).forEach(kanji => {
+    candidates.forEach(kanji => {    
+        // 🛑 FILTRE 1 : Est-il puni ? (Réponse fausse récente)
+        if (penaltyQueue.has(kanji)) return;
+
+        // 🛑 FILTRE 2 : Déjà vu dans cette session ?
+        if (sessionHistory.has(kanji)) return;
+
+        const state = srsMode[kanji];
+        
+        if (!state) {
+            newItems.push(kanji);
+        } else if (isAvailable(state)) {
+            // Kanji disponible (date passée)
+            const weight = WEIGHTS[state.level] || 1;
+            const count = Math.ceil(weight * 10); 
+            for (let i = 0; i < count; i++) {
+                availablePool.push(kanji);
+            }
+        }
+    });
+
+    let selectedKanji;
 
     if (currentBoxFilter) {
-        // CHALLENGE MODE: Simple Random Pick from the specific box
+        // In Box Mode: Random pick from the box (Simple cycling)
         selectedKanji = availablePool[Math.floor(Math.random() * availablePool.length)];
     } else {
-        // GLOBAL MODE: Standard SRS Weighted Selection
-        selectedKanji = chooseWeightedKanji(srs, staticData, availablePool, now);
+        // In Global Mode: Use your existing Weight-based SRS Selection
+            if (availablePool.length > 0) {
+         if (newItems.length > 0 && Math.random() < 0.2) {
+             selectedKanji = newItems[Math.floor(Math.random() * newItems.length)];
+         } else {
+             selectedKanji = availablePool[Math.floor(Math.random() * availablePool.length)];
+         }
+    } else if (newItems.length > 0) {
+        selectedKanji = newItems[Math.floor(Math.random() * newItems.length)];
+    } else {
+        // FALLBACK DE SECOURS
+        // Si tout est bloqué (soit fait aujourd'hui, soit puni), on tape dans les punis ou tout le reste
+        // Pour éviter que l'app plante s'il n'y a plus rien de dispo.
+        // const allKeys = Object.keys(staticData);
+        const allKeys = candidates;
+        // On essaye d'abord ceux qui ne sont pas dans l'historique immédiat
+        const notSeen = allKeys.filter(k => !sessionHistory.has(k));
+        const finalPool = notSeen.length > 0 ? notSeen : allKeys;
+        
+        selectedKanji = finalPool[Math.floor(Math.random() * finalPool.length)];
     }
-
-    if (!selectedKanji) return { done: true };
-
-    sessionHistory.add(selectedKanji);
-    const kData = staticData[selectedKanji];
-    kData.kanji = selectedKanji;
-    console.log("📝 Selected Kanji Data:", kData);
-    return {
-        qid: `local_${Date.now()}`,
-        kanji: selectedKanji,
-        question: modeDef.q(kData),
-        correctAnswer: modeDef.a(kData),
-        options: generateOptions(selectedKanji, modeDef, candidates),
-        extras: modeDef.extras(kData),
-        mode: mode
-    };
-}
-// NEW HELPER FOR getNextQuestion
-function chooseWeightedKanji(srs, staticData, pool, now) {
-    let weightedList = [];
-    pool.forEach(k => {
-        const state = srs[k] || { level: 1, next_review: null };
-        const weight = WEIGHTS[state.level] || 1;
-        for (let i = 0; i < weight * 10; i++) weightedList.push(k);
-    });
-    return weightedList[Math.floor(Math.random() * weightedList.length)];
-}
-//NEW HELPER: GENERATE OPTIONS
-function generateOptions(correctKey, modeDef, candidates) {
-    const correct = modeDef.a(staticData[correctKey]);
-    let others = candidates
-        .filter(k => k !== correctKey)
-        .map(k => modeDef.a(staticData[k]));
+        // selectedKanji = selectByWeight(availablePool, userProgress); 
+    }
     
-    // Remove duplicates and shuffle
-    others = [...new Set(others)];
-    let shuffled = others.sort(() => 0.5 - Math.random()).slice(0, 3);
-    shuffled.push(correct);
-    return shuffled.sort(() => 0.5 - Math.random());
-}
-// NEW ANSWER HANDLING
-export async function submitAnswer(qid, kanji, mode, isCorrect) {
-    if (!isCorrect) {
-        penaltyQueue.set(kanji, 5); // Wait 5 rounds if error
-    }
+  
+    // 🆕 On ajoute le gagnant à l'historique de session
+    sessionHistory.add(selectedKanji);
 
-    // Update local state for immediate feedback
-    if (!userProgress[mode]) userProgress[mode] = {};
-    if (!userProgress[mode][kanji]) {
-        userProgress[mode][kanji] = { level: 1, last_attempt: null };
-    }
+    // ... La suite (Construction de la question) reste identique ...
+    const kData = staticData[selectedKanji];
+    const modeDef = getModeDefinition(mode); // (Assure-toi que cette fonction est accessible)
 
-    // Optional: Return SRS updates or box progress logic here
-    return { status: "recorded" };
-}
-// 5 GET BOX LEVEL
-export function getBoxLevel(boxId, mode = "qa") {
-    const srs = userProgress[mode] || {};
-    const boxKanjis = Object.keys(staticData).filter(k => String(staticData[k].boite) === String(boxId));    
-    if (boxKanjis.length === 0) return 0;
-    let totalLevel = 0;
-    boxKanjis.forEach(k => {
-        totalLevel += (srs[k]?.level || 1);
-    });
-    const avg = totalLevel / boxKanjis.length;
-    if (avg >= 3.8) return 4;
-    if (avg >= 3) return 3;
-    if (avg >= 2) return 2;
-    return 1;
-}
-// 6 HELPER: IS AVAILABLE
-function isAvailable(state) {
-    if (!state || !state.next_review) return true; // Dispo si nouveau
-    return new Date(state.next_review) < new Date();
+    // ... (Ton code de génération d'options) ...
+    // Note: Pour les leurres, tu n'as pas besoin de filtrer avec sessionHistory, 
+    // utiliser un kanji déjà vu comme leurre est une bonne chose !
+    
+    // ... Génération options ...
+    
+    const question = modeDef.q({kanji: selectedKanji, ...kData});
+    const correctAnswer = modeDef.a({kanji: selectedKanji, ...kData});
+
+    let options = [correctAnswer];
+    const keys = Object.keys(staticData);
+    while (options.length < 4) {
+        let rk = keys[Math.floor(Math.random() * keys.length)];
+        if (rk === selectedKanji) continue;
+        let wrong = modeDef.a({kanji: rk, ...staticData[rk]});
+        if (!options.includes(wrong)) options.push(wrong);
+    }
+    options.sort(() => Math.random() - 0.5);
+
+    return {
+        qid: crypto.randomUUID(),
+        kanji: selectedKanji,
+        question: question,
+        options: options,
+        correctAnswer: correctAnswer,
+        extras: modeDef.extras({kanji: selectedKanji, ...kData})
+    };
 }
 // 8 UPDATE ENGINE AFTER ANSWER
 export function updateEngineAfterAnswer(kanji, isCorrect, mode) {
@@ -374,31 +383,38 @@ export function getUserProgress() {
     return userProgress; // Retourne l'objet global userProgress mis à jour en temps réel
 }
 // 14 UPDATE BOX RANKING
-export async function updateBoxRanking(boxId, sessionStats) {
+export function updateBoxRanking(boxId, sessionStats) {
     if (!boxId) return null;
     boxId = String(boxId);
-    const player = getPlayer_setting();
+
     const now = new Date();
-    let current = boxProgress[boxId] || { level: 0, last_attempt: null };    
+    let current = boxProgress[boxId] || { level: 0, last_attempt: null };
+    
     // Logic Rules:
     // Level 1: Quiz done once (We are here, so it's done)
     let newLevel = 1;
     let message = "Niveau 1 Validé !";
+
     // Level 2: No miss (100% success)
-    const isPerfect = (sessionStats.wrong === 0);    
+    const isPerfect = (sessionStats.wrong === 0);
+    
     if (isPerfect) {
         newLevel = 2;
         message = "Niveau 2 : Sans faute !";
-        // Level 3: Perfect + Time < 40s (40000ms)
-        const isFast = (sessionStats.totalTime <= 40000);        
+
+        // Level 3: Perfect + Time < 14s (14000ms)
+        const isFast = (sessionStats.totalTime <= 14000);
+        
         if (isFast) {
             newLevel = 3;
-            message = "Niveau 3 : Éclair (40s) !";
+            message = "Niveau 3 : Éclair (14s) !";
+
             // Level 4: Achieved Level 3 condition AFTER 5 days since last attempt
             if (current.last_attempt) {
                 const lastDate = new Date(current.last_attempt);
                 const diffTime = Math.abs(now - lastDate);
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
                 if (current.level >= 3 && diffDays >= 5) {
                     newLevel = 4;
                     message = "🏆 NIVEAU 4 : MAÎTRE DU SCEAU !";
@@ -409,39 +425,19 @@ export async function updateBoxRanking(boxId, sessionStats) {
             }
         }
     }
+
     // Update State (Only promote, never demote? Or demote if fail?)
     // Usually SRS prevents demotion of badges unless intended. Let's keep Max Level.
     if (newLevel > current.level) {
         current.level = newLevel;
     }
-    current.last_attempt = now.toISOString();    
-    // // Save
-    // boxProgress[boxId] = current;
-    // localStorage.setItem("kanjilock_boxes_" + player, JSON.stringify(boxProgress));
-    // return { level: current.level, message: message };
-    // 2. Prepare data for Supabase
-    const progressData = {
-        user_id: player,
-        boite: String(boxId),
-        level: newLevel,
-        last_attempt: now.toISOString()
-    };
+    current.last_attempt = now.toISOString();
+    
+    // Save
+    boxProgress[boxId] = current;
+    const player = getPlayer_setting();
+    localStorage.setItem("kanjilock_boxes_" + player, JSON.stringify(boxProgress));
 
-    // 3. Send to Supabase via your existing API architecture
-    try {
-        const response = await fetch('/api/box-progress/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(progressData)
-        });
-
-        if (!response.ok) throw new Error("Supabase sync failed");
-        
-        console.log("✅ Box Progress Synced with Supabase");
-    } catch (err) {
-        console.error("❌ Sync Error:", err);
-        // Fallback: Save to localStorage if offline
-        localStorage.setItem(`offline_box_${boxId}`, JSON.stringify(progressData));
-    }
-    return { level: newLevel, message: message };
+    return { level: current.level, message: message };
 }
+

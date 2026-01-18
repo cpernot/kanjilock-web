@@ -5,11 +5,11 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from backend.core.config import FRONTEND_DIR
 from backend.data.progress import load_data
+from backend.core.config import supabase
 
 # 1. DEFINITION DU LIFESPAN
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    from backend.core.config import supabase
+async def lifespan(app: FastAPI):    
     print("🚀 STARTUP: Initialisation du serveur...")
     try:
         # 1. Récupérer TOUS les kanjis (pagination)
@@ -43,6 +43,7 @@ async def lifespan(app: FastAPI):
             final_cache[k_char] = k_infos
 
         app.state.kanji_cache = final_cache
+        chat.build_vector_store(final_cache)
         print(f"✅ {len(app.state.kanji_cache)} kanjis en cache (avec composition).")
 
     except Exception as e:
@@ -63,7 +64,6 @@ async def lifespan(app: FastAPI):
 
 # 2. CRÉATION DE L'APP (Indispensable à la racine pour Uvicorn)
 app = FastAPI(lifespan=lifespan)
-
 # 3. MIDDLEWARE
 app.add_middleware(
     CORSMiddleware,
@@ -72,22 +72,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # 4. IMPORTS ET INCLUSION DES ROUTERS
 # (On les importe ici pour s'assurer que l'objet 'app' existe déjà)
 from backend.api.quiz import router as quiz_router
-#from backend.api.answer import router as answer_router
 from backend.api.stats import router as stats_router
 from backend.api.quiz_compose import router as compose_router
 from backend.api.session import router as session_router
 from backend.api.ranking import router as ranking_router
+from backend.api import chat 
 
 app.include_router(quiz_router, prefix="/api")
-#app.include_router(answer_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")
 app.include_router(compose_router, prefix="/api")
 app.include_router(session_router, prefix="/api")
 app.include_router(ranking_router, prefix="/api")
+app.include_router(chat.router, prefix="/api")
 
 # 5. FICHIERS STATIQUES ET ROUTES SPA
 if FRONTEND_DIR.exists():
@@ -105,3 +104,56 @@ def spa_index():
     if index_file.exists():
         return FileResponse(index_file)
     return {"error": "Frontend files not found"}
+@app.get("/api/quiz/session")
+async def get_box_session(box_id: int, player_id: str):
+    # 1. Get all kanji from cache
+    # 2. Filter by info['boite'] == box_id
+    # 3. Check levels: Skip kanji that are already Level 4 (Mastered)
+    # 4. Return 14 random kanji from that box    
+    all_kanji = app.state.kanji_cache
+    box_kanji = [k for k in all_kanji.values() if k.get('boite') == box_id]    
+    # Selection logic here...
+    return box_kanji[:14]
+
+@app.post("/api/box-progress/save")
+async def save_box_progress(data: dict):
+    # Ensure types match your DB schema
+    payload = {
+        "user_id": data['user_id'],
+        "boite": data['boite'], # Convert to int if your DB column is an integer
+        "level": int(data['level']),
+        "last_attempt": data['last_attempt']
+    }    
+    try:
+        res = supabase.table('box_progress').upsert(
+            payload, 
+            on_conflict="user_id,boite"
+        ).execute()
+        return {"status": "success"}
+    except Exception as e:
+        print(f"❌ Supabase Error: {e}")
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/box-progress/{user_id}")
+async def get_all_box_progress(user_id: str):
+    res = supabase.table('box_progress').select("boite, level").eq("user_id", user_id).execute()
+    # Returns a simple dict like {"1": 2, "5": 4}
+    return {str(item['boite']): item['level'] for item in res.data}
+
+@app.get("/api/available-boxes")
+async def get_available_boxes():
+    # We select only the 'boite' field inside the 'data' JSON column
+    # The syntax "data->>boite" extracts the value as text
+    try:
+        res = supabase.table('kanji').select("data->>boite").execute()
+        
+        # Extract values, filter out None, and get unique names
+        raw_boxes = [item.get('boite') for item in res.data if item.get('boite') is not None]
+        unique_boxes = sorted(list(set(raw_boxes)))
+        
+        print(f"📦 Found {len(unique_boxes)} unique boxes in database.")
+        return unique_boxes
+    except Exception as e:
+        print(f"❌ Error fetching boxes: {e}")
+        return []
+

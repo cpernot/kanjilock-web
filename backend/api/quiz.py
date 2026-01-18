@@ -8,6 +8,7 @@ from backend.core.logging import log_event
 # On n'importe plus load_kanjilock qui lit un fichier, on va utiliser le cache
 from backend.api.quiz_modes import quiz_intrus
 from backend.core.config import  QUIZ_SESSIONS, QUIZ_MODES #USER_ID,
+from datetime import datetime, timedelta
 
 router = APIRouter()
 
@@ -133,8 +134,6 @@ def quiz_api(request: Request, mode: str = "qa",player: str = "Anonymous"):
         "mode": mode
     }
 
-
-
 @router.get("/quiz/init")
 def sync_init(request: Request, player: str): # <--- Ajout du paramètre 'player'
     # 1. Cache statique (inchangé)
@@ -149,3 +148,29 @@ def sync_init(request: Request, player: str): # <--- Ajout du paramètre 'player
         "user_progress": user_data.get("srs", {}),
         "server_time": datetime.now().isoformat()
     }
+
+def calculate_kanji_level(stats):
+    """
+    stats = {
+        'attempts': int,
+        'success_rate': float,
+        'best_time_ms': int, # max response time in your case
+        'last_attempt_date': datetime
+    }
+    """
+    # Level 1: Quiz done at least once
+    if stats['attempts'] < 1:
+        return 0    
+    level = 1    
+    # Level 2: Quiz achieved without any miss (100% success)
+    if stats['success_rate'] >= 100:
+        level = 2        
+        # Level 3: No miss + within 14 seconds (14000ms)
+        # Note: 'best_time' should be the slowest response in that perfect session
+        if stats['best_time_ms'] <= 14000:
+            level = 3            
+            # Level 4: Level 3 achieved after 5 days without attempt
+            five_days_ago = datetime.now() - timedelta(days=5)
+            if stats['last_attempt_date'] <= five_days_ago:
+                level = 4                
+    return level    

@@ -11,6 +11,7 @@ import {
 } from "./quizSession.js";
 import { navigate } from "./spa.js"; // ou ta fonction équivalente
 import { updateEngineAfterAnswer } from "./quizengine.js";
+import { updateBoxRanking, currentBoxFilter } from "./quizengine.js";
 
 console.log("multi_quiz.js chargé");
 
@@ -132,8 +133,9 @@ async function loadQuiz() {
 }
 function renderQuestion(data) {
   const quiz = document.getElementById("multi_quiz");
-  console.log("quiz.innerHTML = `<h2>${data.question}</h2>`");
+  
   quiz.innerHTML = `<h2>${data.question}</h2>`;
+console.log(`quiz.innerHTML = <h2>${data.question}</h2>`);
   quiz.classList.remove("fade-in");
   void quiz.offsetWidth;
   quiz.classList.add("fade-in");  
@@ -187,6 +189,20 @@ async function sendAnswer(choice) {
         quizRunning = false;
         setTimeout(async () => {
             const summary = getSessionSummary();
+            // Check if this was a Box Challenge
+            if (currentBoxFilter) {
+                console.log("📊 Calculating Box Rank for Box:", currentBoxFilter);
+                const rankResult = updateBoxRanking(currentBoxFilter, summary);
+                
+                // Attach the result so session_end.js can display the badge/medal
+                summary.boxRanking = rankResult; 
+                // Trigger the Supabase update
+                updateBoxRanking(currentBoxFilter, summary).then(result => {
+                    // Display a popup or update the text on the end-screen
+                    alert(`Félicitations ! ${result.message}`);
+                });
+            }
+
             const payload = {
                 player: getPlayer_setting(),
                 mode: getQuizModeForPage(),
@@ -210,6 +226,7 @@ async function sendAnswer(choice) {
             isProcessing = false; // Déverrouillage final
             navigate("/session-end");
         }, 1500);
+        setTimeout(() => navigate("/session-end"), 1000);
         return; 
     }
 
