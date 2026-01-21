@@ -2,3 +2,5 @@ fastapi
 supabase
 python-dotenv
 uvicorn
+langchain-groq
+langchain
