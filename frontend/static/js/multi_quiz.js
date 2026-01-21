@@ -55,6 +55,9 @@ console.warn("🔓 loadquiz du bouton");
       quizRunning = false;
       stopTimer();
       document.getElementById("multi_quiz").innerHTML = "⏸ Quiz arrêté";
+        //  🆕 Cleanup background when stopping
+        document.getElementById("app").style.backgroundImage = "";
+        document.getElementById("app").style.backgroundColor = "";
     };
   }
 }
@@ -119,6 +122,16 @@ async function loadQuiz() {
 // Nettoyage de l'interface précédente pour éviter les flashs
     const container = document.getElementById("options-container");
     if (container) container.innerHTML = "";
+// 🆕 Set Background
+  // currentBoxFilter comes from quizengine.js imports
+  console.warn("current Box Filter: ",engine.currentBoxFilter);
+  import("./quizengine.js").then(engine => {
+      if (engine.currentBoxFilter) {
+          setBackground(engine.currentBoxFilter);
+      } else {
+          setBackground(null); // Clear if Global mode
+      }
+  });
   // playBip("ARROW.WAV")
   questionStartTime = Date.now();
   startTimer() ;
@@ -130,6 +143,32 @@ async function loadQuiz() {
   
   console.log("timer end")
   renderQuestion(data); 
+}
+function setBackground(boxId) {
+    const appElement = document.getElementById("app"); // or document.body
+    
+    if (boxId) {
+        // CONFIGURE YOUR SUPABASE URL HERE
+        // Replace 'your-project-id' with your actual Supabase project ID found in config.js or Dashboard
+        const SUPABASE_URL = "https://wbeoqdtafvyscmncalzc.supabase.co"; 
+        const imageUrl = `${SUPABASE_URL}/storage/v1/object/public/box-backgrounds/${boxId}.svg`;
+        
+        // CSS Styling
+        appElement.style.backgroundImage = `url('${imageUrl}')`;
+        appElement.style.backgroundSize = "cover"; // or "contain" if you want to see the whole image
+        appElement.style.backgroundPosition = "center";
+        appElement.style.backgroundRepeat = "no-repeat";
+        
+        // OPTIONAL: Add an overlay so text remains readable over the image
+        // This adds a 85% white layer on top of the image
+        appElement.style.backgroundBlendMode = "overlay";
+        appElement.style.backgroundColor = "rgba(255, 255, 255, 0.85)";  
+        // 0.85 means 85% white, 15% image visibility.
+    } else {
+        // Reset to default if no box is selected (Global mode)
+        appElement.style.backgroundImage = "";
+        appElement.style.backgroundColor = ""; 
+    }
 }
 function renderQuestion(data) {
   const quiz = document.getElementById("multi_quiz");
@@ -189,11 +228,11 @@ async function sendAnswer(choice) {
         quizRunning = false;
         setTimeout(async () => {
             const summary = getSessionSummary();
+            const currentMode = getQuizModeForPage(); // Get the active mode
             // Check if this was a Box Challenge
-            if (currentBoxFilter) {
-                console.log("📊 Calculating Box Rank for Box:", currentBoxFilter);
-                const rankResult = updateBoxRanking(currentBoxFilter, summary);
-                
+            if (currentBoxFilter) {                
+                console.log("📊 Calculating Box Rank for Box:", currentBoxFilter, " and for mode: ", currentMode);
+                const rankResult = await updateBoxRanking(currentBoxFilter, summary, currentMode);                
                 // Attach the result so session_end.js can display the badge/medal
                 summary.boxRanking = rankResult; 
                 // Trigger the Supabase update

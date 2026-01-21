@@ -9,9 +9,9 @@ export function initSessionEnd() {
 
   const container = document.getElementById("session-summary");
   container.innerHTML = `
-    <p>✔️ Bonnes réponses : ${s.correct} / ${s.size}</p>
-    <p>❌ Erreurs : ${s.wrong}</p>
+    <p>❌ Erreurs : ${s.wrong} / ${s.size}</p>
     <p>⏱ Temps total : ${(s.totalTime / 1000).toFixed(1)} s</p>
+    <p>⏱ Temps par kanji : ${(s.totalTime / 1000/ s.size).toFixed(1)} s</p>
     <p>🎯 Score /10 : ${s.scoreOn10}</p>
     <p>🔥 Score /100 : ${s.scoreOn100}</p>
   `;

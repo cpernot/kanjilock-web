@@ -120,14 +120,16 @@ async def save_box_progress(data: dict):
     # Ensure types match your DB schema
     payload = {
         "user_id": data['user_id'],
-        "boite": data['boite'], # Convert to int if your DB column is an integer
+        "boite": data['boite'], 
+        "mode": data.get('mode', 'qa'),
         "level": int(data['level']),
         "last_attempt": data['last_attempt']
     }    
     try:
+        # Update on_conflict to include mode
         res = supabase.table('box_progress').upsert(
             payload, 
-            on_conflict="user_id,boite"
+            on_conflict="user_id,boite,mode" 
         ).execute()
         return {"status": "success"}
     except Exception as e:
@@ -136,23 +138,53 @@ async def save_box_progress(data: dict):
 
 @app.get("/api/box-progress/{user_id}")
 async def get_all_box_progress(user_id: str):
-    res = supabase.table('box_progress').select("boite, level").eq("user_id", user_id).execute()
-    # Returns a simple dict like {"1": 2, "5": 4}
-    return {str(item['boite']): item['level'] for item in res.data}
+    # Select mode as well
+    res = supabase.table('box_progress').select("boite, level, mode").eq("user_id", user_id).execute()
+    
+    # Transform into a nested dictionary: { "box_id": { "qa": 2, "qb": 1 } }
+    progress_map = {}
+    for item in res.data:
+        b_id = str(item['boite'])
+        mode = item.get('mode', 'qa')
+        lvl = item['level']
+        
+        if b_id not in progress_map:
+            progress_map[b_id] = {}
+        
+        progress_map[b_id][mode] = lvl
+        
+    return progress_map
 
 @app.get("/api/available-boxes")
 async def get_available_boxes():
-    # We select only the 'boite' field inside the 'data' JSON column
-    # The syntax "data->>boite" extracts the value as text
+    all_boxes = []
+    seen = set()
+    limit = 1000
+    offset = 0
+    
     try:
-        res = supabase.table('kanji').select("data->>boite").execute()
-        
-        # Extract values, filter out None, and get unique names
-        raw_boxes = [item.get('boite') for item in res.data if item.get('boite') is not None]
-        unique_boxes = sorted(list(set(raw_boxes)))
-        
-        print(f"📦 Found {len(unique_boxes)} unique boxes in database.")
-        return unique_boxes
+        while True:
+            # Fetch 1000 rows at a time, ordered by the database ID
+            # Use data->>boite to extract the value from the JSON column
+            res = supabase.table('kanji').select("id, data->>boite").order("id").range(offset, offset + limit - 1).execute()
+            
+            if not res.data:
+                break
+            
+            for item in res.data:
+                # The select "data->>boite" results in a key named 'boite' in the dict
+                box_val = item.get('boite')
+                if box_val is not None and box_val not in seen:
+                    all_boxes.append(box_val)
+                    seen.add(box_val)
+            
+            # If we got fewer rows than the limit, we've reached the end
+            if len(res.data) < limit:
+                break
+            offset += limit
+            
+        print(f"📦 Found {len(all_boxes)} unique boxes in sequence.")
+        return all_boxes
     except Exception as e:
         print(f"❌ Error fetching boxes: {e}")
         return []

@@ -106,38 +106,53 @@ window.addEventListener('load', refreshBoxUI);
     import { setBoxContext, resetBoxContext, initEngine } from "/static/js/quizengine.js";
     import { navigate } from "/static/js/spa.js";
     import { saveSettings, getSettings } from "/static/js/settings.js";
-    const USER_ID = localStorage.getItem('kanji_player') || 'Anonymous';
+    const USER_ID = localStorage.getItem("kanjilock_player") || 'Anonymous';
+    console.log("YOU ARE:", USER_ID);
     
-    async function setupBoxSelection() {
+   async function setupBoxSelection() {
     const select = document.getElementById("box-select");
+    if (!select) return;
     select.innerHTML = ""; 
 
-    // 1. Add Default Options
+    // Add Default Options
     select.add(new Option("Global (All Kanjis)", ""));
     select.add(new Option("🎲 Random Box Challenge", "random"));
 
     try {
-        // 2. Fetch Levels and Available Boxes simultaneously
+        // IMPORTANT: Ensure this matches the player name used in getPlayer_setting()
+        // If your app uses settings.js, use that value.
+        const USER_ID = localStorage.getItem("kanjilock_player") || 'Anonymous';
+        console.log("🔍 Fetching progress for:", USER_ID);
+
         const [lvlRes, boxRes] = await Promise.all([
-            fetch(`/api/box-progress/${USER_ID}`),
+            fetch(`/api/box-progress/${encodeURIComponent(USER_ID)}`),
             fetch(`/api/available-boxes`)
         ]);
 
         const levels = lvlRes.ok ? await lvlRes.json() : {};
         const availableBoxes = boxRes.ok ? await boxRes.json() : [];
 
-        // 3. Generate options based on what's ACTUALLY in the database
+        console.log("📊 Levels found in DB:", levels);
+        console.log("📦 Boxes found in DB:", availableBoxes);
+
         availableBoxes.forEach(boxName => {
-            const lvl = levels[boxName] || 0;
+            // We need to decide WHICH mode to show on the Home Screen.
+            // Let's default to "qa" (Kanji -> Meaning) as the main indicator,
+            // OR show the max level across all modes.
+            
+            const boxData = levels[boxName] || {};
+            const lvl = boxData['qa'] || 0; // Currently showing 'qa' level by default
             const star = lvl === 4 ? "⭐ " : "";
-            const opt = new Option(`${star}Box ${boxName} (Niv. ${lvl})`, boxName);
+            
+            const label = `${star}Box ${boxName} (Niv. ${lvl})`;
+            const opt = new Option(label, boxName);
             
             if (lvl === 4) opt.style.color = "gold";
             select.add(opt);
         });
 
     } catch (e) {
-        console.error("Initialization error:", e);
+        console.error("❌ Initialization error:", e);
     }
 }
 
@@ -179,7 +194,7 @@ window.addEventListener('load', refreshBoxUI);
         const res = await fetch('/api/chat', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ message: text, player: localStorage.getItem('kanji_player') || 'Anonymous' })
+            body: JSON.stringify({ message: text, player: localStorage.getItem("kanjilock_player") || 'Anonymous' })
         });
         const data = await res.json();
         history.innerHTML += `<div><b>Sensei:</b> ${data.reply}</div>`;
