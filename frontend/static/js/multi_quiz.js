@@ -124,7 +124,7 @@ async function loadQuiz() {
     if (container) container.innerHTML = "";
 // 🆕 Set Background
   // currentBoxFilter comes from quizengine.js imports
-  console.warn("current Box Filter: ",engine.currentBoxFilter);
+//   console.warn("current Box Filter: ",engine.currentBoxFilter);
   import("./quizengine.js").then(engine => {
       if (engine.currentBoxFilter) {
           setBackground(engine.currentBoxFilter);
@@ -144,18 +144,19 @@ async function loadQuiz() {
   console.log("timer end")
   renderQuestion(data); 
 }
-function setBackground(boxId) {
+function setBackground_ORIGINAL(boxId) {
     const appElement = document.getElementById("app"); // or document.body
-    
+    console.log("🔓 Box ID: ",boxId);
     if (boxId) {
         // CONFIGURE YOUR SUPABASE URL HERE
         // Replace 'your-project-id' with your actual Supabase project ID found in config.js or Dashboard
         const SUPABASE_URL = "https://wbeoqdtafvyscmncalzc.supabase.co"; 
-        const imageUrl = `${SUPABASE_URL}/storage/v1/object/public/box-backgrounds/${boxId}.svg`;
+        const imageUrl = `${SUPABASE_URL}/storage/v1/object/public/box-backgrounds/box_${boxId}.svg`;        
+        // const imageUrl = `${SUPABASE_URL}/storage/storage/files/buckets/box-backgrounds/box_${boxId}.svg`;
         
         // CSS Styling
         appElement.style.backgroundImage = `url('${imageUrl}')`;
-        appElement.style.backgroundSize = "cover"; // or "contain" if you want to see the whole image
+        appElement.style.backgroundSize = "contain"; // or "contain" if you want to see the whole image or "cover"
         appElement.style.backgroundPosition = "center";
         appElement.style.backgroundRepeat = "no-repeat";
         
@@ -169,6 +170,93 @@ function setBackground(boxId) {
         appElement.style.backgroundImage = "";
         appElement.style.backgroundColor = ""; 
     }
+}
+async function setBackground_DOUBLE_CHECK(boxId) {
+    const appElement = document.getElementById("app");
+    console.log("🔓 Box ID: ", boxId);
+
+    if (!boxId) {
+        appElement.style.backgroundImage = "";
+        appElement.style.backgroundColor = "";
+        return;
+    }
+
+    const SUPABASE_URL = "https://wbeoqdtafvyscmncalzc.supabase.co";
+    const basePath = `${SUPABASE_URL}/storage/v1/object/public/box-backgrounds/box_${boxId}`;
+
+    // 優先順位: 1. SVG, 2. PNG
+    const extensions = ['svg', 'png'];
+    let finalUrl = null;
+
+    // 画像の存在を確認するヘルパー関数
+    const checkImage = (url) => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve(true);
+            img.onerror = () => resolve(false);
+            img.src = url;
+        });
+    };
+
+    // 順番にチェック
+    for (const ext of extensions) {
+        const testUrl = `${basePath}.${ext}`;
+        const exists = await checkImage(testUrl);
+        if (exists) {
+            finalUrl = testUrl;
+            console.log(`✅ 背景画像が見つかりました: ${ext}`);
+            break;
+        }
+    }
+
+    if (finalUrl) {
+        // 画像が見つかった場合のスタイル適用
+        appElement.style.backgroundImage = `url('${finalUrl}')`;
+        appElement.style.backgroundSize = "contain"; 
+        appElement.style.backgroundPosition = "center";
+        appElement.style.backgroundRepeat = "no-repeat";
+        
+        // オーバーレイ設定
+        appElement.style.backgroundBlendMode = "overlay";
+        appElement.style.backgroundColor = "rgba(255, 255, 255, 0.85)"; 
+    } else {
+        // どちらも存在しない場合
+        console.log(`❓ Box ${boxId} の画像 (svg/png) が見つかりませんでした。`);
+        appElement.style.backgroundImage = "";
+        appElement.style.backgroundColor = "";
+    }
+}
+async function setBackground(boxId) {
+    const appElement = document.getElementById("app");
+    console.log("🔓 Box ID: ", boxId);
+
+    // Box IDがない、または空の場合は背景をクリア
+    if (!boxId || boxId === "") {
+        appElement.style.backgroundImage = "";
+        appElement.style.backgroundColor = "";
+        return;
+    }
+
+    const SUPABASE_URL = "https://wbeoqdtafvyscmncalzc.supabase.co";
+    const baseDir = `${SUPABASE_URL}/storage/v1/object/public/box-backgrounds/`;
+    
+    // 🆕 条件分岐ロジック
+    // 最初の1文字目が数字(0-9)なら .svg、それ以外（文字など）なら .png
+    const isDigit = /^\d/.test(boxId); 
+    const extension = isDigit ? "svg" : "png";
+    const imageUrl = `${baseDir}box_${boxId}.${extension}`;
+
+    console.log(`🖼️ Loading background: ${imageUrl} (Detected type: ${extension})`);
+
+    // 背景を設定
+    appElement.style.backgroundImage = `url('${imageUrl}')`;
+    appElement.style.backgroundSize = "contain"; 
+    appElement.style.backgroundPosition = "center";
+    appElement.style.backgroundRepeat = "no-repeat";
+    
+    // 可読性を高めるためのオーバーレイ
+    appElement.style.backgroundBlendMode = "overlay";
+    appElement.style.backgroundColor = "rgba(255, 255, 255, 0.85)"; 
 }
 function renderQuestion(data) {
   const quiz = document.getElementById("multi_quiz");
