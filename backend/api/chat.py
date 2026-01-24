@@ -1,12 +1,23 @@
 import os
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
-from langchain_groq import ChatGroq
-from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_core.documents import Document
+try:
+    from langchain_groq import ChatGroq
+    from langchain_community.vectorstores import FAISS
+    from langchain_huggingface import HuggingFaceEmbeddings
+    from langchain_core.documents import Document
+    CHAT_AVAILABLE = True
+except ImportError:
+    CHAT_AVAILABLE = False
+    print("⚠️ LangChain not installed. Chat functionality is disabled.")
 
 router = APIRouter()
+
+@router.post("/api/chat")
+async def chat_endpoint(data: dict):
+    if not CHAT_AVAILABLE:
+        return {"response": "現在、チャット機能はメンテナンス中です（メモリ節約のため）。"}
+
 
 # Initialize Embeddings (Free, runs locally on Render)
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
