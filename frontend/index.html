@@ -108,7 +108,30 @@ window.addEventListener('load', refreshBoxUI);
     import { saveSettings, getSettings } from "/static/js/settings.js";
     const USER_ID = localStorage.getItem("kanjilock_player") || 'Anonymous';
     console.log("YOU ARE:", USER_ID);
-    
+
+   async function checkChatAvailability() {
+    const chatToggle = document.getElementById('chat-toggle');
+    const chatContainer = document.getElementById('chat-container');
+
+    try {
+        const res = await fetch('/'); // 先ほど main.py で作ったルートを確認
+        const data = await res.json();
+
+        if (data.chat_enabled === false) {
+            // チャットが無効ならボタンを非表示にする
+            chatContainer.style.display = 'none';
+            console.log("ℹ️ Chat is disabled on server to save memory.");
+        }
+    } catch (e) {
+        console.error("Chat check failed", e);
+    }
+}
+
+// ページロード時に実行
+window.addEventListener('load', () => {
+    setupBoxSelection();
+    checkChatAvailability(); // これを追加
+}); 
    async function setupBoxSelection() {
     const select = document.getElementById("box-select");
     if (!select) return;
@@ -184,22 +207,34 @@ window.addEventListener('load', refreshBoxUI);
     btn.onclick = () => box.style.display = box.style.display === 'none' ? 'block' : 'none';
 
     document.getElementById('chat-send').onclick = async () => {
-        const input = document.getElementById('chat-input');
-        const history = document.getElementById('chat-history');
-        const text = input.value;
-        input.value = '';
+    const input = document.getElementById('chat-input');
+    const history = document.getElementById('chat-history');
+    const text = input.value;
+    if (!text) return;
 
-        history.innerHTML += `<div><b>Vous:</b> ${text}</div>`;
-        
+    input.value = '';
+    history.innerHTML += `<div><b>Vous:</b> ${text}</div>`;
+    
+    try {
         const res = await fetch('/api/chat', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ message: text, player: localStorage.getItem("kanjilock_player") || 'Anonymous' })
+            body: JSON.stringify({ message: text, player: localStorage.getItem('kanji_player') || 'Anonymous' })
         });
+
+        // サーバー側でインポートエラーなどで落ちている、または無効な場合
+        if (res.status === 404 || !res.ok) {
+            throw new Error("Chat unavailable");
+        }
+
         const data = await res.json();
-        history.innerHTML += `<div><b>Sensei:</b> ${data.reply}</div>`;
-        history.scrollTop = history.scrollHeight;
-    };
+        history.innerHTML += `<div><b>Gemini:</b> ${data.response}</div>`;
+    } catch (err) {
+        // エラー時のメッセージ表示
+        history.innerHTML += `<div style="color: grey; font-size: 0.8em;"><i>Désolé, le chat est temporairement désactivé pour économiser de la mémoire sur Render.</i></div>`;
+    }
+    history.scrollTop = history.scrollHeight;
+};
 </script>  
    
 </body>

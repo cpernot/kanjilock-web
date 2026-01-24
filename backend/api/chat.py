@@ -17,11 +17,10 @@ router = APIRouter()
 async def chat_endpoint(data: dict):
     if not CHAT_AVAILABLE:
         return {"response": "現在、チャット機能はメンテナンス中です（メモリ節約のため）。"}
-
-
-# Initialize Embeddings (Free, runs locally on Render)
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-vector_store = None
+    else:
+        # Initialize Embeddings (Free, runs locally on Render)
+        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        vector_store = None
 
 def build_vector_store(kanji_cache: dict):
     """
