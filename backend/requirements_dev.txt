@@ -1,9 +1,6 @@
-fastapi
-supabase
-python-dotenv
-uvicorn
-# langchain
-# langchain-community
-# langchain-groq
-# langchain_huggingface
-# sentence-transformers
+-r requirements.txt
+langchain
+langchain-community
+langchain-groq
+langchain_huggingface
+sentence-transformers
