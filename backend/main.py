@@ -6,6 +6,26 @@ from fastapi.staticfiles import StaticFiles
 from backend.core.config import FRONTEND_DIR
 from backend.data.progress import load_data
 from backend.core.config import supabase
+import os
+
+app = FastAPI()
+
+# 環境変数が "true" の場合のみチャット機能をロードする
+ENABLE_CHAT = os.getenv("ENABLE_CHAT", "false").lower() == "true"
+
+if ENABLE_CHAT:
+    try:
+        from backend.chat import router as chat_router
+        app.include_router(chat_router, prefix="/api/chat")
+        print("🤖 Chat mode enabled")
+    except ImportError as e:
+        print(f"⚠️ Chat failed to load: {e}")
+else:
+    print("📴 Chat mode disabled (Save Memory)")
+
+@app.get("/")
+def home():
+    return {"message": "Server is running", "chat_enabled": ENABLE_CHAT}
 
 # 1. DEFINITION DU LIFESPAN
 @asynccontextmanager
