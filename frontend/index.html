@@ -3,38 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
     <title>KanjiLock</title>
-
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="KanjiLock">
-    
     <link rel="icon" href="/static/favicon.ico">
     <link rel="apple-touch-icon" href="/static/icon-512.png">
     <link rel="stylesheet" href="/static/css/style.css">
-   
 </head>
 <body>
-<div id="chat-container" style="position:fixed; bottom:80px; right:20px; z-index:5;">
-    <button id="chat-toggle" style="border-radius:50%; width:50px; height:50px;">💬</button>
-    <div id="chat-box" style="display:none; background:white; border:1px solid #ccc; width:250px; height:300px; padding:10px;">
-        <div id="chat-history" style="height:230px; overflow-y:auto; font-size:12px;"></div>
-        <input id="chat-input" style="width:70%" placeholder="Ask Sensei...">
-        <button id="chat-send">Send</button>
+<div id="chat-container" style="position:fixed; bottom:80px; right:20px; z-index:1000;">
+    <button id="chat-toggle" style="border-radius:50%; width:50px; height:50px; cursor:pointer; background:#fff; border:1px solid #ccc; box-shadow:0 2px 5px rgba(0,0,0,0.2);">💬</button>
+    <div id="chat-box" style="display:none; background:white; border:1px solid #ccc; width:280px; height:350px; padding:10px; border-radius:10px; flex-direction:column; position:absolute; bottom:60px; right:0; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+        <div id="chat-history" style="flex-grow:1; overflow-y:auto; font-size:13px; margin-bottom:10px; border-bottom:1px solid #eee; padding:5px;"></div>
+        <div style="display:flex; gap:5px;">
+            <input id="chat-input" style="flex-grow:1; padding:5px; border:1px solid #ddd; border-radius:4px;" placeholder="Ask Sensei...">
+            <button id="chat-send" style="padding:5px 10px; background:#4CAF50; color:white; border:none; border-radius:4px; cursor:pointer;">Send</button>
+        </div>
     </div>
 </div>  
 
-  <main id="app-shell">
-    <div id="app-content">
-        </div>
-  </main>
+<main id="app">
+    <div style="text-align:center; padding:50px;">Chargement...</div>    
+</main>
 
-   <main id="app">
-
-   </main>
-
-    <nav class="bottom-nav">
+<nav class="bottom-nav">
         <a href="/" data-link data-mode="home">🏠</a>
         <a href="/quiz-page" data-link data-mode="qa">🧩</a>
         <a href="/intrus-page" data-link>🔍</a>
@@ -42,200 +32,104 @@
         <a href="/stats-page" data-link data-mode="stats">📊</a>  
         <a href="/ranking-page" data-link>🏆</a>
 </nav>
-<div id="setup-container" style="margin: 20px; text-align: center;">
-    <h3>Box Challenge</h3>
-    <select id="box-select" style="padding: 10px; font-size: 1.1rem;">
-        <option value="">Global (All Kanjis)</option>
-        <option value="971">Box 971 (Mastery Lvl 1-4)</option>
-        <option value="972">Box 972</option>
-        <option value="973">Box 973</option>
-    </select>
-    <button id="btn-start-box" style="padding: 15px 30px; background: #4CAF50; color: rgb(204, 202, 54); border: none; border-radius: 5px;">
-        Start 14 Kanji Session
-    </button>
-</div>
-  
-  <script src="/static/js/config.js"></script>
-    <!-- <script type="module" src="/static/js/spa.js"></script> -->
-<!-- <script type="module">
-    import { setBoxContext, resetBoxContext } from "/static/js/quizengine.js";
+
+<script src="/static/js/config.js"></script>
+
+
+ <script type="module">
+    import { setBoxContext, initEngine } from "/static/js/quizengine.js";
     import { navigate } from "/static/js/spa.js";
     import { saveSettings, getSettings } from "/static/js/settings.js";
-    import { getBoxLevel} from "/static/js/quizengine.js";
-// Logic to bridge HTML and the Quiz Engine
-function startBoxQuiz() {
-    const boxId = document.getElementById('box-select').value;
-    // We call the engine to set the context
-    import('/static/js/quizengine.js').then(m => {
-        m.setBoxContext(boxId); 
-        // Then navigate to the quiz page (assuming your router uses navigateTo)
-        if (typeof navigateTo === 'function') navigateTo('/quiz-page');
-    });
-}
-function refreshBoxUI() {
-    const select = document.getElementById("box-select");
-    if (!select) return;    
-    // Loop through options and update labels with levels
-    Array.from(select.options).forEach(opt => {
-        const lvl = updateBoxRanking(opt.value);
-        const baseName = opt.text.split(" (")[0]; // Get "Box 1"
-        opt.text = `${baseName} (Niv. ${lvl})`;        
-        // Optional: color code mastered boxes
-        if (lvl === 4) opt.style.color = "gold";
-    });
-}
-// Call this whenever the Home page is shown
-window.addEventListener('load', refreshBoxUI);
-    // Make it available globally for the <a> tags
-    window.resetBoxContext = resetBoxContext;
-    document.getElementById("btn-start-box").onclick = () => {
-        const boxId = document.getElementById("box-select").value;        
-        // Prepare for Box Mode
-        setBoxContext(boxId);        
-        // Force session size to 14 for Box challenges
-        const s = getSettings();
-        s.sessionSize = 14;
-        saveSettings(s);
-        // Move to quiz page with an auto-start signal
-        window.location.hash = "#autostart";
-        navigate("/quiz-page");
-    };
-</script>     -->
-
-<script type="module">
-    import { setBoxContext, resetBoxContext, initEngine } from "/static/js/quizengine.js";
-    import { navigate } from "/static/js/spa.js";
-    import { saveSettings, getSettings } from "/static/js/settings.js";
-    const USER_ID = localStorage.getItem("kanjilock_player") || 'Anonymous';
-    console.log("YOU ARE:", USER_ID);
-
-   async function checkChatAvailability() {
-    const chatToggle = document.getElementById('chat-toggle');
-    const chatContainer = document.getElementById('chat-container');
-
-    try {
-        const res = await fetch('/'); // 先ほど main.py で作ったルートを確認
-        const data = await res.json();
-
-        if (data.chat_enabled === false) {
-            // チャットが無効ならボタンを非表示にする
-            chatContainer.style.display = 'none';
-            console.log("ℹ️ Chat is disabled on server to save memory.");
-        }
-    } catch (e) {
-        console.error("Chat check failed", e);
+    import { initQuiz } from "/static/js/multi_quiz.js";
+    // --- ボックス選択UIの挿入ロジック ---
+    async function injectBoxSelection() {
+        const controls = document.getElementById("controls");
+        if (!controls || document.getElementById("setup-container")) return;
+        const container = document.createElement("div");
+        container.id = "setup-container";
+        container.style = "margin: 20px auto; text-align: center; padding: 15px; background: rgba(0,0,0,0.05); border-radius: 8px; max-width:400px;";
+        container.innerHTML = `
+            <p style="font-weight:bold; margin-bottom:10px;">📦 Sélection de Boîte</p>
+            <select id="box-select" style="padding: 10px; width: 50%; margin-bottom: 10px; border-radius:5px;"></select>
+            <br>
+            <button id="btn-start-box" style="padding: 12px; background: #8b0000; color: white; border: none; width: 80%; cursor:pointer; font-weight:bold; border-radius:5px;">
+                START 14 KANJI SESSION
+            </button>
+        `;
+        controls.parentNode.insertBefore(container, controls);
+        document.getElementById("btn-start-box").onclick = () => {
+            const boxId = document.getElementById("box-select").value;
+            setBoxContext(boxId === "random" ? Math.floor(Math.random() * 150) + 1 : (boxId || null));
+            const s = getSettings();
+            s.sessionSize = 14;
+            saveSettings(s);
+            document.getElementById("startBtn").click();
+        };
+       await refreshBoxList();
     }
-}
-
-// ページロード時に実行
-window.addEventListener('load', () => {
-    setupBoxSelection();
-    checkChatAvailability(); // これを追加
-}); 
-   async function setupBoxSelection() {
-    const select = document.getElementById("box-select");
-    if (!select) return;
-    select.innerHTML = ""; 
-
-    // Add Default Options
+   async function refreshBoxList() {
+    // 要素が出るまで最大2秒間、少し待機する（SPAの読み込み対策）
+    let select = document.getElementById("box-select");
+    if (!select) {
+        await new Promise(resolve => setTimeout(resolve, 100)); // 0.1秒待つ
+        select = document.getElementById("box-select");
+    }
+    if (!select) return; // それでもなければ諦める
+    console.log("📦 Setting up Box Selection...");
+    select.innerHTML = "";
+    // デフォルトの選択肢を追加
     select.add(new Option("Global (All Kanjis)", ""));
     select.add(new Option("🎲 Random Box Challenge", "random"));
-
     try {
-        // IMPORTANT: Ensure this matches the player name used in getPlayer_setting()
-        // If your app uses settings.js, use that value.
-        const USER_ID = localStorage.getItem("kanjilock_player") || 'Anonymous';
-        console.log("🔍 Fetching progress for:", USER_ID);
-
+        const player = localStorage.getItem("kanjilock_player") || 'Anonymous';
         const [lvlRes, boxRes] = await Promise.all([
-            fetch(`/api/box-progress/${encodeURIComponent(USER_ID)}`),
+            fetch(`/api/box-progress/${encodeURIComponent(player)}`),
             fetch(`/api/available-boxes`)
-        ]);
-
-        const levels = lvlRes.ok ? await lvlRes.json() : {};
-        const availableBoxes = boxRes.ok ? await boxRes.json() : [];
-
-        console.log("📊 Levels found in DB:", levels);
-        console.log("📦 Boxes found in DB:", availableBoxes);
-
+        ]);       
+        if (!lvlRes.ok || !boxRes.ok) return;
+        const levels = await lvlRes.json();
+        const availableBoxes = await boxRes.json();
         availableBoxes.forEach(boxName => {
-            // We need to decide WHICH mode to show on the Home Screen.
-            // Let's default to "qa" (Kanji -> Meaning) as the main indicator,
-            // OR show the max level across all modes.
-            
-            const boxData = levels[boxName] || {};
-            const lvl = boxData['qa'] || 0; // Currently showing 'qa' level by default
+            const lvl = levels[boxName]?.qa || 0;
             const star = lvl === 4 ? "⭐ " : "";
-            
-            const label = `${star}Box ${boxName} (Niv. ${lvl})`;
-            const opt = new Option(label, boxName);
-            
-            if (lvl === 4) opt.style.color = "gold";
-            select.add(opt);
+            select.add(new Option(`${star}Box ${boxName} (Niv. ${lvl})`, boxName));
         });
-
     } catch (e) {
-        console.error("❌ Initialization error:", e);
+        console.error("❌ Error loading boxes:", e);
     }
 }
-
-    // Initialize UI on load
-    window.addEventListener('load', setupBoxSelection);
-
-    document.getElementById("btn-start-box").onclick = () => {
-        let boxId = document.getElementById("box-select").value;
-        
-        // Request ②: Handle Random Box
-        if (boxId === "random") {
-            boxId = Math.floor(Math.random() * 150) + 1;
-            alert(`Random Challenge: Box ${boxId}!`);
-        }
-
-        setBoxContext(boxId);
-        
-        const s = getSettings();
-        s.sessionSize = 14;
-        saveSettings(s);
-
-        window.location.hash = "#autostart";
-        navigate("/quiz-page");
+    const observer = new MutationObserver(() => injectBoxSelection());
+    window.addEventListener('load', async () => {
+        await initEngine();
+        observer.observe(document.getElementById("app"), { childList: true, subtree: true });
+        injectBoxSelection();
+    });
+    // --- チャット機能 ---
+    document.getElementById('chat-toggle').onclick = () => {
+        const box = document.getElementById('chat-box');
+        box.style.display = box.style.display === 'none' ? 'flex' : 'none';
     };
-</script>
-<script>
-    const btn = document.getElementById('chat-toggle');
-    const box = document.getElementById('chat-box');
-    btn.onclick = () => box.style.display = box.style.display === 'none' ? 'block' : 'none';
-
     document.getElementById('chat-send').onclick = async () => {
-    const input = document.getElementById('chat-input');
-    const history = document.getElementById('chat-history');
-    const text = input.value;
-    if (!text) return;
-
-    input.value = '';
-    history.innerHTML += `<div><b>Vous:</b> ${text}</div>`;
-    
-    try {
-        const res = await fetch('/api/chat', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ message: text, player: localStorage.getItem('kanji_player') || 'Anonymous' })
-        });
-
-        // サーバー側でインポートエラーなどで落ちている、または無効な場合
-        if (res.status === 404 || !res.ok) {
-            throw new Error("Chat unavailable");
+        const input = document.getElementById('chat-input');
+        const history = document.getElementById('chat-history');
+        if (!input.value.trim()) return;
+        const msg = input.value;
+        input.value = '';
+        history.innerHTML += `<div><b>Vous:</b> ${msg}</div>`;
+        try {
+            const res = await fetch('/api/chat/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ message: msg, player: localStorage.getItem('kanji_player') || 'Anonymous' })
+            });
+            const data = await res.json();
+            history.innerHTML += `<div style="color:#333; background:#f9f9f9; padding:5px; border-radius:4px; margin:5px 0;"><b>Sensei:</b> ${data.response}</div>`;
+        } catch (e) {
+            history.innerHTML += `<div><i style="color:red;">Error: Offline</i></div>`;
         }
+        history.scrollTop = history.scrollHeight;
+    };
+</script> 
 
-        const data = await res.json();
-        history.innerHTML += `<div><b>Gemini:</b> ${data.response}</div>`;
-    } catch (err) {
-        // エラー時のメッセージ表示
-        history.innerHTML += `<div style="color: grey; font-size: 0.8em;"><i>Désolé, le chat est temporairement désactivé pour économiser de la mémoire sur Render.</i></div>`;
-    }
-    history.scrollTop = history.scrollHeight;
-};
-</script>  
-   
 </body>
 </html>

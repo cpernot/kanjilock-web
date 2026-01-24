@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <title>KanjiLock</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="KanjiLock">
+    
+    <link rel="icon" href="/static/favicon.ico">
+    <link rel="apple-touch-icon" href="/static/icon-512.png">
+    <link rel="stylesheet" href="/static/css/style.css">
+   
+</head>
+<body>
+<div id="chat-container" style="position:fixed; bottom:80px; right:20px; z-index:5;">
+    <button id="chat-toggle" style="border-radius:50%; width:50px; height:50px;">💬</button>
+    <div id="chat-box" style="display:none; background:white; border:1px solid #ccc; width:250px; height:300px; padding:10px;">
+        <div id="chat-history" style="height:230px; overflow-y:auto; font-size:12px;"></div>
+        <input id="chat-input" style="width:70%" placeholder="Ask Sensei...">
+        <button id="chat-send">Send</button>
+    </div>
+</div>  
+
+  <main id="app-shell">
+    <div id="app-content">
+        </div>
+  </main>
+
+   <main id="app">
+
+   </main>
+
+    <nav class="bottom-nav">
+        <a href="/" data-link data-mode="home">🏠</a>
+        <a href="/quiz-page" data-link data-mode="qa">🧩</a>
+        <a href="/intrus-page" data-link>🔍</a>
+        <a href="/compose-page" data-link>⚠️</a>
+        <a href="/stats-page" data-link data-mode="stats">📊</a>  
+        <a href="/ranking-page" data-link>🏆</a>
+</nav>
+<div id="setup-container" style="margin: 20px; text-align: center;">
+    <h3>Box Challenge</h3>
+    <select id="box-select" style="padding: 10px; font-size: 1.1rem;">
+        <option value="">Global (All Kanjis)</option>
+        <option value="971">Box 971 (Mastery Lvl 1-4)</option>
+        <option value="972">Box 972</option>
+        <option value="973">Box 973</option>
+    </select>
+    <button id="btn-start-box" style="padding: 15px 30px; background: #4CAF50; color: rgb(204, 202, 54); border: none; border-radius: 5px;">
+        Start 14 Kanji Session
+    </button>
+</div>
+  
+  <script src="/static/js/config.js"></script>
+    <!-- <script type="module" src="/static/js/spa.js"></script> -->
+<!-- <script type="module">
+    import { setBoxContext, resetBoxContext } from "/static/js/quizengine.js";
+    import { navigate } from "/static/js/spa.js";
+    import { saveSettings, getSettings } from "/static/js/settings.js";
+    import { getBoxLevel} from "/static/js/quizengine.js";
+// Logic to bridge HTML and the Quiz Engine
+function startBoxQuiz() {
+    const boxId = document.getElementById('box-select').value;
+    // We call the engine to set the context
+    import('/static/js/quizengine.js').then(m => {
+        m.setBoxContext(boxId); 
+        // Then navigate to the quiz page (assuming your router uses navigateTo)
+        if (typeof navigateTo === 'function') navigateTo('/quiz-page');
+    });
+}
+function refreshBoxUI() {
+    const select = document.getElementById("box-select");
+    if (!select) return;    
+    // Loop through options and update labels with levels
+    Array.from(select.options).forEach(opt => {
+        const lvl = updateBoxRanking(opt.value);
+        const baseName = opt.text.split(" (")[0]; // Get "Box 1"
+        opt.text = `${baseName} (Niv. ${lvl})`;        
+        // Optional: color code mastered boxes
+        if (lvl === 4) opt.style.color = "gold";
+    });
+}
+// Call this whenever the Home page is shown
+window.addEventListener('load', refreshBoxUI);
+    // Make it available globally for the <a> tags
+    window.resetBoxContext = resetBoxContext;
+    document.getElementById("btn-start-box").onclick = () => {
+        const boxId = document.getElementById("box-select").value;        
+        // Prepare for Box Mode
+        setBoxContext(boxId);        
+        // Force session size to 14 for Box challenges
+        const s = getSettings();
+        s.sessionSize = 14;
+        saveSettings(s);
+        // Move to quiz page with an auto-start signal
+        window.location.hash = "#autostart";
+        navigate("/quiz-page");
+    };
+</script>     -->
+
+<script type="module">
+    import { setBoxContext, resetBoxContext, initEngine } from "/static/js/quizengine.js";
+    import { navigate } from "/static/js/spa.js";
+    import { saveSettings, getSettings } from "/static/js/settings.js";
+    const USER_ID = localStorage.getItem("kanjilock_player") || 'Anonymous';
+    console.log("YOU ARE:", USER_ID);
+
+   async function checkChatAvailability() {
+    const chatToggle = document.getElementById('chat-toggle');
+    const chatContainer = document.getElementById('chat-container');
+
+    try {
+        const res = await fetch('/'); // 先ほど main.py で作ったルートを確認
+        const data = await res.json();
+
+        if (data.chat_enabled === false) {
+            // チャットが無効ならボタンを非表示にする
+            chatContainer.style.display = 'none';
+            console.log("ℹ️ Chat is disabled on server to save memory.");
+        }
+    } catch (e) {
+        console.error("Chat check failed", e);
+    }
+}
+
+// ページロード時に実行
+window.addEventListener('load', () => {
+    setupBoxSelection();
+    checkChatAvailability(); // これを追加
+}); 
+
+async function setupBoxSelection() {
+    // 要素が出るまで最大2秒間、少し待機する（SPAの読み込み対策）
+    let select = document.getElementById("box-select");
+    if (!select) {
+        await new Promise(resolve => setTimeout(resolve, 100)); // 0.1秒待つ
+        select = document.getElementById("box-select");
+    }
+    
+    if (!select) return; // それでもなければ諦める
+    
+    console.log("📦 Setting up Box Selection...");
+    select.innerHTML = ""; 
+
+    // デフォルトの選択肢を追加
+    select.add(new Option("Global (All Kanjis)", ""));
+    select.add(new Option("🎲 Random Box Challenge", "random"));
+
+    try {
+        const player = localStorage.getItem("kanji_player") || 'Anonymous';
+        const [lvlRes, boxRes] = await Promise.all([
+            fetch(`/api/box-progress/${encodeURIComponent(player)}`),
+            fetch(`/api/available-boxes`)
+        ]);
+        
+        if (!lvlRes.ok || !boxRes.ok) return;
+
+        const levels = await lvlRes.json();
+        const availableBoxes = await boxRes.json();
+
+        availableBoxes.forEach(boxName => {
+            const lvl = levels[boxName]?.qa || 0;
+            const star = lvl === 4 ? "⭐ " : "";
+            select.add(new Option(`${star}Box ${boxName} (Niv. ${lvl})`, boxName));
+        });
+    } catch (e) {
+        console.error("❌ Error loading boxes:", e);
+    }
+}
+
+// ページ遷移（ナビゲーション）を監視して、クイズページに来たら実行する
+window.addEventListener('hashchange', () => {
+    if (window.location.hash.includes('quiz')) {
+        setTimeout(setupBoxSelection, 100); // 画面が描画されるのを少し待って実行
+    }
+});
+
+// 初回読み込み時にも実行
+window.addEventListener('load', setupBoxSelection);
+
+    document.getElementById("btn-start-box").onclick = () => {
+        let boxId = document.getElementById("box-select").value;
+        
+        // Request ②: Handle Random Box
+        if (boxId === "random") {
+            boxId = Math.floor(Math.random() * 150) + 1;
+            alert(`Random Challenge: Box ${boxId}!`);
+        }
+
+        setBoxContext(boxId);
+        
+        const s = getSettings();
+        s.sessionSize = 14;
+        saveSettings(s);
+
+        window.location.hash = "#autostart";
+        navigate("/quiz-page");
+    };
+</script>
+<script>
+    const btn = document.getElementById('chat-toggle');
+    const box = document.getElementById('chat-box');
+    btn.onclick = () => box.style.display = box.style.display === 'none' ? 'block' : 'none';
+
+    document.getElementById('chat-send').onclick = async () => {
+    const input = document.getElementById('chat-input');
+    const history = document.getElementById('chat-history');
+    const text = input.value;
+    if (!text) return;
+
+    input.value = '';
+    history.innerHTML += `<div><b>Vous:</b> ${text}</div>`;
+    
+    try {
+        const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ message: text, player: localStorage.getItem('kanji_player') || 'Anonymous' })
+        });
+
+        // サーバー側でインポートエラーなどで落ちている、または無効な場合
+        if (res.status === 404 || !res.ok) {
+            throw new Error("Chat unavailable");
+        }
+
+        const data = await res.json();
+        history.innerHTML += `<div><b>Gemini:</b> ${data.response}</div>`;
+    } catch (err) {
+        // エラー時のメッセージ表示
+        history.innerHTML += `<div style="color: grey; font-size: 0.8em;"><i>Désolé, le chat est temporairement désactivé pour économiser de la mémoire sur Render.</i></div>`;
+    }
+    history.scrollTop = history.scrollHeight;
+};
+</script>  
+   
+</body>
+</html> 
