@@ -1,6 +1,6 @@
 const MODE_KEY = "kanjilock_mode";
 const DEFAULT_MODE = "qa";
-const QUIZ_MODES = ["qa", "qb", "qc", "qd","qe"];
+const QUIZ_MODES = ["qa", "qb", "qc", "qd","qe", "qf", "qg"];
 
 /* ============================
    GET MODE

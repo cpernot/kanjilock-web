@@ -79,6 +79,39 @@ QUIZ_MODES = {
     },
     
     "qd": {
+        "question": lambda kanji, k:k["mot"],
+        "answer":   lambda kanji, k: k["lecture_mot"],
+        "extras":   lambda kanji, k: {
+            "signification_mot": k["signification_mot"],
+            "kanji": kanji,
+            "romaji": k["romaji"],
+            "boite": k["boite"] 
+        }
+    },
+    
+    "qe": {
+        "question": lambda kanji, k:k["signification_mot"],
+        "answer":   lambda kanji, k: k["mot"],
+        "extras":   lambda kanji, k: {
+            "signification_mot": k["lecture_mot"],
+            "kanji": kanji,
+            "romaji": k["romaji"],
+            "boite": k["boite"] 
+        }
+    },
+    "qf": {
+        "question": lambda kanji, k: kanji,
+        "answer":   lambda kanji, k: k["romaji"],
+        "extras":   lambda kanji, k: {
+            "signification": k["signification"],
+            "lecture_mot": k["lecture_mot"],
+            "signification_mot": k["signification_mot"], 
+            "boite": k["boite"],            
+        },
+        "is_valid": lambda k: bool(k.get("romaji"))
+    },
+    
+    "qg": {
         "question": lambda kanji, k: kanji,
         "answer":   lambda kanji, k: k["boite"],
         "extras":   lambda kanji, k: {
@@ -87,18 +120,6 @@ QUIZ_MODES = {
             "lecture_mot": k["lecture_mot"],
             "signification_mot": k["signification_mot"], 
         }
-    },
-    "qe": {
-        "question": lambda kanji, k: kanji,
-        "answer":   lambda kanji, k: k["romaji"],
-        "extras":   lambda kanji, k: {
-            "signification": k["signification"],
-            "lecture_mot": k["lecture_mot"],
-            "signification_mot": k["signification_mot"], 
-            "boite": k["boite"],
-            
-        },
-        "is_valid": lambda k: bool(k.get("romaji"))
     },
     "intrus": {}
 

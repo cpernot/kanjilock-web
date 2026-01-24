@@ -36,11 +36,21 @@ export const MODES = {
         extras: (k) => ({ lecture_mot: k.lecture_mot, kanji: k.kanji, romaji: k.romaji, boite: k.boite })
     },
     "qd": {
+        q: (k) => k.mot,
+        a: (k) => k.lecture_mot,
+        extras: (k) => ({ signification_mot: k.signification_mot, kanji: k.kanji, romaji: k.romaji, boite: k.boite })
+    },
+    "qe": {
+        q: (k) => k.signification_mot,
+        a: (k) => k.mot,
+        extras: (k) => ({ lecture_mot: k.lecture_mot, kanji: k.kanji, romaji: k.romaji, boite: k.boite })
+    },
+    "qf": {
         q: (k) => k.kanji,
         a: (k) => k.boite,
         extras: (k) => ({ signification: k.signification, romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot })
     },
-    "qe": {
+    "qg": {
         q: (k) => k.kanji,
         a: (k) => k.romaji,
         extras: (k) => ({ signification: k.signification, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot, boite: k.boite })
