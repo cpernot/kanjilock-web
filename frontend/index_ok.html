@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KanjiLock</title>
+    <link rel="icon" href="/static/favicon.ico">
+    <link rel="apple-touch-icon" href="/static/icon-512.png">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div id="chat-container" style="position:fixed; bottom:80px; right:20px; z-index:1000;">
+    <button id="chat-toggle" style="border-radius:50%; width:50px; height:50px; cursor:pointer; background:#fff; border:1px solid #ccc; box-shadow:0 2px 5px rgba(0,0,0,0.2);">💬</button>
+    <div id="chat-box" style="display:none; background:white; border:1px solid #ccc; width:280px; height:350px; padding:10px; border-radius:10px; flex-direction:column; position:absolute; bottom:60px; right:0; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+        <div id="chat-history" style="flex-grow:1; overflow-y:auto; font-size:13px; margin-bottom:10px; border-bottom:1px solid #eee; padding:5px;"></div>
+        <div style="display:flex; gap:5px;">
+            <input id="chat-input" style="flex-grow:1; padding:5px; border:1px solid #ddd; border-radius:4px;" placeholder="Ask Sensei...">
+            <button id="chat-send" style="padding:5px 10px; background:#4CAF50; color:white; border:none; border-radius:4px; cursor:pointer;">Send</button>
+        </div>
+    </div>
+</div>  
+
+<main id="app">
+    <div style="text-align:center; padding:50px;">Chargement...</div>    
+</main>
+
+<nav class="bottom-nav">
+        <a href="/" data-link data-mode="home">🏠</a>
+        <a href="/quiz-page" data-link data-mode="qa">🧩</a>
+        <a href="/intrus-page" data-link>🔍</a>
+        <a href="/compose-page" data-link>⚠️</a>
+        <a href="/stats-page" data-link data-mode="stats">📊</a>  
+        <a href="/ranking-page" data-link>🏆</a>
+</nav>
+
+<script src="/static/js/config.js"></script>
+
+ <script type="module">
+    import { setBoxContext, initEngine } from "/static/js/quizengine.js";
+    import { navigate } from "/static/js/spa.js";
+    import { saveSettings, getSettings } from "/static/js/settings.js";
+    import { initQuiz } from "/static/js/multi_quiz.js";
+    // --- ボックス選択UIの挿入ロジック ---
+    async function injectBoxSelection() {
+        const controls = document.getElementById("controls");
+        if (!controls || document.getElementById("setup-container")) return;
+        const container = document.createElement("div");
+        container.id = "setup-container";
+        container.style = "margin: 20px auto; text-align: center; padding: 15px; background: rgba(0,0,0,0.05); border-radius: 8px; max-width:400px;";
+        container.innerHTML = `
+            <p style="font-weight:bold; margin-bottom:10px;">📦 Sélection de Boîte</p>
+            <select id="box-select" style="padding: 10px; width: 50%; margin-bottom: 10px; border-radius:5px;"></select>
+            <br>
+            <button id="btn-start-box" style="padding: 12px; background: #8b0000; color: white; border: none; width: 80%; cursor:pointer; font-weight:bold; border-radius:5px;">
+                START 14 KANJI SESSION
+            </button>
+        `;
+        controls.parentNode.insertBefore(container, controls);
+        document.getElementById("btn-start-box").onclick = () => {
+            const boxId = document.getElementById("box-select").value;
+            setBoxContext(boxId === "random" ? Math.floor(Math.random() * 150) + 1 : (boxId || null));
+            const s = getSettings();
+            s.sessionSize = 14;
+            saveSettings(s);
+            document.getElementById("startBtn").click();
+        };
+       await refreshBoxList();
+    }
+   async function refreshBoxList() {
+    // 要素が出るまで最大2秒間、少し待機する（SPAの読み込み対策）
+    let select = document.getElementById("box-select");
+    if (!select) {
+        await new Promise(resolve => setTimeout(resolve, 100)); // 0.1秒待つ
+        select = document.getElementById("box-select");
+    }
+    if (!select) return; // それでもなければ諦める
+    console.log("📦 Setting up Box Selection...");
+    select.innerHTML = "";
+    // デフォルトの選択肢を追加
+    select.add(new Option("Global (All Kanjis)", ""));
+    select.add(new Option("🎲 Random Box Challenge", "random"));
+    try {
+        const player = localStorage.getItem("kanjilock_player") || 'Anonymous';
+        const [lvlRes, boxRes] = await Promise.all([
+            fetch(`/api/box-progress/${encodeURIComponent(player)}`),
+            fetch(`/api/available-boxes`)
+        ]);       
+        if (!lvlRes.ok || !boxRes.ok) return;
+        const levels = await lvlRes.json();
+        const availableBoxes = await boxRes.json();
+        availableBoxes.forEach(boxName => {
+            const lvl = levels[boxName]?.qa || 0;
+            const star = lvl === 4 ? "⭐ " : "";
+            select.add(new Option(`${star}Box ${boxName} (Niv. ${lvl})`, boxName));
+        });
+    } catch (e) {
+        console.error("❌ Error loading boxes:", e);
+    }
+}
+    const observer = new MutationObserver(() => injectBoxSelection());
+    window.addEventListener('load', async () => {
+        await initEngine();
+        observer.observe(document.getElementById("app"), { childList: true, subtree: true });
+        injectBoxSelection();
+    });
+    // --- チャット機能 ---
+    document.getElementById('chat-toggle').onclick = () => {
+        const box = document.getElementById('chat-box');
+        box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+    };
+    document.getElementById('chat-send').onclick = async () => {
+        const input = document.getElementById('chat-input');
+        const history = document.getElementById('chat-history');
+        if (!input.value.trim()) return;
+        const msg = input.value;
+        input.value = '';
+        history.innerHTML += `<div><b>Vous:</b> ${msg}</div>`;
+        try {
+            const res = await fetch('/api/chat/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ message: msg, player: localStorage.getItem('kanji_player') || 'Anonymous' })
+            });
+            const data = await res.json();
+            history.innerHTML += `<div style="color:#333; background:#f9f9f9; padding:5px; border-radius:4px; margin:5px 0;"><b>Sensei:</b> ${data.response}</div>`;
+        } catch (e) {
+            history.innerHTML += `<div><i style="color:red;">Error: Offline</i></div>`;
+        }
+        history.scrollTop = history.scrollHeight;
+    };
+</script> 
+
+</body>
+</html>

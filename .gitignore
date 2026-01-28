@@ -25,3 +25,5 @@ main_data/*
 # Par contre, ignore les données perso :
 main_data/progress.json
 main_data/sessions.jsonl
+
+kanjilock_js_files.txt

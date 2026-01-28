@@ -43,6 +43,12 @@
     import { initQuiz } from "/static/js/multi_quiz.js";
     // --- ボックス選択UIの挿入ロジック ---
     async function injectBoxSelection() {
+        if (!window.location.href.includes("quiz-page")) {
+        // もし別のページなのにボタンが残っていたら消す
+        const existing = document.getElementById("setup-container");
+        if (existing) existing.remove();
+        return; 
+    }
         const controls = document.getElementById("controls");
         if (!controls || document.getElementById("setup-container")) return;
         const container = document.createElement("div");
@@ -67,8 +73,9 @@
         };
        await refreshBoxList();
     }
-   async function refreshBoxList() {
-    // 要素が出るまで最大2秒間、少し待機する（SPAの読み込み対策）
+   
+    async function refreshBoxList() {
+            // 要素が出るまで最大2秒間、少し待機する（SPAの読み込み対策）
     let select = document.getElementById("box-select");
     if (!select) {
         await new Promise(resolve => setTimeout(resolve, 100)); // 0.1秒待つ
@@ -98,12 +105,14 @@
         console.error("❌ Error loading boxes:", e);
     }
 }
-    const observer = new MutationObserver(() => injectBoxSelection());
+    
+const observer = new MutationObserver(() => injectBoxSelection());
     window.addEventListener('load', async () => {
         await initEngine();
         observer.observe(document.getElementById("app"), { childList: true, subtree: true });
         injectBoxSelection();
     });
+
     // --- チャット機能 ---
     document.getElementById('chat-toggle').onclick = () => {
         const box = document.getElementById('chat-box');

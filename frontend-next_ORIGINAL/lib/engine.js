@@ -3,7 +3,7 @@
    Handles: Data Loading, Question Generation, SRS Logic, Box Filtering
    ============================================================================ */
 
-import { getPlayer_setting } from "./settings.js";
+import { getPlayer } from "./player";
 
 // --- STATE VARIABLES ---
 let staticData = {};       // Full Kanji Data (kanjilock.json)
@@ -76,7 +76,7 @@ export async function initEngine() {
 
     try {
         // 1. Fetch Data from Backend
-        const res = await fetch(`${window.API_BASE_URL}/quiz/init?player=${encodeURIComponent(player)}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/quiz/init?player=${encodeURIComponent(player)}`);
         const data = await res.json();
         
         staticData = data.static_data;
@@ -85,7 +85,6 @@ export async function initEngine() {
         // 2. Load Local Box Progress (Backup cache)
         const storageKey = "kanjilock_boxes_" + player;
         const savedBoxes = localStorage.getItem(storageKey);
-        console.log(`📥 storageKey: ${storageKey}`);
         try {
             boxProgress = savedBoxes ? JSON.parse(savedBoxes) : {};
         } catch (e) {

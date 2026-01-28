@@ -93,7 +93,7 @@ def quiz_api(request: Request, mode: str = "qa",player: str = "Anonymous"):
         srs[kanji] = {"level": 1, "next_review": today}
         source = "new"
         # ⚡ OPTIMISATION : On sauvegarde immédiatement ce nouveau kanji
-        save_data(USER_ID, {"srs": {mode: {kanji: srs[kanji]}}})
+        save_data(player, {"srs": {mode: {kanji: srs[kanji]}}})
     else:
         return {"done": True}
 
@@ -125,7 +125,7 @@ def quiz_api(request: Request, mode: str = "qa",player: str = "Anonymous"):
     }
 
     # Log asynchrone (optionnel)
-    log_event({"event": "quiz_shown", "user": USER_ID, "kanji": kanji, "mode": mode})
+    log_event({"event": "quiz_shown", "user": player, "kanji": kanji, "mode": mode})
 
     return {
         "qid": qid,

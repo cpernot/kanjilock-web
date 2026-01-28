@@ -3,7 +3,13 @@
    Handles: Data Loading, Question Generation, SRS Logic, Box Filtering
    ============================================================================ */
 
-import { getPlayer_setting } from "./settings.js";
+import { getPlayer } from "./player";
+const API_BASE_URL =  process.env.NEXT_PUBLIC_API_BASE_URL;
+console.log("API BASE:", process.env.NEXT_PUBLIC_API_BASE_URL);
+
+
+
+
 
 // --- STATE VARIABLES ---
 let staticData = {};       // Full Kanji Data (kanjilock.json)
@@ -65,37 +71,63 @@ export const MODES = {
 /* ============================
    1. INITIALIZATION
    ============================ */
-export async function initEngine() {
-    if (Object.keys(staticData).length > 0) {
-        console.log("⚡ Engine already loaded.");
-        return;
-    }
+// export async function initEngine() {
+//     if (Object.keys(staticData).length > 0) {
+//         console.log("⚡ Engine already loaded.");
+//         return;
+//     }
+//      const player = getPlayer(); // safe (runs client-side)
+    
 
-    const player = getPlayer_setting();
-    console.log(`📥 Loading Engine for player: ${player}`);
-
-    try {
-        // 1. Fetch Data from Backend
-        const res = await fetch(`${window.API_BASE_URL}/quiz/init?player=${encodeURIComponent(player)}`);
-        const data = await res.json();
+//     try {
+//         // 1. Fetch Data from Backend
+//         const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/quiz/init?player=${encodeURIComponent(player)}`);
+//         const data = await res.json();
         
-        staticData = data.static_data;
-        userProgress = data.user_progress;
+//         staticData = data.static_data;
+//         userProgress = data.user_progress;
 
-        // 2. Load Local Box Progress (Backup cache)
-        const storageKey = "kanjilock_boxes_" + player;
-        const savedBoxes = localStorage.getItem(storageKey);
-        console.log(`📥 storageKey: ${storageKey}`);
-        try {
-            boxProgress = savedBoxes ? JSON.parse(savedBoxes) : {};
-        } catch (e) {
-            boxProgress = {};
-        }
+//         // 2. Load Local Box Progress (Backup cache)
+//         const storageKey = "kanjilock_boxes_" + player;
+//         const savedBoxes = localStorage.getItem(storageKey);
+//         try {
+//             boxProgress = savedBoxes ? JSON.parse(savedBoxes) : {};
+//         } catch (e) {
+//             boxProgress = {};
+//         }
 
-        console.log(`✅ Engine Ready: ${Object.keys(staticData).length} kanjis loaded.`);
-    } catch (e) {
-        console.error("❌ Engine Load Error:", e);
-    }
+//         console.log(`✅ Engine Ready: ${Object.keys(staticData).length} kanjis loaded.`);
+//     } catch (e) {
+//         console.error("❌ Engine Load Error:", e);
+//     }
+// }
+
+
+
+
+export async function buildQuestion() {
+  const player = getPlayer();
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  const url = `${API_BASE}/api/quiz?player=${encodeURIComponent(player)}&mode=qa`;
+  console.log("QUIZ URL:", url);
+
+  const res = await fetch(url);
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("Quiz API error:", text);
+    throw new Error("Quiz fetch failed");
+  }
+
+  const data = await res.json();
+
+  return {
+    question: data.question,
+    options: data.options,
+    qid: data.qid,
+    mode: data.mode
+  };
 }
 
 export function getUserProgress() {
@@ -283,7 +315,7 @@ export async function updateBoxRanking(boxId, sessionStats,mode) {
     boxId = String(boxId);
     mode = mode || "qa";
 
-    const player = getPlayer_setting();
+     const player = getPlayer(); // safe (runs client-side)
     const now = new Date();
     if (!boxProgress[boxId]) boxProgress[boxId] = {};
     
