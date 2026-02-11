@@ -4,6 +4,20 @@ import Navbar from "@/components/Navbar";
 export const metadata = {
   title: "KanjiLock",
   description: "Learn Kanji the smart way",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "KanjiLock",
+  },
+};
+
+export const viewport = {
+  themeColor: "#0f172a",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({ children }) {
