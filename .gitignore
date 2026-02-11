@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 venv/
 .env
+kanjilock_js_files.txt
 
 # VS Code
 .vscode/
@@ -26,4 +27,4 @@ main_data/*
 main_data/progress.json
 main_data/sessions.jsonl
 
-kanjilock_js_files.txt
+

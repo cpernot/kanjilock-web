@@ -1,5 +1,5 @@
 /* ============================
-   SETTINGS – FRONTEND
+   SETTINGS – NEXT.JS LIB
    ============================ */
 
 export const DEFAULT_SETTINGS = {
@@ -26,6 +26,7 @@ export const DEFAULT_SETTINGS = {
 };
 
 export function getSettings() {
+  if (typeof window === 'undefined') return DEFAULT_SETTINGS;
   const stored = localStorage.getItem("kanjilock_settings");
   return stored
     ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) }
@@ -33,17 +34,16 @@ export function getSettings() {
 }
 
 export function saveSettings(settings) {
+  if (typeof window === 'undefined') return;
   localStorage.setItem("kanjilock_settings", JSON.stringify(settings));
 }
 
 const PLAYER_KEY = "kanjilock_player";
 
-
-
-export function resetPlayer() {
-  localStorage.removeItem(PLAYER_KEY);
-  console.log("RESET pseudo: ");
+export function getPlayer_setting() {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(PLAYER_KEY);
 }
 
-
-
+// Note: Player setting is handled in player.js usually,
+// but we keep consistent exports with old system where possible.

@@ -4,7 +4,7 @@
    ============================================================================ */
 
 import { getPlayer } from "./player";
-const API_BASE_URL =  process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 console.log("API BASE:", process.env.NEXT_PUBLIC_API_BASE_URL);
 
 
@@ -15,7 +15,7 @@ console.log("API BASE:", process.env.NEXT_PUBLIC_API_BASE_URL);
 let staticData = {};       // Full Kanji Data (kanjilock.json)
 let userProgress = {};     // User SRS Stats
 let boxProgress = {};      // Local Box Levels
-let sessionHistory = new Set(); 
+let sessionHistory = new Set();
 let penaltyQueue = new Map(); // Kanji -> Remaining turns to wait
 
 export let currentBoxFilter = null; // null = Global Mode
@@ -24,49 +24,7 @@ export let currentBoxFilter = null; // null = Global Mode
 const WEIGHTS = { 1: 5, 2: 3, 3: 1, 4: 0.2 };
 const COOLDOWN_ERROR = 20; // Turns to wait after an error
 
-// --- MODES DEFINITION ---
-export const MODES = {
-    "qa": {
-        q: (k) => k.kanji,
-        a: (k) => k.signification,
-        extras: (k) => ({ romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot, boite: k.boite })
-    },
-    "qb": {
-        q: (k) => k.signification,
-        a: (k) => k.kanji,
-        extras: (k) => ({ romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot, boite: k.boite })
-    },
-    "qc": {
-        q: (k) => k.mot,
-        a: (k) => k.signification_mot,
-        extras: (k) => ({ lecture_mot: k.lecture_mot, kanji: k.kanji, romaji: k.romaji, boite: k.boite })
-    },
-    "qd": {
-        q: (k) => k.mot,
-        a: (k) => k.lecture_mot,
-        extras: (k) => ({ signification_mot: k.signification_mot, kanji: k.kanji, romaji: k.romaji, boite: k.boite })
-    },
-    "qe": {
-        q: (k) => k.signification_mot,
-        a: (k) => k.mot,
-        extras: (k) => ({ lecture_mot: k.lecture_mot, kanji: k.kanji, romaji: k.romaji, boite: k.boite })
-    },
-    "qf": {
-        q: (k) => k.kanji,
-        a: (k) => k.boite,
-        extras: (k) => ({ signification: k.signification, romaji: k.romaji, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot })
-    },
-    "qg": {
-        q: (k) => k.kanji,
-        a: (k) => k.romaji,
-        extras: (k) => ({ signification: k.signification, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot, boite: k.boite })
-    },
-    "intrus": {
-        q: (k) => k.kanji,
-        a: (k) => k.boite,
-        extras: (k) => ({ boite: k.boite, signification: k.signification, mot: k.mot, lecture: k.lecture_mot, signification_mot: k.signification_mot })
-    }
-};
+import { MODES } from "./quizModes";
 
 /* ============================
    1. INITIALIZATION
@@ -77,13 +35,13 @@ export const MODES = {
 //         return;
 //     }
 //      const player = getPlayer(); // safe (runs client-side)
-    
+
 
 //     try {
 //         // 1. Fetch Data from Backend
 //         const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/quiz/init?player=${encodeURIComponent(player)}`);
 //         const data = await res.json();
-        
+
 //         staticData = data.static_data;
 //         userProgress = data.user_progress;
 
@@ -106,28 +64,30 @@ export const MODES = {
 
 
 export async function buildQuestion() {
-  const player = getPlayer();
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const player = getPlayer();
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-  const url = `${API_BASE}/api/quiz?player=${encodeURIComponent(player)}&mode=qa`;
-  console.log("QUIZ URL:", url);
+    const url = `${API_BASE}/api/quiz?player=${encodeURIComponent(player)}&mode=qa`;
+    console.log("QUIZ URL:", url);
 
-  const res = await fetch(url);
+    const res = await fetch(url);
 
-  if (!res.ok) {
-    const text = await res.text();
-    console.error("Quiz API error:", text);
-    throw new Error("Quiz fetch failed");
-  }
+    if (!res.ok) {
+        const text = await res.text();
+        console.error("Quiz API error:", text);
+        throw new Error("Quiz fetch failed");
+    }
 
-  const data = await res.json();
+    const data = await res.json();
 
-  return {
-    question: data.question,
-    options: data.options,
-    qid: data.qid,
-    mode: data.mode
-  };
+    return {
+        question: data.question,
+        options: data.options,
+        correct: data.answer,   // add this
+        qid: data.qid,
+        mode: data.mode
+    };
+
 }
 
 export function getUserProgress() {
@@ -140,7 +100,7 @@ export function getUserProgress() {
 export function setBoxContext(boxId) {
     // Treat empty string or null as "Global Mode"
     currentBoxFilter = (boxId === "" || boxId === null) ? null : String(boxId);
-    
+
     console.log("--------------------------------");
     console.log("📦 ENGINE MODE UPDATED");
     console.log("Target:", currentBoxFilter ? `Box ${currentBoxFilter}` : "GLOBAL (SRS)");
@@ -165,11 +125,11 @@ export function getNextQuestion(mode) {
     const now = new Date();
     const modeDef = MODES[mode] || MODES["qa"];
     const srs = userProgress[mode] || {};
-    
+
     let allKeys = Object.keys(staticData);
 
     // A. FILTERING CANDIDATES
-    let candidates = currentBoxFilter 
+    let candidates = currentBoxFilter
         ? allKeys.filter(k => String(staticData[k].boite) === currentBoxFilter)
         : allKeys;
 
@@ -211,7 +171,7 @@ export function getNextQuestion(mode) {
     // E. PREPARE DATA OBJECT
     // IMPORTANT: We inject the 'kanji' key into the object so MODES["qb"] works
     const kData = staticData[selectedKanji];
-    kData.kanji = selectedKanji; 
+    kData.kanji = selectedKanji;
 
     console.log(`📝 Generated: ${selectedKanji} (Mode: ${mode})`);
 
@@ -231,7 +191,7 @@ function chooseWeightedKanji(srs, staticData, pool) {
     let weightedList = [];
     pool.forEach(k => {
         const state = srs[k] || { level: 1, next_review: null };
-        
+
         // Skip if review is in the future
         if (state.next_review && new Date(state.next_review) > new Date()) return;
 
@@ -266,13 +226,14 @@ function generateOptions(correctKey, modeDef, candidates) {
     others = [...new Set(others)];
     let shuffled = others.sort(() => 0.5 - Math.random()).slice(0, 3);
     shuffled.push(correct);
-    
+
     return shuffled.sort(() => 0.5 - Math.random());
 }
 
 /* ============================
    4. ANSWER & UPDATES
    ============================ */
+
 export function checkLocalAnswer(questionObj, userChoice, rt_ms) {
     const isCorrect = (userChoice === questionObj.correctAnswer);
     return {
@@ -296,32 +257,57 @@ export function updateEngineAfterAnswer(kanji, isCorrect, mode) {
         if (!userProgress[mode][kanji]) userProgress[mode][kanji] = { level: 1 };
 
         const state = userProgress[mode][kanji];
-        
+
         // Push next review to tomorrow locally (so it doesn't reappear instantly)
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         state.next_review = tomorrow.toISOString();
-        
+
         // Increment Level locally (visual only, real save happens in Backend)
         state.level = Math.min((state.level || 1) + 1, 4);
     }
+}
+let sessionAnswers = [];
+
+export function recordAnswer({ kanji, correct, mode, speed_factor = 1.0 }) {
+    sessionAnswers.push({ kanji, correct, mode, speed_factor });
+}
+
+export async function sendSession() {
+    const player = getPlayer();
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+    const res = await fetch(`${API_BASE}/api/session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            player,
+            answers: sessionAnswers
+        })
+    });
+
+    if (!res.ok) {
+        console.error("Session save failed");
+    }
+
+    sessionAnswers = []; // reset after send
 }
 
 /* ============================
    5. BOX RANKING LOGIC
    ============================ */
-export async function updateBoxRanking(boxId, sessionStats,mode) {
+export async function updateBoxRanking(boxId, sessionStats, mode) {
     if (!boxId) return null;
     boxId = String(boxId);
     mode = mode || "qa";
 
-     const player = getPlayer(); // safe (runs client-side)
+    const player = getPlayer(); // safe (runs client-side)
     const now = new Date();
     if (!boxProgress[boxId]) boxProgress[boxId] = {};
-    
+
     // Load current progress or default
     let current = boxProgress[boxId][mode] || { level: 0, last_attempt: null };
-    
+
     // LEVEL CALCULATION RULES
     let newLevel = 1;
     let message = "Niveau 1 Validé !";
@@ -340,13 +326,13 @@ export async function updateBoxRanking(boxId, sessionStats,mode) {
             if (current.last_attempt) {
                 const lastDate = new Date(current.last_attempt);
                 const diffTime = Math.abs(now - lastDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
                 if (current.level >= 3 && diffDays >= 5) {
                     newLevel = 4;
                     message = "🏆 NIVEAU 4 : MAÎTRE DU SCEAU !";
                 } else if (current.level >= 3) {
-                     message = `Niveau 3 confirmé. Revenez dans ${5 - diffDays} jours.`;
+                    message = `Niveau 3 confirmé. Revenez dans ${5 - diffDays} jours.`;
                 }
             }
         }
@@ -357,7 +343,7 @@ export async function updateBoxRanking(boxId, sessionStats,mode) {
         current.level = newLevel;
     }
     current.last_attempt = now.toISOString();
-    
+
     // SAVE 1: LocalStorage (Update nested structure)
     boxProgress[boxId][mode] = current; // Save specific mode
     localStorage.setItem("kanjilock_boxes_" + player, JSON.stringify(boxProgress));
@@ -366,7 +352,7 @@ export async function updateBoxRanking(boxId, sessionStats,mode) {
     const progressData = {
         user_id: player,
         boite: String(boxId),
-        mode: mode, 
+        mode: mode,
         level: newLevel,
         last_attempt: now.toISOString()
     };
@@ -404,7 +390,7 @@ export function getBoxLevel(boxId, mode = "qa") {
    ============================ */
 export function getComposeQuestionLocal() {
     const keys = Object.keys(staticData);
-    
+
     // Filter kanjis with 'comp_words'
     const pool = keys.filter(key => {
         const k = staticData[key];
@@ -440,7 +426,7 @@ export function getComposeQuestionLocal() {
     }
 
     // Shuffle
-    const nbLeurres = Math.max(2, 6 - correctWords.length); 
+    const nbLeurres = Math.max(2, 6 - correctWords.length);
     const options = [...correctWords, ...distractors.slice(0, nbLeurres)];
     options.sort(() => Math.random() - 0.5);
 

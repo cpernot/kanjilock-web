@@ -62,6 +62,7 @@ def quiz_api(request: Request, mode: str = "qa",player: str = "Anonymous"):
             "qid": qid,
             "question": payload["question"],
             "options": payload["options"],
+            "answer": payload["answer"],  # ADD THIS
             "mode": "intrus"
         }
 
