@@ -17,6 +17,7 @@ export default function Quiz({ forcedMode = null }) {
     const [selectedMode, setSelectedMode] = useState("qa");
     const [selectedBox, setSelectedBox] = useState("");
     const [boxes, setBoxes] = useState([]);
+    const [appSettings, setAppSettings] = useState(null);
 
     // Game State
     const [isPlaying, setIsPlaying] = useState(false);
@@ -84,6 +85,10 @@ export default function Quiz({ forcedMode = null }) {
             const mod = await import("../lib/quizengine");
             await mod.initEngine(player);
             setBoxes(mod.getAvailableBoxes());
+
+            // Set settings
+            const { getSettings } = await import("../lib/settings");
+            setAppSettings(getSettings());
         }
 
         // Initialize selectors
@@ -265,11 +270,12 @@ export default function Quiz({ forcedMode = null }) {
                 await finishSession(mode);
             }, 1500);
         } else {
-            setTimeout(() => {
-                // Only load next if still playing (not paused during delay?)
-                // Actually we just continue.
-                loadQuestion();
-            }, data.correct ? 1000 : 2500);
+            // Check settings for autoDismiss
+            if (appSettings?.autoDismissAnswer !== false) {
+                setTimeout(() => {
+                    loadQuestion();
+                }, data.correct ? 1000 : 2500);
+            }
         }
     }
 
@@ -389,18 +395,32 @@ export default function Quiz({ forcedMode = null }) {
 
             {/* Result Overlay */}
             {result && (
-                <div style={{
-                    ...styles.resultBox,
-                    backgroundColor: result.correct ? "#4CAF50" : "#F44336"
-                }}>
-                    <h3>{result.correct ? "✓ Correct" : "✗ Wrong"}</h3>
-                    {!result.correct && <p>Correct: {result.bonne}</p>}
+                <div
+                    onClick={() => {
+                        // Proceed to next question
+                        loadQuestion();
+                    }}
+                    style={{
+                        ...styles.resultBox,
+                        backgroundColor: result.correct ? "rgba(76, 175, 80, 0.95)" : "rgba(244, 67, 54, 0.95)",
+                        cursor: "pointer"
+                    }}
+                >
+                    <div style={styles.resultQuestion}>{question?.question}</div>
+                    <h3 style={{ margin: "10px 0" }}>{result.correct ? "✓ Correct" : "✗ Wrong"}</h3>
+                    {!result.correct && <p style={{ fontSize: "1.2rem", fontWeight: "bold" }}>Correct: {result.bonne}</p>}
 
                     {result.extras && (
                         <div style={styles.extras}>
                             {Object.entries(result.extras).map(([k, v]) => (
                                 <div key={k}><b>{k}</b>: {v}</div>
                             ))}
+                        </div>
+                    )}
+
+                    {appSettings?.autoDismissAnswer === false && (
+                        <div style={{ marginTop: "15px", fontSize: "0.8rem", opacity: 0.8 }}>
+                            Tap to continue
                         </div>
                     )}
                 </div>
@@ -477,17 +497,30 @@ const styles = {
         border: "1px solid #ccc"
     },
     resultBox: {
-        marginTop: "20px",
-        padding: "15px",
+        padding: "20px",
         color: "white",
-        borderRadius: "8px",
+        borderRadius: "12px",
         position: "absolute",
-        top: "100px",
+        top: "50%",
         left: "50%",
-        transform: "translateX(-50%)",
-        width: "90%",
-        zIndex: 10,
-        boxShadow: "0 4px 8px rgba(0,0,0,0.2)"
+        transform: "translate(-50%, -50%)",
+        width: "85%",
+        maxWidth: "400px",
+        zIndex: 100,
+        boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        backdropFilter: "blur(5px)"
+    },
+    resultQuestion: {
+        fontSize: "2.5rem",
+        fontWeight: "bold",
+        marginBottom: "10px",
+        borderBottom: "1px solid rgba(255,255,255,0.3)",
+        paddingBottom: "5px",
+        width: "100%"
     },
     extras: {
         marginTop: "10px",

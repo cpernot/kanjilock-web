@@ -22,7 +22,8 @@ export const DEFAULT_SETTINGS = {
     timeout: "BOMB.WAV"
   },
 
-  vibration: true
+  vibration: true,
+  autoDismissAnswer: true
 };
 
 export function getSettings() {

@@ -58,6 +58,17 @@ export default function SettingsPage() {
                 />
             </div>
 
+            <div style={styles.formGroup}>
+                <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+                    <input
+                        type="checkbox"
+                        checked={settings.autoDismissAnswer}
+                        onChange={e => setSettings({ ...settings, autoDismissAnswer: e.target.checked })}
+                    />
+                    Auto Dismiss Answer (Briefly show correction)
+                </label>
+            </div>
+
             <button onClick={handleSave} style={styles.btn}>Save</button>
         </div>
     );
