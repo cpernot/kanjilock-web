@@ -34,11 +34,15 @@ def load_data(user_id: str):
             mode = row["mode"]
             kanji = row["kanji"]
             stats = row["stats"]
+            
+            if kanji == "_settings_":
+                continue
+
             # On reconstruit le dictionnaire attendu par stats.py
             if mode not in structured_data["srs"]:
                 structured_data["srs"][mode] = {}
             structured_data["srs"][mode][kanji] = stats
-        
+
         # Note: Si tu as une table séparée pour daily_stats, il faudra un autre select ici
         return structured_data
 
@@ -69,4 +73,28 @@ def get_user(data, user_id):
     })
 def get_user_srs(user, mode):
     return user["srs"].setdefault(mode, {})
+
+def get_player_settings(user_id: str):
+    try:
+        res = supabase.table("progress").select("stats").eq("user_id", user_id).eq("kanji", "_settings_").execute()
+        if res.data:
+            return res.data[0]["stats"]
+        return None
+    except Exception as e:
+        print(f"❌ Error get_player_settings: {e}")
+        return None
+
+def save_player_settings(user_id: str, settings: dict):
+    try:
+        row = {
+            "user_id": user_id,
+            "kanji": "_settings_",
+            "mode": "global",
+            "stats": settings
+        }
+        supabase.table("progress").upsert(row, on_conflict="user_id,kanji,mode").execute()
+        return True
+    except Exception as e:
+        print(f"❌ Error save_player_settings: {e}")
+        return False
 

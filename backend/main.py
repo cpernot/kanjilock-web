@@ -175,6 +175,18 @@ async def get_all_box_progress(user_id: str):
         
     return progress_map
 
+@app.get("/api/settings/{player}")
+async def get_settings_api(player: str):
+    from backend.data.progress import get_player_settings
+    settings = get_player_settings(player)
+    return settings if settings else {}
+
+@app.post("/api/settings/{player}")
+async def save_settings_api(player: str, settings: dict):
+    from backend.data.progress import save_player_settings
+    success = save_player_settings(player, settings)
+    return {"status": "success" if success else "error"}
+
 @app.get("/api/available-boxes")
 async def get_available_boxes():
     all_boxes = []

@@ -63,9 +63,30 @@ export function getUserProgress() {
 export function getAvailableBoxes() {
     const boxes = new Set();
     Object.values(staticData).forEach(k => {
-        if (k.boite) boxes.add(String(k.boite));
+        if (k.boite !== undefined && k.boite !== null) boxes.add(String(k.boite));
     });
-    return Array.from(boxes)
+    return Array.from(boxes);
+}
+
+export function getVisibleBoxes(progressiveMode = false, mode = "qa") {
+    const allBoxesAvailable = getAvailableBoxes().sort((a, b) => parseInt(a) - parseInt(b));
+    if (!progressiveMode) return allBoxesAvailable;
+
+    const visible = [];
+    if (allBoxesAvailable.length === 0) return [];
+
+    visible.push(allBoxesAvailable[0]); // Box 0 is always visible
+
+    for (let i = 0; i < allBoxesAvailable.length - 1; i++) {
+        const currentBox = allBoxesAvailable[i];
+        if (getBoxLevel(currentBox, mode) > 0) {
+            visible.push(allBoxesAvailable[i + 1]);
+        } else {
+            break;
+        }
+    }
+    // Return visible boxes in reverse order of completion/id as requested
+    return visible.sort((a, b) => parseInt(b) - parseInt(a));
 }
 
 export function getBoxKanjiCount(boxId) {
@@ -96,19 +117,25 @@ export function resetEngineSession() {
 /* ============================
    3. QUESTION GENERATION
    ============================ */
-export function getNextQuestion(mode) {
+export function getNextQuestion(mode, progressiveMode = false) {
     const modeDef = MODES[mode] || MODES["qa"];
     const srs = userProgress[mode] || {};
 
     let allKeys = Object.keys(staticData);
 
     // A. FILTERING CANDIDATES
-    let candidates = currentBoxFilter
-        ? allKeys.filter(k => String(staticData[k].boite) === currentBoxFilter)
-        : allKeys;
+    let candidates = [];
+    if (currentBoxFilter) {
+        candidates = allKeys.filter(k => String(staticData[k].boite) === currentBoxFilter);
+    } else if (progressiveMode) {
+        // All-Box in Progressive Mode: only kanji from visible boxes
+        const visibleBoxes = getVisibleBoxes(true, mode);
+        candidates = allKeys.filter(k => visibleBoxes.includes(String(staticData[k].boite)));
+    } else {
+        candidates = allKeys;
+    }
 
     if (candidates.length === 0) {
-        // if (currentBoxFilter) console.warn("⚠️ Empty Box. Fallback to global.");
         candidates = allKeys;
     }
 

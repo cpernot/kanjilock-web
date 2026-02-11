@@ -23,7 +23,8 @@ export const DEFAULT_SETTINGS = {
   },
 
   vibration: true,
-  autoDismissAnswer: true
+  autoDismissAnswer: true,
+  progressiveMode: false
 };
 
 import config from "./config";

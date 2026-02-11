@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import config from "@/lib/config";
 import { getPlayer_setting } from "@/lib/settings";
@@ -9,7 +9,8 @@ import { MODES } from "@/lib/quizModes";
 export default function StatsPage() {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [selectedMode, setSelectedMode] = useState("qa"); // Initial state, will sync in useEffect
+    const [selectedMode, setSelectedMode] = useState(null);
+    const activeModeRef = useRef(null);
 
     useEffect(() => {
         const currentMode = getMode();
@@ -17,10 +18,13 @@ export default function StatsPage() {
     }, []);
 
     useEffect(() => {
-        loadStats(selectedMode);
+        if (selectedMode) {
+            loadStats(selectedMode);
+        }
     }, [selectedMode]);
 
     async function loadStats(mode) {
+        activeModeRef.current = mode;
         setLoading(true);
         const player = getPlayer_setting();
         if (!player) return;
@@ -29,16 +33,20 @@ export default function StatsPage() {
             const res = await fetch(`${config.apiBaseUrl}/stats?mode=${mode}&player=${encodeURIComponent(player)}`);
             if (res.ok) {
                 const data = await res.json();
-                setStats(data);
+                if (activeModeRef.current === mode) {
+                    setStats(data);
+                }
             }
         } catch (e) {
             console.error("Stats error", e);
         } finally {
-            setLoading(false);
+            if (activeModeRef.current === mode) {
+                setLoading(false);
+            }
         }
     }
 
-    if (loading) return <div style={{ textAlign: "center", marginTop: "50px" }}>Loading Stats...</div>;
+    if (!selectedMode || loading) return <div style={{ textAlign: "center", marginTop: "50px" }}>Loading Stats...</div>;
     if (!stats) return <div style={{ textAlign: "center", marginTop: "50px" }}>No stats available.</div>;
 
     const srsData = stats.srs_levels || {};

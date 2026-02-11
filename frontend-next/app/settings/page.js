@@ -74,6 +74,17 @@ export default function SettingsPage() {
                 </label>
             </div>
 
+            <div style={styles.formGroup}>
+                <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+                    <input
+                        type="checkbox"
+                        checked={settings.progressiveMode}
+                        onChange={e => setSettings({ ...settings, progressiveMode: e.target.checked })}
+                    />
+                    Progressive Mode (Unlock boxes one by one)
+                </label>
+            </div>
+
             <button onClick={handleSave} style={styles.btn}>Save</button>
         </div>
     );

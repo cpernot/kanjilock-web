@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { getNextQuestion, checkLocalAnswer, updateEngineAfterAnswer, updateBoxRanking, currentBoxFilter, setBoxContext, getAvailableBoxes, getBoxKanjiCount, getBoxLevel } from "../lib/quizengine";
+import { getNextQuestion, checkLocalAnswer, updateEngineAfterAnswer, updateBoxRanking, currentBoxFilter, setBoxContext, getAvailableBoxes, getVisibleBoxes, getBoxKanjiCount, getBoxLevel } from "../lib/quizengine";
 import { startSession, recordAnswer, getSessionSummary } from "../lib/quizSession";
 import { getMode, setMode as saveMode } from "../lib/modeManager";
 import { getPlayer_setting } from "../lib/settings";
@@ -78,30 +78,64 @@ export default function Quiz({ forcedMode = null }) {
         }
     }, [selectedMode, selectedBox]);
 
+    useEffect(() => {
+        if (appSettings) {
+            const visible = getVisibleBoxes(appSettings.progressiveMode, selectedMode);
+            setBoxes(visible);
+
+            // If in progressive mode and current box is not in visible list, or just switching modes,
+            // we might want to default to the highest unlocked box.
+            if (appSettings.progressiveMode && !visible.includes(selectedBox) && visible.length > 0) {
+                const defaultBox = visible[0];
+                setSelectedBox(defaultBox);
+                setBoxContext(defaultBox);
+            }
+        }
+    }, [selectedMode, appSettings?.progressiveMode]);
+
     async function initialize() {
         const player = getPlayer_setting();
+        let initialMode = selectedMode;
+        if (!forcedMode) {
+            initialMode = getMode();
+            setSelectedMode(initialMode);
+        }
+
         if (player) {
             // Loading library
             const mod = await import("../lib/quizengine");
             await mod.initEngine(player);
-            setBoxes(mod.getAvailableBoxes());
 
             // Set settings (cached)
             const { getSettings, fetchRemoteSettings } = await import("../lib/settings");
-            setAppSettings(getSettings());
+            const settings = getSettings();
+            setAppSettings(settings);
+
+            const visible = mod.getVisibleBoxes(settings.progressiveMode, initialMode);
+            setBoxes(visible);
+
+            // Default selection for Progressive Mode
+            if (settings.progressiveMode && visible.length > 0) {
+                const defaultBox = visible[0]; // Highest unlocked
+                setSelectedBox(defaultBox);
+                mod.setBoxContext(defaultBox);
+            }
 
             // Sync from remote (async)
             fetchRemoteSettings(player).then(remoteSettings => {
-                if (remoteSettings) setAppSettings(remoteSettings);
+                if (remoteSettings) {
+                    setAppSettings(remoteSettings);
+                    const updatedVisible = mod.getVisibleBoxes(remoteSettings.progressiveMode, initialMode);
+                    setBoxes(updatedVisible);
+                    // If we haven't selected anything yet, pick the default
+                    if (remoteSettings.progressiveMode && updatedVisible.length > 0 && !selectedBox) {
+                        const db = updatedVisible[0];
+                        setSelectedBox(db);
+                        mod.setBoxContext(db);
+                    }
+                }
             });
         }
-
-        // Initialize selectors
-        if (!forcedMode) {
-            setSelectedMode(getMode());
-        }
-
-        // Don't auto-load question. Wait for Start.
     }
 
     function startNewSession(forceStart = false) {
@@ -173,7 +207,7 @@ export default function Quiz({ forcedMode = null }) {
         // However, to be absolutely safe, we pass it or read from current scope if this is triggered from render.
         const mode = forcedMode || selectedMode;
 
-        const data = getNextQuestion(mode);
+        const data = getNextQuestion(mode, appSettings?.progressiveMode);
 
         if (data.done) {
             setQuestion(null);
@@ -340,7 +374,6 @@ export default function Quiz({ forcedMode = null }) {
                     </select>
 
                     <select value={selectedBox} onChange={handleBoxChange} style={styles.select}>
-                        <option value="">All Boxes (Global)</option>
                         {boxes.map(b => {
                             const lvl = getBoxLevel(b, selectedMode);
                             const star = lvl === 4 ? "⭐ " : "";
@@ -350,6 +383,7 @@ export default function Quiz({ forcedMode = null }) {
                                 </option>
                             );
                         })}
+                        <option value="">All Boxes (Global)</option>
                     </select>
                 </div>
             )}
