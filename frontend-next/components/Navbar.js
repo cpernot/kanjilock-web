@@ -44,12 +44,22 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     padding: "10px 20px",
+    paddingTop: "calc(10px + env(safe-area-inset-top))", // Support for iOS notch
     background: "#111",
     color: "white",
+    fontSize: "14px", // Default for mobile
+    flexWrap: "wrap",
+    gap: "10px"
   },
-  left: { fontWeight: "bold", fontSize: "18px" },
-  right: { display: "flex", gap: "15px", alignItems: "center" },
+  left: { fontWeight: "bold", fontSize: "20px" },
+  right: {
+    display: "flex",
+    gap: "12px",
+    alignItems: "center",
+    flexWrap: "wrap",
+    justifyContent: "flex-end"
+  },
   logo: { color: "white", textDecoration: "none" },
-  player: { opacity: 0.8 },
-  logout: { background: "red", color: "white", border: "none", padding: "5px 10px" },
+  player: { opacity: 0.8, fontSize: "12px" },
+  logout: { background: "red", color: "white", border: "none", padding: "5px 10px", borderRadius: "4px" },
 };
