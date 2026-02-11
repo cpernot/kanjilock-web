@@ -7,7 +7,20 @@ export default function Navbar() {
   const [player, setPlayerState] = useState(null);
 
   useEffect(() => {
-    setPlayerState(getPlayer());
+    // Initial check
+    const checkPlayer = () => setPlayerState(getPlayer());
+    checkPlayer();
+
+    // Listen for changes (e.g. from other tabs or local login)
+    window.addEventListener("storage", checkPlayer);
+
+    // Custom event for same-page updates
+    window.addEventListener("playerLogin", checkPlayer);
+
+    return () => {
+      window.removeEventListener("storage", checkPlayer);
+      window.removeEventListener("playerLogin", checkPlayer);
+    };
   }, []);
 
   function logout() {
@@ -44,12 +57,16 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     padding: "10px 20px",
-    paddingTop: "calc(10px + env(safe-area-inset-top))", // Support for iOS notch
+    paddingTop: "calc(15px + env(safe-area-inset-top))", // Extra room for iOS notch
     background: "#111",
     color: "white",
-    fontSize: "14px", // Default for mobile
+    fontSize: "14px",
     flexWrap: "wrap",
-    gap: "10px"
+    gap: "10px",
+    position: "sticky",
+    top: 0,
+    zIndex: 1000,
+    boxShadow: "0 2px 10px rgba(0,0,0,0.5)"
   },
   left: { fontWeight: "bold", fontSize: "20px" },
   right: {

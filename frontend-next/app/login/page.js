@@ -17,7 +17,10 @@ export default function LoginPage() {
   function handleLogin() {
     if (!name.trim()) return alert("Enter a name");
     setPlayer(name.trim());
-    router.push("/quiz");
+    // Trigger the custom event for the Navbar
+    window.dispatchEvent(new Event("playerLogin"));
+    // Full redirect to ensure app-wide state sync
+    window.location.href = "/quiz";
   }
 
   return (
