@@ -1,11 +1,12 @@
 /* ============================================================================
-   KANJILOCK QUIZ ENGINE
+   KANJILOCK QUIZ ENGINE (Ported for Next.js)
    Handles: Data Loading, Question Generation, SRS Logic, Box Filtering
    ============================================================================ */
 
-import { getPlayer_setting } from "./settings.js";
+import config from "./config";
+import { getPlayer_setting } from "./settings"; // You'll need to implement this or pass player as arg
 
-// --- STATE VARIABLES ---
+// --- STATE VARIABLES (kept in module scope for now, could be Context in future) ---
 let staticData = {};       // Full Kanji Data (kanjilock.json)
 let userProgress = {};     // User SRS Stats
 let boxProgress = {};      // Local Box Levels
@@ -18,37 +19,35 @@ export let currentBoxFilter = null; // null = Global Mode
 const WEIGHTS = { 1: 5, 2: 3, 3: 1, 4: 0.2 };
 const COOLDOWN_ERROR = 20; // Turns to wait after an error
 
-// --- MODES DEFINITION ---
-import { MODES } from "./quizModes.js";
+import { MODES } from "./quizModes";
 
 /* ============================
    1. INITIALIZATION
    ============================ */
-export async function initEngine() {
-    if (Object.keys(staticData).length > 0) {
-        console.log("⚡ Engine already loaded.");
-        return;
-    }
+export async function initEngine(playerOverride = null) {
+    // If we have data, we might not need to reload, unless player changed?
+    // For safety in React, we might want to just reload or check player.
 
-    const player = getPlayer_setting();
-    console.log(`📥 Loading Engine for player: ${player}`);
+    const player = playerOverride || getPlayer_setting();
+    if (!player) return;
 
     try {
         // 1. Fetch Data from Backend
-        const res = await fetch(`${window.API_BASE_URL}/quiz/init?player=${encodeURIComponent(player)}`);
+        const res = await fetch(`${config.apiBaseUrl}/quiz/init?player=${encodeURIComponent(player)}`);
         const data = await res.json();
 
         staticData = data.static_data;
         userProgress = data.user_progress;
 
-        // 2. Load Local Box Progress (Backup cache)
-        const storageKey = "kanjilock_boxes_" + player;
-        const savedBoxes = localStorage.getItem(storageKey);
-        console.log(`📥 storageKey: ${storageKey}`);
-        try {
-            boxProgress = savedBoxes ? JSON.parse(savedBoxes) : {};
-        } catch (e) {
-            boxProgress = {};
+        // 2. Load Local Box Progress (Backup cache) - Client Side Only
+        if (typeof window !== 'undefined') {
+            const storageKey = "kanjilock_boxes_" + player;
+            const savedBoxes = localStorage.getItem(storageKey);
+            try {
+                boxProgress = savedBoxes ? JSON.parse(savedBoxes) : {};
+            } catch (e) {
+                boxProgress = {};
+            }
         }
 
         console.log(`✅ Engine Ready: ${Object.keys(staticData).length} kanjis loaded.`);
@@ -61,17 +60,26 @@ export function getUserProgress() {
     return userProgress;
 }
 
+export function getAvailableBoxes() {
+    const boxes = new Set();
+    Object.values(staticData).forEach(k => {
+        if (k.boite) boxes.add(String(k.boite));
+    });
+    return Array.from(boxes)
+}
+
+export function getBoxKanjiCount(boxId) {
+    if (!boxId) return 0;
+    const count = Object.values(staticData).filter(k => String(k.boite) === String(boxId)).length;
+    return count;
+}
+
 /* ============================
    2. CONTEXT MANAGEMENT
    ============================ */
 export function setBoxContext(boxId) {
     // Treat empty string or null as "Global Mode"
     currentBoxFilter = (boxId === "" || boxId === null) ? null : String(boxId);
-
-    console.log("--------------------------------");
-    console.log("📦 ENGINE MODE UPDATED");
-    console.log("Target:", currentBoxFilter ? `Box ${currentBoxFilter}` : "GLOBAL (SRS)");
-    console.log("--------------------------------");
 }
 
 export function resetBoxContext() {
@@ -89,7 +97,6 @@ export function resetEngineSession() {
    3. QUESTION GENERATION
    ============================ */
 export function getNextQuestion(mode) {
-    const now = new Date();
     const modeDef = MODES[mode] || MODES["qa"];
     const srs = userProgress[mode] || {};
 
@@ -101,7 +108,7 @@ export function getNextQuestion(mode) {
         : allKeys;
 
     if (candidates.length === 0) {
-        if (currentBoxFilter) console.warn("⚠️ Empty Box. Fallback to global.");
+        // if (currentBoxFilter) console.warn("⚠️ Empty Box. Fallback to global.");
         candidates = allKeys;
     }
 
@@ -139,8 +146,6 @@ export function getNextQuestion(mode) {
     // IMPORTANT: We inject the 'kanji' key into the object so MODES["qb"] works
     const kData = staticData[selectedKanji];
     kData.kanji = selectedKanji;
-
-    console.log(`📝 Generated: ${selectedKanji} (Mode: ${mode})`);
 
     return {
         qid: `local_${Date.now()}`,
@@ -185,7 +190,7 @@ function generateOptions(correctKey, modeDef, candidates) {
         .filter(k => k !== correctKey)
         .map(k => {
             const d = staticData[k];
-            d.kanji = k; // Inject Key for correct display in buttons
+            d.kanji = k; // Inject Key
             return modeDef.a(d);
         });
 
@@ -214,7 +219,6 @@ export function updateEngineAfterAnswer(kanji, isCorrect, mode) {
     // A. PENALTY (Wrong Answer)
     if (!isCorrect) {
         penaltyQueue.set(kanji, COOLDOWN_ERROR);
-        console.log(`🚫 ${kanji} penalized for ${COOLDOWN_ERROR} turns.`);
     }
 
     // B. SUCCESS (Local SRS Update)
@@ -224,12 +228,12 @@ export function updateEngineAfterAnswer(kanji, isCorrect, mode) {
 
         const state = userProgress[mode][kanji];
 
-        // Push next review to tomorrow locally (so it doesn't reappear instantly)
+        // Push next review to tomorrow locally
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         state.next_review = tomorrow.toISOString();
 
-        // Increment Level locally (visual only, real save happens in Backend)
+        // Increment Level locally
         state.level = Math.min((state.level || 1) + 1, 4);
     }
 }
@@ -258,7 +262,7 @@ export async function updateBoxRanking(boxId, sessionStats, mode) {
         newLevel = 2;
         message = "Niveau 2 : Sans faute !";
 
-        // Level 3: 100% + Total Time < 40s (Changed from 14s based on your code)
+        // Level 3: 100% + Total Time < 40s
         if (sessionStats.totalTime <= 40000) {
             newLevel = 3;
             message = "Niveau 3 : Éclair (40s) !";
@@ -286,10 +290,12 @@ export async function updateBoxRanking(boxId, sessionStats, mode) {
     current.last_attempt = now.toISOString();
 
     // SAVE 1: LocalStorage (Update nested structure)
-    boxProgress[boxId][mode] = current; // Save specific mode
-    localStorage.setItem("kanjilock_boxes_" + player, JSON.stringify(boxProgress));
+    if (typeof window !== 'undefined') {
+        boxProgress[boxId][mode] = current; // Save specific mode
+        localStorage.setItem("kanjilock_boxes_" + player, JSON.stringify(boxProgress));
+    }
 
-    // SAVE 2: Supabase
+    // SAVE 2: Supabase / Backend
     const progressData = {
         user_id: player,
         boite: String(boxId),
@@ -299,17 +305,19 @@ export async function updateBoxRanking(boxId, sessionStats, mode) {
     };
 
     try {
-        const response = await fetch('/api/box-progress/save', {
+        // Use API route wrapper for cors/security if needed
+        const response = await fetch(`${config.apiBaseUrl}/box-progress/save`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(progressData)
         });
         if (!response.ok) throw new Error("Sync failed");
-        console.log("✅ Box Progress Synced with Supabase");
     } catch (err) {
         console.error("❌ Sync Error:", err);
         // Offline Fallback
-        localStorage.setItem(`offline_box_${boxId}`, JSON.stringify(progressData));
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(`offline_box_${boxId}`, JSON.stringify(progressData));
+        }
     }
 
     return { level: newLevel, message: message };
