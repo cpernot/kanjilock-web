@@ -1,22 +1,27 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getSettings, saveSettings } from "@/lib/settings";
+import { getSettings, saveSettings, fetchRemoteSettings, saveRemoteSettings } from "@/lib/settings";
 
 export default function SettingsPage() {
     const [settings, setSettings] = useState(null);
     const [player, setPlayer] = useState("");
 
     useEffect(() => {
-        setSettings(getSettings());
         const p = localStorage.getItem("kanjilock_player");
-        if (p) setPlayer(p);
+        if (p) {
+            setPlayer(p);
+            fetchRemoteSettings(p).then(data => {
+                if (data) setSettings(data);
+            });
+        } else {
+            setSettings(getSettings());
+        }
     }, []);
 
-    function handleSave() {
-        saveSettings(settings);
-        localStorage.setItem("kanjilock_player", player);
-        alert("Settings saved!");
+    async function handleSave() {
+        await saveRemoteSettings(player, settings);
+        alert("Settings saved centrally!");
     }
 
     if (!settings) return <div>Loading...</div>;

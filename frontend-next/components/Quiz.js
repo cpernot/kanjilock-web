@@ -86,9 +86,14 @@ export default function Quiz({ forcedMode = null }) {
             await mod.initEngine(player);
             setBoxes(mod.getAvailableBoxes());
 
-            // Set settings
-            const { getSettings } = await import("../lib/settings");
+            // Set settings (cached)
+            const { getSettings, fetchRemoteSettings } = await import("../lib/settings");
             setAppSettings(getSettings());
+
+            // Sync from remote (async)
+            fetchRemoteSettings(player).then(remoteSettings => {
+                if (remoteSettings) setAppSettings(remoteSettings);
+            });
         }
 
         // Initialize selectors
