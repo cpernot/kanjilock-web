@@ -32,21 +32,51 @@ export async function initEngine(playerOverride = null) {
     if (!player) return;
 
     try {
-        // 1. Fetch Data from Backend
+        // 1. Fetch Data from Backend (Kanji & SRS)
         const res = await fetch(`${config.apiBaseUrl}/quiz/init?player=${encodeURIComponent(player)}`);
         const data = await res.json();
 
         staticData = data.static_data;
         userProgress = data.user_progress;
 
-        // 2. Load Local Box Progress (Backup cache) - Client Side Only
+        // Reset Box Progress to avoid player carryover
+        boxProgress = {};
+
+        // 2. Fetch Box Levels from Backend
+        try {
+            const bRes = await fetch(`${config.apiBaseUrl}/box-progress/${encodeURIComponent(player)}`);
+            const bData = await bRes.json();
+            // Normalize backend data (backen might send { box: { mode: level } })
+            Object.keys(bData).forEach(bId => {
+                boxProgress[bId] = {};
+                Object.keys(bData[bId]).forEach(m => {
+                    const val = bData[bId][m];
+                    boxProgress[bId][m] = typeof val === 'object' ? val : { level: val, last_attempt: null };
+                });
+            });
+        } catch (e) {
+            console.warn("⚠️ Remote box progress fetch failed, falling back to local.");
+        }
+
+        // 3. Load Local Box Progress (Backup cache) - Client Side Only
         if (typeof window !== 'undefined') {
             const storageKey = "kanjilock_boxes_" + player;
             const savedBoxes = localStorage.getItem(storageKey);
             try {
-                boxProgress = savedBoxes ? JSON.parse(savedBoxes) : {};
+                const localBoxes = savedBoxes ? JSON.parse(savedBoxes) : {};
+                // Merge local into remote (local usually has more recent timestamps)
+                Object.keys(localBoxes).forEach(bId => {
+                    if (!boxProgress[bId]) boxProgress[bId] = {};
+                    Object.keys(localBoxes[bId]).forEach(m => {
+                        const localVal = localBoxes[bId][m];
+                        const remoteVal = boxProgress[bId][m];
+                        if (!remoteVal || (localVal.level >= (remoteVal.level || 0))) {
+                            boxProgress[bId][m] = localVal;
+                        }
+                    });
+                });
             } catch (e) {
-                boxProgress = {};
+                console.error("Local box parse error", e);
             }
         }
 
@@ -135,6 +165,11 @@ export function getNextQuestion(mode, progressiveMode = false) {
         candidates = allKeys;
     }
 
+    // A.1 SPECIAL FILTER FOR QH (must have comp_words)
+    if (mode === "qh") {
+        candidates = candidates.filter(k => staticData[k].comp_words && staticData[k].comp_words.trim().length > 0);
+    }
+
     if (candidates.length === 0) {
         candidates = allKeys;
     }
@@ -179,9 +214,11 @@ export function getNextQuestion(mode, progressiveMode = false) {
         kanji: selectedKanji,
         question: modeDef.q(kData),
         correctAnswer: modeDef.a(kData),
-        options: generateOptions(selectedKanji, modeDef, candidates),
+        options: generateOptions(selectedKanji, modeDef, candidates, mode),
         extras: modeDef.extras(kData),
-        mode: mode
+        mode: mode,
+        // qh specific
+        correctAnswers: mode === "qh" ? (kData.comp_words || "").split(",").map(w => w.trim()).filter(w => w.length > 0) : null
     };
 }
 
@@ -206,10 +243,38 @@ function chooseWeightedKanji(srs, staticData, pool) {
 }
 
 // Helper: Generate Options (Distractors)
-function generateOptions(correctKey, modeDef, candidates) {
-    // Correct Answer
+function generateOptions(correctKey, modeDef, candidates, mode) {
     const correctData = staticData[correctKey];
     correctData.kanji = correctKey; // Inject Key
+
+    if (mode === "qh") {
+        const correctWords = (correctData.comp_words || "").split(",").map(w => w.trim()).filter(w => w.length > 0);
+        const distractors = [];
+        let attempts = 0;
+
+        // Find distractors from other kanji compositions
+        while (distractors.length < 8 && attempts < 100) {
+            attempts++;
+            const randomKey = candidates[Math.floor(Math.random() * candidates.length)];
+            if (randomKey === correctKey) continue;
+
+            const otherData = staticData[randomKey];
+            if (!otherData.comp_words) continue;
+
+            const otherWords = otherData.comp_words.split(",").map(w => w.trim());
+            const randomWord = otherWords[Math.floor(Math.random() * otherWords.length)];
+
+            if (randomWord && !correctWords.includes(randomWord) && !distractors.includes(randomWord)) {
+                distractors.push(randomWord);
+            }
+        }
+
+        const nbLeurres = Math.max(4, 10 - correctWords.length);
+        const options = [...correctWords, ...distractors.slice(0, nbLeurres)];
+        return options.sort(() => Math.random() - 0.5);
+    }
+
+    // Standard Modes
     const correct = modeDef.a(correctData);
 
     // Generate Distractors
@@ -233,10 +298,21 @@ function generateOptions(correctKey, modeDef, candidates) {
    4. ANSWER & UPDATES
    ============================ */
 export function checkLocalAnswer(questionObj, userChoice, rt_ms) {
-    const isCorrect = (userChoice === questionObj.correctAnswer);
+    let isCorrect = false;
+    if (questionObj.mode === "qh") {
+        // userChoice is an array for qh
+        const correctSet = new Set(questionObj.correctAnswers);
+        const selectedSet = new Set(userChoice || []);
+        if (correctSet.size === selectedSet.size && [...correctSet].every(item => selectedSet.has(item))) {
+            isCorrect = true;
+        }
+    } else {
+        isCorrect = (userChoice === questionObj.correctAnswer);
+    }
+
     return {
         correct: isCorrect,
-        bonne: questionObj.correctAnswer,
+        bonne: questionObj.mode === "qh" ? questionObj.correctAnswers : questionObj.correctAnswer,
         extras: questionObj.extras,
         rt_ms: rt_ms
     };
@@ -355,8 +431,10 @@ export async function updateBoxRanking(boxId, sessionStats, mode) {
    ============================ */
 export function getBoxLevel(boxId, mode = "qa") {
     // Check if box exists, then check if mode exists
-    if (boxProgress[String(boxId)] && boxProgress[String(boxId)][mode]) {
-        return boxProgress[String(boxId)][mode].level;
+    const bId = String(boxId);
+    if (boxProgress[bId] && boxProgress[bId][mode]) {
+        const entry = boxProgress[bId][mode];
+        return typeof entry === 'object' ? (entry.level || 0) : entry;
     }
     return 0;
 }

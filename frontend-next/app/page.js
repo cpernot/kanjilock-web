@@ -40,8 +40,6 @@ export default function Home() {
 
       <div style={styles.menu}>
         <Link href="/quiz" style={styles.btn}>▶️ Start Quiz</Link>
-        <Link href="/intrus" style={styles.btn}>▶️ Find the Intruder</Link>
-        <Link href="/compose" style={styles.btn}>▶️ Kanji Compose</Link>
         <Link href="/stats" style={styles.btn}>▶️ Statistics</Link>
         <Link href="/ranking" style={styles.btn}>▶️ Rankings</Link>
       </div>

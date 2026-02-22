@@ -95,15 +95,17 @@ export const MODES = {
         })
     },
 
-    "intrus": {
+    "qh": {
+        label: "Kanji → Composition",
         q: (k) => k.kanji,
-        a: (k) => k.boite,
+        a: (k) => k.comp_words,
         extras: (k) => ({
             romaji: k.romaji,
             signification: k.signification,
             mot: k.mot,
             lecture_mot: k.lecture_mot,
-            signification_mot: k.signification_mot
+            signification_mot: k.signification_mot,
+            boite: k.boite
         })
     }
 };

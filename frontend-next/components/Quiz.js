@@ -18,6 +18,7 @@ export default function Quiz({ forcedMode = null }) {
     const [selectedBox, setSelectedBox] = useState("");
     const [boxes, setBoxes] = useState([]);
     const [appSettings, setAppSettings] = useState(null);
+    const [selectedComposeChoices, setSelectedComposeChoices] = useState([]);
 
     // Game State
     const [isPlaying, setIsPlaying] = useState(false);
@@ -69,11 +70,7 @@ export default function Quiz({ forcedMode = null }) {
 
     // Watch for mode/box changes to reset
     useEffect(() => {
-        if (!forcedMode && isPlaying) {
-            // If user changes mode while playing, restart?
-            // Or just let them finish current question?
-            // User asked for "different quiz drop box doesn't work".
-            // We should reload immediately.
+        if (!forcedMode) {
             startNewSession();
         }
     }, [selectedMode, selectedBox]);
@@ -159,12 +156,14 @@ export default function Quiz({ forcedMode = null }) {
         const newMode = e.target.value;
         setSelectedMode(newMode);
         saveMode(newMode);
+        setIsPlaying(false);
     }
 
     function handleBoxChange(e) {
         const val = e.target.value;
         setSelectedBox(val);
         setBoxContext(val === "" ? null : val);
+        setIsPlaying(false);
     }
 
     function togglePause() {
@@ -193,6 +192,7 @@ export default function Quiz({ forcedMode = null }) {
     async function loadQuestion() {
         setIsProcessing(false);
         setResult(null);
+        setSelectedComposeChoices([]); // Reset for qh
         elapsedBeforePauseRef.current = 0; // Reset question timer
 
         // Timer animation reset
@@ -352,7 +352,7 @@ export default function Quiz({ forcedMode = null }) {
     }
 
     // MODES_OPTS moved to centralized quizModes.js labels
-    const MODES_OPTS = Object.keys(MODES).filter(m => m !== "intrus");
+    const MODES_OPTS = Object.keys(MODES);
 
     if (!question && isPlaying) return <div style={styles.container}>Loading question...</div>;
 
@@ -417,18 +417,56 @@ export default function Quiz({ forcedMode = null }) {
                     <h2 style={styles.question}>{question.question}</h2>
 
                     {/* Options */}
-                    <div style={styles.grid}>
-                        {question.options.map((opt, i) => (
-                            <button
-                                key={i}
-                                onClick={() => handleAnswer(opt)}
-                                style={styles.button}
-                                disabled={isProcessing}
-                            >
-                                {opt}
-                            </button>
-                        ))}
+                    <div style={question.mode === "qh" ? styles.pool : styles.grid}>
+                        {question.options.map((opt, i) => {
+                            if (question.mode === "qh") {
+                                const isSelected = selectedComposeChoices.includes(opt);
+                                return (
+                                    <button
+                                        key={i}
+                                        onClick={() => {
+                                            if (isSelected) {
+                                                setSelectedComposeChoices(selectedComposeChoices.filter(c => c !== opt));
+                                            } else {
+                                                setSelectedComposeChoices([...selectedComposeChoices, opt]);
+                                            }
+                                        }}
+                                        style={{
+                                            ...styles.chip,
+                                            background: isSelected ? "#2196F3" : "rgba(0, 0, 0, 0.5)",
+                                            color: isSelected ? "white" : "#94a3b8",
+                                            borderColor: isSelected ? "#38bdf8" : "rgba(255,255,255,0.1)"
+                                        }}
+                                        disabled={isProcessing}
+                                    >
+                                        {opt}
+                                    </button>
+                                );
+                            }
+                            return (
+                                <button
+                                    key={i}
+                                    onClick={() => handleAnswer(opt)}
+                                    style={styles.button}
+                                    disabled={isProcessing}
+                                >
+                                    {opt}
+                                </button>
+                            );
+                        })}
                     </div>
+
+                    {question.mode === "qh" && (
+                        <div style={{ marginTop: "20px" }}>
+                            <button
+                                onClick={() => handleAnswer(selectedComposeChoices)}
+                                style={styles.submitBtn}
+                                disabled={isProcessing || selectedComposeChoices.length === 0}
+                            >
+                                Valider
+                            </button>
+                        </div>
+                    )}
                 </>
             )}
 
@@ -451,9 +489,13 @@ export default function Quiz({ forcedMode = null }) {
 
                     {result.extras && (
                         <div style={styles.extras}>
-                            {Object.entries(result.extras).map(([k, v]) => (
-                                <div key={k}><b>{k}</b>: {v}</div>
-                            ))}
+                            {result.extras.signification && <div><b>Sens</b>: {result.extras.signification}</div>}
+                            {result.extras.romaji && <div><b>Romaji</b>: {result.extras.romaji}</div>}
+                            {question.mode === "qh" && result.bonne && (
+                                <div style={{ marginTop: "10px", padding: "8px", background: "rgba(0,0,0,0.2)", borderRadius: "8px" }}>
+                                    <b>Composition</b>: {Array.isArray(result.bonne) ? result.bonne.join(" + ") : result.bonne}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -564,6 +606,34 @@ const styles = {
     extras: {
         marginTop: "10px",
         textAlign: "left",
-        fontSize: "0.9rem"
+        fontSize: "0.9rem",
+        width: "100%"
+    },
+    pool: {
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "10px",
+        justifyContent: "center",
+        padding: "10px"
+    },
+    chip: {
+        padding: "12px 20px",
+        fontSize: "1rem",
+        cursor: "pointer",
+        borderRadius: "100px",
+        border: "2px solid",
+        transition: "all 0.2s",
+        fontFamily: "'Inter', sans-serif"
+    },
+    submitBtn: {
+        padding: "12px 40px",
+        fontSize: "1.1rem",
+        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+        color: "white",
+        border: "none",
+        borderRadius: "12px",
+        fontWeight: "600",
+        cursor: "pointer",
+        boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
     }
 };

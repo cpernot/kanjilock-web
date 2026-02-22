@@ -4,7 +4,7 @@
 
 import { MODES } from "./quizModes";
 
-export const MODES_LIST = Object.keys(MODES).filter(m => m !== "intrus");
+export const MODES_LIST = Object.keys(MODES);
 
 // In React, we might prefer using a Hook or Context for this.
 // For now, we use localStorage to persist the preference, same as before.
