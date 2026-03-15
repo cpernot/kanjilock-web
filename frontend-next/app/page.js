@@ -1,68 +1,154 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getPlayer_setting } from "@/lib/settings";
+import { getPlayer_setting, getSettings, fetchRemoteSettings } from "@/lib/settings";
 import { initEngine } from "@/lib/quizengine";
+import { checkPeriodReset, calculateProgress, updateBaselines, fetchBoxCounts } from "@/lib/targets";
+import CircularProgress from "@/components/CircularProgress";
+import config from "@/lib/config";
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
   const [player, setPlayer] = useState(null);
+  const [progressData, setProgressData] = useState({});
+  const [targetType, setTargetType] = useState("kanji");
+  const [period, setPeriod] = useState("week");
 
   useEffect(() => {
-    // Preload engine data
-    const p = getPlayer_setting();
-    if (p) {
-      setPlayer(p);
-      initEngine(p).then(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    loadHomeData();
   }, []);
 
-  if (loading) return <div style={{ textAlign: "center", marginTop: "50px" }}>Loading Engine...</div>;
+  async function loadHomeData() {
+    const p = getPlayer_setting();
+    if (!p) {
+      setLoading(false);
+      return;
+    }
+    setPlayer(p);
+
+    try {
+      // 1. Init engine
+      await initEngine(p);
+      
+      // 2. Load Settings
+      let settings = await fetchRemoteSettings(p);
+      if (!settings) settings = getSettings(p);
+
+      const type = settings.targets?.type || "kanji";
+      const freq = settings.targets?.period || "week";
+      setTargetType(type);
+      setPeriod(freq);
+
+      // 3. Fetch Current Counts
+      let currentCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+      if (type === "kanji") {
+        const res = await fetch(`${config.apiBaseUrl}/stats?player=${encodeURIComponent(p)}`);
+        if (res.ok) {
+          const stats = await res.json();
+          // Assuming stats returns { 1: count, 2: count, ... }
+          currentCounts = stats;
+        }
+      } else {
+        currentCounts = await fetchBoxCounts(p);
+      }
+
+      // 4. Check Period Reset
+      if (checkPeriodReset(settings)) {
+        await updateBaselines(p, currentCounts);
+        // Re-fetch settings after baseline update
+        settings = await fetchRemoteSettings(p);
+      }
+
+      // 5. Calculate Progress
+      const prog = calculateProgress(settings, currentCounts);
+      setProgressData(prog);
+
+    } catch (e) {
+      console.error("Home load error", e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) return <div style={styles.loading}>Initializing Dashboard...</div>;
 
   if (!player) {
     return (
-      <div style={{ textAlign: "center" }}>
-        <h1>Welcome to KanjiLock</h1>
-        <p>Please log in first.</p>
-        <Link href="/login" style={styles.btn}>Go to Login</Link>
+      <div style={styles.loginCard}>
+        <h1>🔒 KanjiLock</h1>
+        <p>Please log in to track your mastery journey.</p>
+        <Link href="/login" style={styles.startBtn}>Login to Continue</Link>
       </div>
     )
   }
 
+  const levelColors = {
+    1: "#3b82f6", // Blue
+    2: "#eab308", // Yellow/Gold
+    3: "#f97316", // Orange
+    4: "#22c55e"  // Green
+  };
+
   return (
-    <div style={{ textAlign: "center" }}>
-      <h1>🔒 Kanji Lock</h1>
-      <p style={{ fontStyle: "italic", maxWidth: "600px", margin: "0 auto 30px" }}>
+    <div style={styles.container}>
+      <header style={styles.header}>
+        <h1 style={styles.title}>Welcome back, {player}</h1>
+        <div style={styles.periodBadge}>{period.toUpperCase()} TARGETS</div>
+      </header>
+
+      <div style={styles.dashboardSection}>
+        <h2 style={styles.sectionTitle}>
+          Your {targetType === "kanji" ? "Kanji" : "Box"} Progression
+        </h2>
+        
+        <div style={styles.progressGrid}>
+          {[1, 2, 3, 4].map(lvl => (
+            <CircularProgress 
+              key={lvl}
+              percentage={progressData[lvl]?.percent || 0}
+              label={`Level ${lvl}`}
+              subtitle={`${progressData[lvl]?.current || 0} / ${progressData[lvl]?.target || 0}`}
+              color={levelColors[lvl]}
+              size={140}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div style={styles.menuGrid}>
+        <Link href="/quiz" style={{ ...styles.menuBtn, background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)" }}>
+           🎯 Practice New
+        </Link>
+        <Link href="/targets" style={styles.menuBtn}>
+           ⚙️ Set Targets
+        </Link>
+        <Link href="/stats" style={styles.menuBtn}>
+           📊 View Details
+        </Link>
+        <Link href="/pricing" style={styles.menuBtn}>
+           💎 Upgrade Elite
+        </Link>
+      </div>
+
+      <p style={styles.quote}>
         "L'affaire est toute simple, tout le secret tient en deux mots : <b>constance et continuité</b>"
       </p>
-
-      <div style={styles.menu}>
-        <Link href="/quiz" style={styles.btn}>▶️ Start Quiz</Link>
-        <Link href="/stats" style={styles.btn}>▶️ Statistics</Link>
-        <Link href="/ranking" style={styles.btn}>▶️ Rankings</Link>
-      </div>
-
-      <div style={{ marginTop: "30px" }}>
-        <b>Player:</b> {player} <br />
-        <Link href="/settings" style={{ fontSize: "0.9rem", color: "#666" }}>Settings</Link>
-      </div>
     </div>
   );
 }
 
 const styles = {
-  menu: { display: "flex", flexDirection: "column", gap: "15px", alignItems: "center" },
-  btn: {
-    textDecoration: "none",
-    background: "#eee",
-    padding: "15px 30px",
-    borderRadius: "8px",
-    width: "250px",
-    color: "#333",
-    fontWeight: "bold",
-    fontSize: "1.1rem",
-    display: "inline-block"
-  }
+  container: { maxWidth: "700px", margin: "0 auto", padding: "40px 20px", textAlign: "center" },
+  loading: { display: "flex", justifyContent: "center", alignItems: "center", height: "80vh", fontSize: "1.2rem", color: "#94a3b8" },
+  loginCard: { marginTop: "100px", background: "rgba(30, 41, 59, 0.4)", padding: "40px", borderRadius: "24px", border: "1px solid rgba(255,255,255,0.1)" },
+  header: { marginBottom: "40px" },
+  title: { fontSize: "2rem", fontWeight: "800", color: "#fff", marginBottom: "8px" },
+  periodBadge: { display: "inline-block", padding: "4px 12px", background: "rgba(255,255,255,0.1)", borderRadius: "100px", fontSize: "0.7rem", fontWeight: "bold", letterSpacing: "1px", color: "rgba(255,255,255,0.6)" },
+  dashboardSection: { background: "rgba(30, 41, 59, 0.4)", borderRadius: "28px", padding: "30px", border: "1px solid rgba(255,255,255,0.05)", marginBottom: "30px" },
+  sectionTitle: { fontSize: "1.1rem", color: "#94a3b8", marginBottom: "25px", fontWeight: "600" },
+  progressGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "20px", justifyContent: "center" },
+  menuGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "40px" },
+  menuBtn: { textDecoration: "none", background: "#1e293b", padding: "18px", borderRadius: "16px", color: "#fff", fontWeight: "bold", fontSize: "1rem", border: "1px solid rgba(255,255,255,0.05)", transition: "all 0.2s" },
+  startBtn: { textDecoration: "none", background: "#3b82f6", padding: "12px 24px", borderRadius: "12px", color: "white", fontWeight: "bold", display: "inline-block", marginTop: "20px" },
+  quote: { fontStyle: "italic", fontSize: "0.9rem", color: "#64748b", maxWidth: "400px", margin: "0 auto" }
 };

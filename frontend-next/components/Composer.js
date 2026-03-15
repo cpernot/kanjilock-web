@@ -8,8 +8,11 @@ export default function Composer() {
     const [qData, setQData] = useState(null);
     const [selectedWords, setSelectedWords] = useState([]);
     const [result, setResult] = useState(null);
+    const [appSettings, setAppSettings] = useState(null);
 
     useEffect(() => {
+        const { getSettings } = require("../lib/settings");
+        setAppSettings(getSettings());
         loadQuestion();
     }, []);
 
@@ -39,10 +42,12 @@ export default function Composer() {
         const res = checkComposeAnswer(qData, selectedWords);
         setResult(res);
 
-        if (res.success) {
-            new Audio("/sounds/success.wav").play().catch(() => { });
-        } else {
-            new Audio("/sounds/BOMB.WAV").play().catch(() => { });
+        if (appSettings?.soundEnabled !== false) {
+            if (res.success) {
+                new Audio("/sounds/success.wav").play().catch(() => { });
+            } else {
+                new Audio("/sounds/BOMB.WAV").play().catch(() => { });
+            }
         }
     }
 
@@ -96,11 +101,20 @@ export default function Composer() {
             {result && (
                 <div style={{
                     ...styles.resultBox,
-                    backgroundColor: result.success ? "#4CAF50" : "#F44336"
+                    backgroundColor: result.success ? "rgba(76, 175, 80, 0.95)" : "rgba(244, 67, 54, 0.95)"
                 }}>
-                    <h3>{result.success ? "Correct!" : "Incorrect"}</h3>
-                    <p>Kanji was: <span style={{ fontSize: "2rem" }}>{result.kanji}</span></p>
-                    <p>Composition: {result.correct.join(" + ")}</p>
+                    <h3>{result.success ? "✓ Correct" : "✗ Incorrect"}</h3>
+                    <p style={{ fontSize: "2rem", margin: "10px 0", fontWeight: "bold" }}>{result.kanji}</p>
+                    <p style={{ margin: "5px 0" }}>{result.correct.join(" + ")}</p>
+                    
+                    {result.extras && (
+                        <div style={{ textAlign: "left", fontSize: "0.9rem", marginTop: "10px", width: "100%" }}>
+                            {result.extras.signification && <div><b>Sens</b>: {result.extras.signification}</div>}
+                            {result.extras.lecture_mot && <div><b>Lecture</b>: {result.extras.lecture_mot}</div>}
+                            {result.extras.mot && <div><b>Exemple</b>: {result.extras.mot} ({result.extras.signification_mot})</div>}
+                            {result.extras.romaji && <div><b>Romaji</b>: {result.extras.romaji}</div>}
+                        </div>
+                    )}
                 </div>
             )}
         </div>

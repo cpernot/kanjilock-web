@@ -39,8 +39,10 @@ export default function Navbar() {
           <>
             <Link href="/quiz">Quiz</Link>
             <Link href="/compose">Compose</Link>
-            <Link href="/stats">Stats</Link>
+            <Link href="/targets">Targets</Link>
             <Link href="/ranking">Ranking</Link>
+            <Link href="/stats">Stats</Link>
+            <Link href="/pricing" style={{ color: "#FFD700", fontWeight: "bold" }}>Join Elite</Link>
             <span style={styles.player}>👤 {player}</span>
             <button onClick={logout} style={styles.logout}>Logout</button>
           </>

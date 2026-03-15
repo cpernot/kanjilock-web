@@ -24,7 +24,15 @@ export const DEFAULT_SETTINGS = {
 
   vibration: true,
   autoDismissAnswer: true,
-  progressiveMode: false
+  progressiveMode: false,
+  soundEnabled: true,
+  targets: {
+    period: "week", // day, week, month
+    type: "kanji",  // kanji, box
+    levels: { 1: 50, 2: 30, 3: 20, 4: 10 },
+    lastBaselineUpdate: null,
+    baselines: { 1: 0, 2: 0, 3: 0, 4: 0 }
+  }
 };
 
 import config from "./config";

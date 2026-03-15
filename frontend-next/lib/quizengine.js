@@ -99,7 +99,7 @@ export function getAvailableBoxes() {
 }
 
 export function getVisibleBoxes(progressiveMode = false, mode = "qa") {
-    const allBoxesAvailable = getAvailableBoxes().sort((a, b) => parseInt(a) - parseInt(b));
+    const allBoxesAvailable = getAvailableBoxes(); // Assuming this returns DB order
     if (!progressiveMode) return allBoxesAvailable;
 
     const visible = [];
@@ -115,8 +115,8 @@ export function getVisibleBoxes(progressiveMode = false, mode = "qa") {
             break;
         }
     }
-    // Return visible boxes in reverse order of completion/id as requested
-    return visible.sort((a, b) => parseInt(b) - parseInt(a));
+    // Return visible boxes in reverse order of database sequence
+    return visible.reverse();
 }
 
 export function getBoxKanjiCount(boxId) {
@@ -165,8 +165,8 @@ export function getNextQuestion(mode, progressiveMode = false) {
         candidates = allKeys;
     }
 
-    // A.1 SPECIAL FILTER FOR QH (must have comp_words)
-    if (mode === "qh") {
+    // A.1 SPECIAL FILTER FOR QH & QG (must have comp_words)
+    if (mode === "qh" || mode === "qg") {
         candidates = candidates.filter(k => staticData[k].comp_words && staticData[k].comp_words.trim().length > 0);
     }
 
@@ -217,8 +217,8 @@ export function getNextQuestion(mode, progressiveMode = false) {
         options: generateOptions(selectedKanji, modeDef, candidates, mode),
         extras: modeDef.extras(kData),
         mode: mode,
-        // qh specific
-        correctAnswers: mode === "qh" ? (kData.comp_words || "").split(",").map(w => w.trim()).filter(w => w.length > 0) : null
+        // qh/qg specific
+        correctAnswers: (mode === "qh" || mode === "qg") ? (kData.comp_words || "").split(",").map(w => w.trim()).filter(w => w.length > 0) : null
     };
 }
 
@@ -246,8 +246,9 @@ function chooseWeightedKanji(srs, staticData, pool) {
 function generateOptions(correctKey, modeDef, candidates, mode) {
     const correctData = staticData[correctKey];
     correctData.kanji = correctKey; // Inject Key
+    const isComposeMode = (mode === "qh" || mode === "qg");
 
-    if (mode === "qh") {
+    if (isComposeMode) {
         const correctWords = (correctData.comp_words || "").split(",").map(w => w.trim()).filter(w => w.length > 0);
         const distractors = [];
         let attempts = 0;
@@ -299,8 +300,10 @@ function generateOptions(correctKey, modeDef, candidates, mode) {
    ============================ */
 export function checkLocalAnswer(questionObj, userChoice, rt_ms) {
     let isCorrect = false;
-    if (questionObj.mode === "qh") {
-        // userChoice is an array for qh
+    const isComposeMode = (questionObj.mode === "qh" || questionObj.mode === "qg");
+
+    if (isComposeMode) {
+        // userChoice is an array for qh/qg
         const correctSet = new Set(questionObj.correctAnswers);
         const selectedSet = new Set(userChoice || []);
         if (correctSet.size === selectedSet.size && [...correctSet].every(item => selectedSet.has(item))) {
@@ -312,7 +315,7 @@ export function checkLocalAnswer(questionObj, userChoice, rt_ms) {
 
     return {
         correct: isCorrect,
-        bonne: questionObj.mode === "qh" ? questionObj.correctAnswers : questionObj.correctAnswer,
+        bonne: isComposeMode ? questionObj.correctAnswers : questionObj.correctAnswer,
         extras: questionObj.extras,
         rt_ms: rt_ms
     };

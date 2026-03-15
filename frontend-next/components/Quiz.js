@@ -190,9 +190,10 @@ export default function Quiz({ forcedMode = null }) {
     }
 
     async function loadQuestion() {
+        const isComposeMode = (question?.mode === "qh" || question?.mode === "qg");
         setIsProcessing(false);
         setResult(null);
-        setSelectedComposeChoices([]); // Reset for qh
+        setSelectedComposeChoices([]); // Reset for qh/qg
         elapsedBeforePauseRef.current = 0; // Reset question timer
 
         // Timer animation reset
@@ -275,6 +276,7 @@ export default function Quiz({ forcedMode = null }) {
     }
 
     function playSound(name) {
+        if (appSettings?.soundEnabled === false) return;
         const audio = new Audio(`/sounds/${name}`);
         audio.play().catch(e => console.error("Sound play failed", e));
     }
@@ -323,7 +325,12 @@ export default function Quiz({ forcedMode = null }) {
         const player = getPlayer_setting();
 
         if (currentBoxFilter) {
-            await updateBoxRanking(currentBoxFilter, summary, mode);
+            const oldLevel = getBoxLevel(currentBoxFilter, mode);
+            const ranking = await updateBoxRanking(currentBoxFilter, summary, mode);
+            summary.boxRanking = {
+                ...ranking,
+                oldLevel: oldLevel
+            };
         }
 
         const payload = {
@@ -417,9 +424,9 @@ export default function Quiz({ forcedMode = null }) {
                     <h2 style={styles.question}>{question.question}</h2>
 
                     {/* Options */}
-                    <div style={question.mode === "qh" ? styles.pool : styles.grid}>
+                    <div style={(question.mode === "qh" || question.mode === "qg") ? styles.pool : styles.grid}>
                         {question.options.map((opt, i) => {
-                            if (question.mode === "qh") {
+                            if (question.mode === "qh" || question.mode === "qg") {
                                 const isSelected = selectedComposeChoices.includes(opt);
                                 return (
                                     <button
@@ -456,7 +463,7 @@ export default function Quiz({ forcedMode = null }) {
                         })}
                     </div>
 
-                    {question.mode === "qh" && (
+                    {(question.mode === "qh" || question.mode === "qg") && (
                         <div style={{ marginTop: "20px" }}>
                             <button
                                 onClick={() => handleAnswer(selectedComposeChoices)}
@@ -484,18 +491,18 @@ export default function Quiz({ forcedMode = null }) {
                     }}
                 >
                     <div style={styles.resultQuestion}>{question?.question}</div>
-                    <h3 style={{ margin: "10px 0" }}>{result.correct ? "✓ Correct" : "✗ Wrong"}</h3>
-                    {!result.correct && <p style={{ fontSize: "1.2rem", fontWeight: "bold" }}>Correct: {result.bonne}</p>}
+                    
+                    {/* Correct Answer Prominent */}
+                    <div style={{ fontSize: "2rem", margin: "10px 0", color: "#fff", fontWeight: "bold" }}>
+                        {Array.isArray(result.bonne) ? result.bonne.join(" + ") : result.bonne}
+                    </div>
 
+                    <h3 style={{ margin: "10px 0" }}>{result.correct ? "✓ Correct" : "✗ Wrong"}</h3>
+                    
                     {result.extras && (
                         <div style={styles.extras}>
                             {result.extras.signification && <div><b>Sens</b>: {result.extras.signification}</div>}
                             {result.extras.romaji && <div><b>Romaji</b>: {result.extras.romaji}</div>}
-                            {question.mode === "qh" && result.bonne && (
-                                <div style={{ marginTop: "10px", padding: "8px", background: "rgba(0,0,0,0.2)", borderRadius: "8px" }}>
-                                    <b>Composition</b>: {Array.isArray(result.bonne) ? result.bonne.join(" + ") : result.bonne}
-                                </div>
-                            )}
                         </div>
                     )}
 
