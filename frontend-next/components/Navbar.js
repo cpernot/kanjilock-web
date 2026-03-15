@@ -38,7 +38,6 @@ export default function Navbar() {
         {player ? (
           <>
             <Link href="/quiz">Quiz</Link>
-            <Link href="/compose">Compose</Link>
             <Link href="/targets">Targets</Link>
             <Link href="/ranking">Ranking</Link>
             <Link href="/stats">Stats</Link>

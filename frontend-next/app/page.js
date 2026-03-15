@@ -109,7 +109,7 @@ export default function Home() {
               label={`Level ${lvl}`}
               subtitle={`${progressData[lvl]?.current || 0} / ${progressData[lvl]?.target || 0}`}
               color={levelColors[lvl]}
-              size={140}
+              size={110}
             />
           ))}
         </div>
@@ -117,16 +117,22 @@ export default function Home() {
 
       <div style={styles.menuGrid}>
         <Link href="/quiz" style={{ ...styles.menuBtn, background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)" }}>
-           🎯 Practice New
+           Quiz
         </Link>
         <Link href="/targets" style={styles.menuBtn}>
-           ⚙️ Set Targets
+           Targets
+        </Link>
+        <Link href="/ranking" style={styles.menuBtn}>
+           Ranking
         </Link>
         <Link href="/stats" style={styles.menuBtn}>
-           📊 View Details
+           Stats
         </Link>
-        <Link href="/pricing" style={styles.menuBtn}>
-           💎 Upgrade Elite
+      </div>
+
+      <div style={{ marginBottom: "40px" }}>
+        <Link href="/settings" style={styles.settingsBtn}>
+           Settings
         </Link>
       </div>
 
@@ -146,9 +152,27 @@ const styles = {
   periodBadge: { display: "inline-block", padding: "4px 12px", background: "rgba(255,255,255,0.1)", borderRadius: "100px", fontSize: "0.7rem", fontWeight: "bold", letterSpacing: "1px", color: "rgba(255,255,255,0.6)" },
   dashboardSection: { background: "rgba(30, 41, 59, 0.4)", borderRadius: "28px", padding: "30px", border: "1px solid rgba(255,255,255,0.05)", marginBottom: "30px" },
   sectionTitle: { fontSize: "1.1rem", color: "#94a3b8", marginBottom: "25px", fontWeight: "600" },
-  progressGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "20px", justifyContent: "center" },
-  menuGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "40px" },
+  progressGrid: { 
+    display: "grid", 
+    gridTemplateColumns: "repeat(2, 1fr)", 
+    gap: "10px", 
+    justifyContent: "center",
+    maxWidth: "400px",
+    margin: "0 auto"
+  },
+  menuGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "20px" },
   menuBtn: { textDecoration: "none", background: "#1e293b", padding: "18px", borderRadius: "16px", color: "#fff", fontWeight: "bold", fontSize: "1rem", border: "1px solid rgba(255,255,255,0.05)", transition: "all 0.2s" },
+  settingsBtn: { 
+    textDecoration: "none", 
+    background: "rgba(255,255,255,0.05)", 
+    padding: "12px 24px", 
+    borderRadius: "12px", 
+    color: "#94a3b8", 
+    fontSize: "0.9rem", 
+    display: "inline-block",
+    border: "1px solid rgba(255,255,255,0.1)",
+    transition: "all 0.2s"
+  },
   startBtn: { textDecoration: "none", background: "#3b82f6", padding: "12px 24px", borderRadius: "12px", color: "white", fontWeight: "bold", display: "inline-block", marginTop: "20px" },
   quote: { fontStyle: "italic", fontSize: "0.9rem", color: "#64748b", maxWidth: "400px", margin: "0 auto" }
 };
