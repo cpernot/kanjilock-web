@@ -6,11 +6,13 @@ import { getPlayer_setting } from "@/lib/settings";
 import { getMode, MODES_LIST } from "@/lib/modeManager";
 import { MODES } from "@/lib/quizModes";
 import { fetchBoxCounts } from "@/lib/targets";
+import { loadFlashcardProgress } from "@/lib/flashcards";
 import ContributionGraph from "@/components/ContributionGraph";
 
 export default function StatsPage() {
     const [stats, setStats] = useState(null);
     const [boxStats, setBoxStats] = useState({ 1: 0, 2: 0, 3: 0, 4: 0 });
+    const [flashStats, setFlashStats] = useState({ 1: 0, 2: 0, 3: 0, 4: 0 });
     const [loading, setLoading] = useState(true);
     const [selectedMode, setSelectedMode] = useState(null);
     const activeModeRef = useRef(null);
@@ -33,7 +35,7 @@ export default function StatsPage() {
         if (!player) return;
 
         try {
-            // Fetch general kanji stats
+            // 1. Fetch general kanji stats
             const res = await fetch(`${config.apiBaseUrl}/stats?mode=${mode}&player=${encodeURIComponent(player)}`);
             if (res.ok) {
                 const data = await res.json();
@@ -42,9 +44,17 @@ export default function StatsPage() {
                 }
             }
 
-            // Fetch box-specific stats for this mode
+            // 2. Fetch box-specific stats for this mode
             const boxes = await fetchBoxCounts(player, mode);
             setBoxStats(boxes);
+
+            // 3. Load Flashcard stats (Local)
+            const flashProgress = loadFlashcardProgress();
+            const fCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+            Object.values(flashProgress).forEach(lvl => {
+                if (fCounts[lvl] !== undefined) fCounts[lvl]++;
+            });
+            setFlashStats(fCounts);
 
         } catch (e) {
             console.error("Stats error", e);
@@ -134,6 +144,32 @@ export default function StatsPage() {
                                         </div>
                                     </div>
                                     <div style={styles.barLabel}>Lvl {level}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* 3. Flashcard Mastery */}
+                <div style={styles.glassCard}>
+                    <h3 style={styles.cardTitle}>Flashcard Mastery</h3>
+                    <div style={styles.barChart}>
+                        {[1, 2, 3, 4].map(level => {
+                            const count = flashStats[level] || 0;
+                            const height = Math.min((count / 20) * 100, 100);
+                            const labels = { 1: "Unk.", 2: "Rev.", 3: "Good", 4: "Mast." };
+                            return (
+                                <div key={level} style={styles.barGroup}>
+                                    <div style={styles.barContainer}>
+                                        <div style={{
+                                            ...styles.bar,
+                                            height: `${height}%`,
+                                            background: getLevelColor(level)
+                                        }}>
+                                            {count > 0 && <span style={styles.barValue}>{count}</span>}
+                                        </div>
+                                    </div>
+                                    <div style={styles.barLabel}>{labels[level]}</div>
                                 </div>
                             );
                         })}

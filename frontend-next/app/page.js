@@ -29,7 +29,7 @@ export default function Home() {
     try {
       // 1. Init engine
       await initEngine(p);
-      
+
       // 2. Load Settings
       let settings = await fetchRemoteSettings(p);
       if (!settings) settings = getSettings(p);
@@ -100,10 +100,10 @@ export default function Home() {
         <h2 style={styles.sectionTitle}>
           Your {targetType === "kanji" ? "Kanji" : "Box"} Progression
         </h2>
-        
+
         <div style={styles.progressGrid}>
           {[1, 2, 3, 4].map(lvl => (
-            <CircularProgress 
+            <CircularProgress
               key={lvl}
               percentage={progressData[lvl]?.percent || 0}
               label={`Level ${lvl}`}
@@ -117,22 +117,22 @@ export default function Home() {
 
       <div style={styles.menuGrid}>
         <Link href="/quiz" style={{ ...styles.menuBtn, background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)" }}>
-           Quiz
+          Quiz
         </Link>
         <Link href="/targets" style={styles.menuBtn}>
-           Targets
+          Targets
         </Link>
         <Link href="/ranking" style={styles.menuBtn}>
-           Ranking
+          Ranking
         </Link>
         <Link href="/stats" style={styles.menuBtn}>
-           Stats
+          Stats
         </Link>
       </div>
 
       <div style={{ marginBottom: "40px" }}>
         <Link href="/settings" style={styles.settingsBtn}>
-           Settings
+          ⚙️ Settings
         </Link>
       </div>
 
@@ -152,23 +152,23 @@ const styles = {
   periodBadge: { display: "inline-block", padding: "4px 12px", background: "rgba(255,255,255,0.1)", borderRadius: "100px", fontSize: "0.7rem", fontWeight: "bold", letterSpacing: "1px", color: "rgba(255,255,255,0.6)" },
   dashboardSection: { background: "rgba(30, 41, 59, 0.4)", borderRadius: "28px", padding: "30px", border: "1px solid rgba(255,255,255,0.05)", marginBottom: "30px" },
   sectionTitle: { fontSize: "1.1rem", color: "#94a3b8", marginBottom: "25px", fontWeight: "600" },
-  progressGrid: { 
-    display: "grid", 
-    gridTemplateColumns: "repeat(2, 1fr)", 
-    gap: "10px", 
+  progressGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, 1fr)",
+    gap: "10px",
     justifyContent: "center",
     maxWidth: "400px",
     margin: "0 auto"
   },
   menuGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "20px" },
   menuBtn: { textDecoration: "none", background: "#1e293b", padding: "18px", borderRadius: "16px", color: "#fff", fontWeight: "bold", fontSize: "1rem", border: "1px solid rgba(255,255,255,0.05)", transition: "all 0.2s" },
-  settingsBtn: { 
-    textDecoration: "none", 
-    background: "rgba(255,255,255,0.05)", 
-    padding: "12px 24px", 
-    borderRadius: "12px", 
-    color: "#94a3b8", 
-    fontSize: "0.9rem", 
+  settingsBtn: {
+    textDecoration: "none",
+    background: "rgba(255,255,255,0.05)",
+    padding: "12px 24px",
+    borderRadius: "12px",
+    color: "#94a3b8",
+    fontSize: "0.9rem",
     display: "inline-block",
     border: "1px solid rgba(255,255,255,0.1)",
     transition: "all 0.2s"

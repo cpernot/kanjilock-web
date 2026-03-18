@@ -90,6 +90,14 @@ export function getUserProgress() {
     return userProgress;
 }
 
+export function getStaticData() {
+    return staticData;
+}
+
+export function getBoxProgress() {
+    return boxProgress;
+}
+
 export function getAvailableBoxes() {
     const boxes = new Set();
     Object.values(staticData).forEach(k => {

@@ -17,7 +17,7 @@ export default function PricingPage() {
         },
         {
             name: "Ninja",
-            price: "$5/mo",
+            price: "$5",
             features: [
                 "Everything in Free",
                 "Remote Storage Sync",
@@ -31,7 +31,7 @@ export default function PricingPage() {
         },
         {
             name: "Shogun",
-            price: "$12/mo",
+            price: "$12",
             features: [
                 "Everything in Ninja",
                 "AI-Powered Learning Paths",
@@ -47,7 +47,7 @@ export default function PricingPage() {
     return (
         <div style={styles.container}>
             <div style={styles.header}>
-                <h1 style={styles.title}>Unlock Your Potential</h1>
+                <h1 style={styles.title}>Unlock Your Kanji Potential</h1>
                 <p style={styles.subtitle}>Choose the path that fits your learning journey</p>
             </div>
 
@@ -61,7 +61,7 @@ export default function PricingPage() {
                         {plan.highlight && <div style={{ ...styles.badge, background: plan.color }}>Recommended</div>}
                         <h2 style={{ ...styles.planName, color: plan.color }}>{plan.name}</h2>
                         <div style={styles.price}>{plan.price}<span style={styles.perMonth}>/mo</span></div>
-                        
+
                         <ul style={styles.featureList}>
                             {plan.features.map((f, fi) => (
                                 <li key={fi} style={styles.featureItem}>

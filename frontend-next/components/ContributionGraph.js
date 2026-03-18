@@ -2,6 +2,15 @@
 import React from 'react';
 
 const ContributionGraph = ({ data = {} }) => {
+    const scrollRef = React.useRef(null);
+
+    // Auto-scroll to the end (right) on mount
+    React.useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+        }
+    }, []);
+
     // Generate dates for the last 12 months
     const today = new Date();
     const oneYearAgo = new Date();
@@ -51,41 +60,43 @@ const ContributionGraph = ({ data = {} }) => {
 
     return (
         <div style={styles.outerContainer}>
-            <div style={styles.monthLabels}>
-                {monthLabels.map((m, i) => (
-                    <span key={i} style={{ ...styles.monthLabel, left: `${m.index * 14}px` }}>
-                        {m.label}
-                    </span>
-                ))}
-            </div>
-
-            <div style={styles.graphContainer}>
-                <div style={styles.dayLabels}>
-                    <span></span>
-                    <span>Mon</span>
-                    <span></span>
-                    <span>Wed</span>
-                    <span></span>
-                    <span>Fri</span>
-                    <span></span>
+            <div ref={scrollRef} style={styles.scrollArea}>
+                <div style={styles.monthLabels}>
+                    {monthLabels.map((m, i) => (
+                        <span key={i} style={{ ...styles.monthLabel, left: `${m.index * 14}px` }}>
+                            {m.label}
+                        </span>
+                    ))}
                 </div>
 
-                <div style={styles.weeksContainer}>
-                    {weeks.map((week, wi) => (
-                        <div key={wi} style={styles.week}>
-                            {week.map((day, di) => (
-                                <div
-                                    key={di}
-                                    title={`${day.date}: ${day.count} contributions`}
-                                    style={{
-                                        ...styles.cell,
-                                        background: day.isPast ? getColor(day.count) : "transparent",
-                                        border: day.isToday ? "1px solid #fff" : "none"
-                                    }}
-                                />
-                            ))}
-                        </div>
-                    ))}
+                <div style={styles.graphContainer}>
+                    <div style={styles.weeksContainer}>
+                        {weeks.map((week, wi) => (
+                            <div key={wi} style={styles.week}>
+                                {week.map((day, di) => (
+                                    <div
+                                        key={di}
+                                        title={`${day.date}: ${day.count} contributions`}
+                                        style={{
+                                            ...styles.cell,
+                                            background: day.isPast ? getColor(day.count) : "transparent",
+                                            border: day.isToday ? "1px solid #fff" : "none"
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+
+                    <div style={styles.dayLabels}>
+                        <span></span>
+                        <span>Mon</span>
+                        <span></span>
+                        <span>Wed</span>
+                        <span></span>
+                        <span>Fri</span>
+                        <span></span>
+                    </div>
                 </div>
             </div>
 
@@ -111,31 +122,38 @@ const styles = {
         border: "1px solid rgba(255, 255, 255, 0.1)",
         color: "#94a3b8",
         fontSize: "0.75rem",
+        maxWidth: "100%",
+        boxSizing: "border-box"
+    },
+    scrollArea: {
         overflowX: "auto",
-        maxWidth: "100%"
+        paddingBottom: "5px",
+        cursor: "grab"
     },
     monthLabels: {
         display: "flex",
         height: "20px",
         position: "relative",
         marginBottom: "5px",
-        marginLeft: "30px"
+        minWidth: "750px" // Fixed width to anchor labels
     },
     monthLabel: {
         position: "absolute",
     },
     graphContainer: {
         display: "flex",
-        gap: "8px"
+        gap: "8px",
+        minWidth: "750px"
     },
     dayLabels: {
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        height: "98px", // 7 * 14px
-        paddingRight: "5px",
-        textAlign: "right",
-        width: "30px"
+        height: "95px",
+        paddingLeft: "8px",
+        textAlign: "left",
+        width: "35px",
+        flexShrink: 0
     },
     weeksContainer: {
         display: "flex",
@@ -149,7 +167,8 @@ const styles = {
     cell: {
         width: "11px",
         height: "11px",
-        borderRadius: "2px"
+        borderRadius: "2px",
+        flexShrink: 0
     },
     footer: {
         display: "flex",
