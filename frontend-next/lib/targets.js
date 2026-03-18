@@ -6,7 +6,7 @@ import config from "./config";
  */
 export function checkPeriodReset(settings) {
     if (!settings.targets?.lastBaselineUpdate) return true;
-    
+
     const now = new Date();
     const last = new Date(settings.targets.lastBaselineUpdate);
     const period = settings.targets.period || "week";
@@ -14,7 +14,7 @@ export function checkPeriodReset(settings) {
     if (period === "day") {
         return now.toDateString() !== last.toDateString();
     }
-    
+
     if (period === "week") {
         const getMonday = (d) => {
             const date = new Date(d);
@@ -24,7 +24,7 @@ export function checkPeriodReset(settings) {
         };
         return getMonday(now) !== getMonday(last);
     }
-    
+
     if (period === "month") {
         return now.getMonth() !== last.getMonth() || now.getFullYear() !== last.getFullYear();
     }
@@ -34,20 +34,20 @@ export function checkPeriodReset(settings) {
 
 /**
  * Fetches the count of boxes at each level (1-4).
- * A box's level is determined by the maximum level reached in any of its modes.
+ * A box's level is determined by the maximum level reached in any of its modes (or a specific mode if provided).
  */
-export async function fetchBoxCounts(player) {
+export async function fetchBoxCounts(player, mode = null) {
     if (!player) return { 1: 0, 2: 0, 3: 0, 4: 0 };
     try {
         const res = await fetch(`${config.apiBaseUrl}/box-progress/${encodeURIComponent(player)}`);
         if (res.ok) {
             const data = await res.json(); // { "box_id": { "qa": 2, "qb": 1 } }
             const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
-            
+
             Object.values(data).forEach(modes => {
-                const maxLevel = Math.max(...Object.values(modes));
-                if (maxLevel >= 1 && maxLevel <= 4) {
-                    counts[maxLevel]++;
+                const level = mode ? (modes[mode] || 0) : Math.max(...Object.values(modes), 0);
+                if (level >= 1 && level <= 4) {
+                    counts[level]++;
                 }
             });
             return counts;
@@ -67,7 +67,7 @@ export async function updateBaselines(player, currentCounts) {
 
     settings.targets.baselines = { ...currentCounts };
     settings.targets.lastBaselineUpdate = new Date().toISOString();
-    
+
     await saveRemoteSettings(player, settings);
 }
 
@@ -76,24 +76,24 @@ export async function updateBaselines(player, currentCounts) {
  */
 export function calculateProgress(settings, currentCounts) {
     if (!settings.targets) return {};
-    
+
     const progress = {};
     const levels = [1, 2, 3, 4];
-    
+
     levels.forEach(lvl => {
         const targetValue = settings.targets.levels[lvl] || 0;
         const baselineValue = settings.targets.baselines[lvl] || 0;
         const currentCount = currentCounts[lvl] || 0;
-        
+
         // Incremental gain since period start
         const gained = Math.max(0, currentCount - baselineValue);
-        
+
         progress[lvl] = {
             current: gained,
             target: targetValue,
             percent: targetValue > 0 ? Math.min(100, (gained / targetValue) * 100) : 100
         };
     });
-    
+
     return progress;
 }

@@ -23,13 +23,13 @@ export const DEFAULT_SETTINGS = {
   },
 
   vibration: true,
-  autoDismissAnswer: true,
-  progressiveMode: false,
-  soundEnabled: true,
+  autoDismissAnswer: false,
+  progressiveMode: true,
+  soundEnabled: false,
   targets: {
     period: "week", // day, week, month
-    type: "kanji",  // kanji, box
-    levels: { 1: 50, 2: 30, 3: 20, 4: 10 },
+    type: "box",  // kanji, box
+    levels: { 1: 5, 2: 3, 3: 2, 4: 1 },
     lastBaselineUpdate: null,
     baselines: { 1: 0, 2: 0, 3: 0, 4: 0 }
   }

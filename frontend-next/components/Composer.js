@@ -108,11 +108,23 @@ export default function Composer() {
                     <p style={{ margin: "5px 0" }}>{result.correct.join(" + ")}</p>
                     
                     {result.extras && (
-                        <div style={{ textAlign: "left", fontSize: "0.9rem", marginTop: "10px", width: "100%" }}>
-                            {result.extras.signification && <div><b>Sens</b>: {result.extras.signification}</div>}
-                            {result.extras.lecture_mot && <div><b>Lecture</b>: {result.extras.lecture_mot}</div>}
-                            {result.extras.mot && <div><b>Exemple</b>: {result.extras.mot} ({result.extras.signification_mot})</div>}
-                            {result.extras.romaji && <div><b>Romaji</b>: {result.extras.romaji}</div>}
+                        <div style={{ textAlign: "left", fontSize: "0.9rem", marginTop: "15px", width: "100%", borderTop: "1px solid rgba(255,255,255,0.2)", paddingTop: "10px" }}>
+                            {Object.entries(result.extras).map(([key, value]) => {
+                                if (!value || key === "boite") return null;
+                                const labels = {
+                                    signification: "Sens",
+                                    romaji: "Romaji",
+                                    mot: "Exemple",
+                                    signification_mot: "Sens (Ex)",
+                                    lecture_mot: "Lecture",
+                                    kanji: "Kanji"
+                                };
+                                return (
+                                    <div key={key} style={{ marginBottom: "4px" }}>
+                                        <b style={{ color: "rgba(255,255,255,0.7)" }}>{labels[key] || key}</b>: {value}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>

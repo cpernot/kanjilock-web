@@ -501,8 +501,27 @@ export default function Quiz({ forcedMode = null }) {
                     
                     {result.extras && (
                         <div style={styles.extras}>
-                            {result.extras.signification && <div><b>Sens</b>: {result.extras.signification}</div>}
-                            {result.extras.romaji && <div><b>Romaji</b>: {result.extras.romaji}</div>}
+                            {Object.entries(result.extras).map(([key, value]) => {
+                                if (!value || key === "boite") return null;
+                                const labels = {
+                                    signification: "Sens",
+                                    romaji: "Romaji",
+                                    mot: "Exemple",
+                                    signification_mot: "Sens (Ex)",
+                                    lecture_mot: "Lecture",
+                                    kanji: "Kanji"
+                                };
+                                return (
+                                    <div key={key} style={{ marginBottom: "4px" }}>
+                                        <b style={{ color: "rgba(255,255,255,0.7)" }}>{labels[key] || key}</b>: {value}
+                                    </div>
+                                );
+                            })}
+                            {result.extras.boite && (
+                                <div style={{ marginTop: "8px", fontSize: "0.8rem", opacity: 0.8 }}>
+                                    Boîte {result.extras.boite}
+                                </div>
+                            )}
                         </div>
                     )}
 
