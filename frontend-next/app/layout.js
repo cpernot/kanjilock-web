@@ -1,5 +1,6 @@
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import SenseiChat from "@/components/SenseiChat";
 
 export const metadata = {
   title: "KanjiLock",
@@ -28,6 +29,7 @@ export default function RootLayout({ children }) {
         <main style={{ padding: "20px" }}>
           {children}
         </main>
+        <SenseiChat />
       </body>
     </html>
   );
