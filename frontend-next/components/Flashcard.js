@@ -83,7 +83,7 @@ const styles = {
     container: {
         perspective: "1000px",
         width: "320px",
-        height: "450px",
+        height: "380px",
         margin: "0 auto",
         position: "relative"
     },
@@ -106,7 +106,7 @@ const styles = {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: "rgba(30, 41, 59, 0.85)", // Increased to help backdrop-filter isolation
+        background: "rgba(30, 41, 59, 0.85)", 
         backdropFilter: "blur(12px)",
         boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
         padding: "20px",
@@ -114,13 +114,13 @@ const styles = {
     },
     cardFront: {
         zIndex: 2,
-        transform: "translateZ(1px)" // Force front to be physically in front
+        transform: "translateZ(1px)" 
     },
     cardBack: {
-        transform: "rotateY(180deg) translateZ(1px)", // Force back to be physically in front of its own plane
+        transform: "rotateY(180deg) translateZ(1px)", 
         textAlign: "left",
         justifyContent: "flex-start",
-        paddingTop: "40px"
+        paddingTop: "30px"
     },
     levelIndicator: {
         position: "absolute",
@@ -134,58 +134,58 @@ const styles = {
         textTransform: "uppercase"
     },
     kanjiMain: {
-        fontSize: "6rem",
+        fontSize: "5rem",
         fontFamily: "'Noto Serif JP', serif",
         color: "#fff",
-        marginBottom: "20px"
+        marginBottom: "15px"
     },
     compoundBox: {
         background: "rgba(255,255,255,0.05)",
-        padding: "10px 20px",
+        padding: "8px 16px",
         borderRadius: "12px",
         border: "1px solid rgba(255,255,255,0.1)"
     },
     compoundTxt: {
-        fontSize: "1.5rem",
+        fontSize: "1.3rem",
         color: "#cbd5e1",
         letterSpacing: "2px"
     },
     hint: {
         position: "absolute",
-        bottom: "20px",
-        fontSize: "0.75rem",
+        bottom: "15px",
+        fontSize: "0.7rem",
         color: "rgba(255,255,255,0.3)",
         textTransform: "uppercase",
         letterSpacing: "1px"
     },
     detailsHeader: {
-        fontSize: "1.2rem",
+        fontSize: "1.1rem",
         fontWeight: "bold",
         color: "#fff",
-        marginBottom: "30px",
+        marginBottom: "20px",
         borderBottom: "1px solid rgba(255,255,255,0.1)",
         width: "100%",
-        paddingBottom: "10px"
+        paddingBottom: "8px"
     },
     detailSection: {
-        marginBottom: "25px",
+        marginBottom: "15px",
         width: "100%"
     },
     detailTitle: {
-        fontSize: "0.7rem",
+        fontSize: "0.65rem",
         textTransform: "uppercase",
         color: "#94a3b8",
         letterSpacing: "1.5px",
-        marginBottom: "8px"
+        marginBottom: "5px"
     },
     detailRow: {
-        display: "flex", // Fixed missing brace and quote
+        display: "flex", 
         alignItems: "center",
         gap: "10px",
         flexWrap: "wrap"
     },
     detailVal: {
-        fontSize: "1.1rem",
+        fontSize: "1rem",
         color: "#f1f5f9",
         fontWeight: "500"
     },
@@ -194,22 +194,22 @@ const styles = {
     },
     evalContainer: {
         position: "absolute",
-        bottom: "-100px",
+        bottom: "-70px",
         left: "50%",
         transform: "translateX(-50%)",
         display: "flex",
-        gap: "10px",
+        gap: "8px",
         width: "100%",
         justifyContent: "center",
         animation: "slideUp 0.3s ease-out"
     },
     evalBtn: {
         border: "none",
-        padding: "10px 12px",
-        borderRadius: "12px",
+        padding: "8px 10px",
+        borderRadius: "10px",
         color: "#fff",
         fontWeight: "bold",
-        fontSize: "0.75rem",
+        fontSize: "0.7rem",
         cursor: "pointer",
         whiteSpace: "nowrap",
         boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"

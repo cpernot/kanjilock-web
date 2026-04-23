@@ -40,9 +40,7 @@ export default function TargetsPage() {
 
     return (
         <div style={styles.container}>
-             <div style={styles.nav}>
-                <Link href="/" style={styles.backLink}>← Back to Dashboard</Link>
-            </div>
+
 
             <h1 style={styles.title}>🎯 Set Learning Targets</h1>
             
@@ -51,13 +49,25 @@ export default function TargetsPage() {
                     <label style={styles.label}>Target Type</label>
                     <div style={styles.toggleRow}>
                         <button 
-                            onClick={() => setSettings({ ...settings, targets: { ...settings.targets, type: "kanji" }})}
+                            onClick={() => {
+                                const newLevels = {};
+                                Object.keys(settings.targets.levels).forEach(lvl => {
+                                    newLevels[lvl] = settings.targets.levels[lvl] * 10;
+                                });
+                                setSettings({ ...settings, targets: { ...settings.targets, type: "kanji", levels: newLevels }});
+                            }}
                             style={{ ...styles.toggleBtn, background: tType === "kanji" ? "#2196F3" : "#1e293b", opacity: tType === "kanji" ? 1 : 0.6 }}
                         >
                             Kanjis Learned
                         </button>
                         <button 
-                            onClick={() => setSettings({ ...settings, targets: { ...settings.targets, type: "box" }})}
+                            onClick={() => {
+                                const newLevels = {};
+                                Object.keys(settings.targets.levels).forEach(lvl => {
+                                    newLevels[lvl] = Math.max(1, Math.floor(settings.targets.levels[lvl] / 10));
+                                });
+                                setSettings({ ...settings, targets: { ...settings.targets, type: "box", levels: newLevels }});
+                            }}
                             style={{ ...styles.toggleBtn, background: tType === "box" ? "#2196F3" : "#1e293b", opacity: tType === "box" ? 1 : 0.6 }}
                         >
                             Boxes Mastered
@@ -116,7 +126,7 @@ const styles = {
     toggleRow: { display: "flex", gap: "10px" },
     toggleBtn: { flex: 1, padding: "12px", border: "none", borderRadius: "12px", color: "white", cursor: "pointer", transition: "all 0.2s" },
     select: { width: "100%", padding: "12px", background: "#0f172a", border: "1px solid #334155", borderRadius: "12px", color: "#fff" },
-    grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" },
+    grid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px" },
     goalItem: { display: "flex", flexDirection: "column" },
     goalLabel: { fontSize: "0.8rem", color: "#94a3b8", marginBottom: "8px" },
     input: { padding: "12px", background: "#0f172a", border: "1px solid #334155", borderRadius: "12px", color: "#fff" },

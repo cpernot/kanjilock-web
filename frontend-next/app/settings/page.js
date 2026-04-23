@@ -30,9 +30,7 @@ export default function SettingsPage() {
 
     return (
         <div style={styles.container}>
-            <div style={styles.nav}>
-                <Link href="/" style={styles.backLink}>← Back to Home</Link>
-            </div>
+
 
             <h1 style={styles.title}>⚙️ Settings</h1>
 

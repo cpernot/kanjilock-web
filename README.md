@@ -70,16 +70,23 @@ KanjiLock/
    pip install -r requirements.txt
    cd ..
    python start.py
-   ```
 
-4. **Frontend Setup (Next.js)**
-   ```bash
-   cd frontend-next
-   npm install
-   npm run dev
-   ```
+    The app will be available at http://localhost:8000.
 
-## ⚠️ Limitations (Free Tier)
+⚠️ Limitations (Free Tier)
 
-- **"Cold Start" Delay:** Render puts the backend to sleep after 15 minutes of inactivity. Initial wake-up takes ~50s.
-- **Vercel Functions:** Serverless execution is capped at 10 seconds.
+Since this project runs on free-tier infrastructure, please be aware of the following:
+
+    "Cold Start" Delay: Render puts the backend service to sleep after 15 minutes of inactivity. The first request after a break may take 50-60 seconds to wake up the server.
+
+    Database Quotas: Supabase free tier has a 500MB database limit (sufficient for thousands of Kanji, but monitor if adding heavy logs).
+
+    Vercel Functions: If using serverless functions on Vercel, execution time is capped at 10 seconds.
+
+🛠 Future Roadmap (V2)
+
+    Chatbot Integration: AI-powered tutor using GroqCloud.
+
+    Advanced SRS: New "Box" ranking system (Levels 1-4).
+
+    Enhanced UI: Detailed progress visualization per Kanji box.

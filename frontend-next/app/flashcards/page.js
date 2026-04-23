@@ -95,7 +95,7 @@ export default function FlashcardsPage() {
     return (
         <div style={styles.container}>
             <div style={styles.navBar}>
-                <Link href="/" style={styles.backLink}>← Dashboard</Link>
+                <div />
                 <button onClick={() => setShowFilters(!showFilters)} style={styles.filterBtn}>
                     {showFilters ? "Close Filters" : "Filters ⚙️"}
                 </button>
@@ -155,12 +155,7 @@ export default function FlashcardsPage() {
                 </div>
             )}
 
-            <div style={styles.progressHeader}>
-                Card {currentIndex + 1} of {deck.length}
-                <div style={styles.progressBar}>
-                    <div style={{ ...styles.progressFill, width: `${((currentIndex + 1) / deck.length) * 100}%` }} />
-                </div>
-            </div>
+
 
             <div style={styles.cardArea}>
                 {currentCard ? (
@@ -176,6 +171,13 @@ export default function FlashcardsPage() {
                         <button onClick={() => setShowFilters(true)} style={styles.applyBtn}>Adjust Filters</button>
                     </div>
                 )}
+            </div>
+
+            <div style={styles.progressHeader}>
+                Card {currentIndex + 1} of {deck.length}
+                <div style={styles.progressBar}>
+                    <div style={{ ...styles.progressFill, width: `${((currentIndex + 1) / deck.length) * 100}%` }} />
+                </div>
             </div>
 
             {currentCard && (
@@ -290,12 +292,12 @@ const styles = {
         alignItems: "center",
         justifyContent: "center",
         width: "100%",
-        minHeight: "450px"
+        minHeight: "380px"
     },
     manualNav: {
         display: "flex",
         gap: "20px",
-        marginTop: "120px", // Accommodate eval buttons
+        marginTop: "80px", // Reduced
         marginBottom: "40px"
     },
     navBtn: {

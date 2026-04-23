@@ -5,6 +5,7 @@ import { getPlayer_setting, getSettings, fetchRemoteSettings } from "@/lib/setti
 import { initEngine } from "@/lib/quizengine";
 import { checkPeriodReset, calculateProgress, updateBaselines, fetchBoxCounts } from "@/lib/targets";
 import CircularProgress from "@/components/CircularProgress";
+import LoadingOverlay from "@/components/LoadingOverlay";
 import config from "@/lib/config";
 
 export default function Home() {
@@ -70,7 +71,7 @@ export default function Home() {
     }
   }
 
-  if (loading) return <div style={styles.loading}>Initializing Dashboard...</div>;
+  if (loading) return <LoadingOverlay message="Initializing Dashboard..." />;
 
   if (!player) {
     return (
@@ -92,24 +93,24 @@ export default function Home() {
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <h1 style={styles.title}>Welcome back, {player}</h1>
-        <div style={styles.periodBadge}>{period.toUpperCase()} TARGETS</div>
+        <h1 style={styles.title}>Welcome, {player}</h1>
+        <div style={styles.subtitle}>
+          <span style={styles.periodBadge}>{period.toUpperCase()}</span>
+          <span style={styles.progLabel}>Your {targetType === "kanji" ? "Kanji" : "Box"} Progression</span>
+        </div>
       </header>
 
-      <div style={styles.dashboardSection}>
-        <h2 style={styles.sectionTitle}>
-          Your {targetType === "kanji" ? "Kanji" : "Box"} Progression
-        </h2>
+
 
         <div style={styles.progressGrid}>
           {[1, 2, 3, 4].map(lvl => (
             <CircularProgress
               key={lvl}
               percentage={progressData[lvl]?.percent || 0}
-              label={`Level ${lvl}`}
-              subtitle={`${progressData[lvl]?.current || 0} / ${progressData[lvl]?.target || 0}`}
+              label={`L${lvl}`}
+              subtitle={`${progressData[lvl]?.current || 0}/${progressData[lvl]?.target || 0}`}
               color={levelColors[lvl]}
-              size={110}
+              size={80}
             />
           ))}
         </div>
@@ -148,16 +149,16 @@ const styles = {
   loading: { display: "flex", justifyContent: "center", alignItems: "center", height: "80vh", fontSize: "1.2rem", color: "#94a3b8" },
   loginCard: { marginTop: "100px", background: "rgba(30, 41, 59, 0.4)", padding: "40px", borderRadius: "24px", border: "1px solid rgba(255,255,255,0.1)" },
   header: { marginBottom: "40px" },
-  title: { fontSize: "2rem", fontWeight: "800", color: "#fff", marginBottom: "8px" },
-  periodBadge: { display: "inline-block", padding: "4px 12px", background: "rgba(255,255,255,0.1)", borderRadius: "100px", fontSize: "0.7rem", fontWeight: "bold", letterSpacing: "1px", color: "rgba(255,255,255,0.6)" },
-  dashboardSection: { background: "rgba(30, 41, 59, 0.4)", borderRadius: "28px", padding: "30px", border: "1px solid rgba(255,255,255,0.05)", marginBottom: "30px" },
-  sectionTitle: { fontSize: "1.1rem", color: "#94a3b8", marginBottom: "25px", fontWeight: "600" },
+  title: { fontSize: "1.8rem", fontWeight: "800", color: "#fff" },
+  subtitle: { display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginTop: "10px" },
+  progLabel: { color: "#94a3b8", fontSize: "0.9rem", fontWeight: "600" },
+  periodBadge: { padding: "4px 10px", background: "#2196F3", borderRadius: "8px", fontSize: "0.65rem", fontWeight: "900", color: "#fff" },
+  dashboardSection: { background: "rgba(30, 41, 59, 0.3)", borderRadius: "24px", padding: "20px", border: "1px solid rgba(255,255,255,0.05)", marginBottom: "30px" },
   progressGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "10px",
-    justifyContent: "center",
-    maxWidth: "400px",
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "5px",
+    maxWidth: "500px",
     margin: "0 auto"
   },
   menuGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "20px" },

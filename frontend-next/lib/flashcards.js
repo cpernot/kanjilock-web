@@ -29,13 +29,26 @@ export function saveFlashcardEvaluation(kanji, level) {
  * Filters and prepares a deck based on user criteria.
  */
 export function prepareDeck(allKanjis, filters, srsProgress, boxProgressMap) {
-    let deck = Object.entries(allKanjis).map(([kanji, data]) => ({
-        kanji,
-        ...data,
-        level: filters.progress[kanji] || 1, // Default to level 1 (Unknown)
-        srsLevel: (srsProgress && srsProgress[kanji]) ? (srsProgress[kanji].level || 0) : 0,
-        boxLevel: (boxProgressMap && boxProgressMap[data.boite]) ? (boxProgressMap[data.boite].qa || 0) : 0
-    }));
+    let deck = Object.entries(allKanjis).map(([kanji, data]) => {
+        // Find max SRS level across all modes (qa, qb, qc, etc.)
+        let maxSrsLevel = 0;
+        if (srsProgress) {
+            Object.values(srsProgress).forEach(modeData => {
+                if (modeData && modeData[kanji]) {
+                    const level = modeData[kanji].level || 0;
+                    if (level > maxSrsLevel) maxSrsLevel = level;
+                }
+            });
+        }
+
+        return {
+            kanji,
+            ...data,
+            level: filters.progress[kanji] || 1, // Default to level 1 (Unknown)
+            srsLevel: maxSrsLevel,
+            boxLevel: (boxProgressMap && boxProgressMap[data.boite]) ? (boxProgressMap[data.boite].qa || 0) : 0
+        };
+    });
 
     // 1. Filter by Level (Checkbox logic)
     if (filters.selectedLevels && filters.selectedLevels.length > 0) {

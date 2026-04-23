@@ -45,14 +45,30 @@ def ranking_global():
 @router.get("/ranking/month/{year_month}")
 def ranking_month(year_month: str):
     """
-    year_month = '2026-01'
-    On utilise une requête Supabase pour filtrer par date directement dans le Cloud
+    year_month = '2026-04'
     """
-    # Filtre sur la colonne 'session_date' (format ISO: 2026-01-...)
-    response = supabase.table("sessions") \
-        .select("*") \
-        .gte("session_date", f"{year_month}-01") \
-        .lt("session_date", f"{year_month}-32") \
-        .execute()
+    # Robust date range: from YYYY-MM-01 to first day of next month
+    from datetime import datetime, timedelta
+    try:
+        start_date = datetime.strptime(f"{year_month}-01", "%Y-%m-%d")
+        # Go to next month
+        if start_date.month == 12:
+            end_date = datetime(start_date.year + 1, 1, 1)
+        else:
+            end_date = datetime(start_date.year, start_date.month + 1, 1)
+        
+        response = supabase.table("sessions") \
+            .select("*") \
+            .gte("session_date", start_date.strftime("%Y-%m-%d")) \
+            .lt("session_date", end_date.strftime("%Y-%m-%d")) \
+            .execute()
+    except Exception as e:
+        print(f"Error in ranking_month: {e}")
+        # Fallback to the old method if date parsing fails
+        response = supabase.table("sessions") \
+            .select("*") \
+            .gte("session_date", f"{year_month}-01") \
+            .lt("session_date", f"{year_month}-32") \
+            .execute()
         
     return compute_ranking(response.data)

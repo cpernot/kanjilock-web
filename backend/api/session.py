@@ -26,8 +26,10 @@ async def save_session(payload: dict):
         return {"status": "ok", "message": "No answers to process"}
 
     # 3. Chargement de la progression utilisateur (Supabase/JSON)
-   
+    user_data = load_data(player_id)
     srs_data = user_data.setdefault("srs", {})
+
+    updated_srs = {}
 
     # 4. Traitement de chaque réponse
     for ans in answers:
@@ -49,10 +51,15 @@ async def save_session(payload: dict):
         # Utilisation de ta fonction SRS existante pour modifier 'state' en place
         update_kanji_srs(state, correct, speed_factor)
 
-        # Sauvegarde du nouvel état
+        # Sauvegarde du nouvel état dans le cache local
         srs_data[mode][kanji] = state
+        
+        # On garde une trace pour la sauvegarde partielle
+        if mode not in updated_srs:
+            updated_srs[mode] = {}
+        updated_srs[mode][kanji] = state
 
-    # 5. Sauvegarde finale (Une seule écriture pour toute la session !)
-    save_data(player_id,user_data)
+    # 5. Sauvegarde finale (On ne sauvegarde QUE ce qui a changé !)
+    save_data(player_id, {"srs": updated_srs})
 
     return {"status": "success", "updated_kanjis": len(answers)}

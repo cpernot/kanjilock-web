@@ -77,7 +77,7 @@ export default function StatsPage() {
     return (
         <div style={styles.container}>
             <div style={styles.header}>
-                <Link href="/" style={styles.backLink}>← Dashboard</Link>
+
                 <h1 style={styles.title}>Statistics</h1>
                 <p style={styles.subtitle}>Track your Japanese mastery</p>
             </div>

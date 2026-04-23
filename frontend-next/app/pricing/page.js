@@ -83,9 +83,7 @@ export default function PricingPage() {
                 ))}
             </div>
 
-            <div style={styles.footer}>
-                <Link href="/" style={styles.backLink}>Return to Dashboard</Link>
-            </div>
+
         </div>
     );
 }
