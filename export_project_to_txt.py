@@ -2,7 +2,7 @@ import os
 
 OUTPUT_FILE = "kanjilock_js_files.txt"
 EXCLUDE_DIRS = {"icons", "css", "sounds"}
-EXCLUDE_EXT = {".json", ".py", "ico", ".md", ".txt",
+EXCLUDE_EXT = {".json", ".py", "ico", ".md", ".txt", ".env",
                ".xlsx", "migrate_to_supabase.py", "export_project_to_txt.py","extract_requirements.py", "project_structure.py"}
 
 def should_skip(path):

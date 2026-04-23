@@ -123,11 +123,13 @@ export async function buildQuestion() {
   const data = await res.json();
 
   return {
-    question: data.question,
-    options: data.options,
-    qid: data.qid,
-    mode: data.mode
-  };
+  question: data.question,
+  options: data.options,
+  correct: data.answer,   // add this
+  qid: data.qid,
+  mode: data.mode
+};
+
 }
 
 export function getUserProgress() {
@@ -273,6 +275,7 @@ function generateOptions(correctKey, modeDef, candidates) {
 /* ============================
    4. ANSWER & UPDATES
    ============================ */
+
 export function checkLocalAnswer(questionObj, userChoice, rt_ms) {
     const isCorrect = (userChoice === questionObj.correctAnswer);
     return {
@@ -305,6 +308,31 @@ export function updateEngineAfterAnswer(kanji, isCorrect, mode) {
         // Increment Level locally (visual only, real save happens in Backend)
         state.level = Math.min((state.level || 1) + 1, 4);
     }
+}
+let sessionAnswers = [];
+
+export function recordAnswer({ kanji, correct, mode, speed_factor = 1.0 }) {
+  sessionAnswers.push({ kanji, correct, mode, speed_factor });
+}
+
+export async function sendSession() {
+  const player = getPlayer();
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  const res = await fetch(`${API_BASE}/api/session`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      player,
+      answers: sessionAnswers
+    })
+  });
+
+  if (!res.ok) {
+    console.error("Session save failed");
+  }
+
+  sessionAnswers = []; // reset after send
 }
 
 /* ============================

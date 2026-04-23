@@ -8,24 +8,8 @@ from backend.data.progress import load_data
 from backend.core.config import supabase
 import os
 
-app = FastAPI()
-
 # 環境変数が "true" の場合のみチャット機能をロードする
 ENABLE_CHAT = os.getenv("ENABLE_CHAT", "false").lower() == "true"
-
-if ENABLE_CHAT:
-    try:
-        from backend.api.chat import router as chat_router
-        app.include_router(chat_router, prefix="/api/chat")
-        print("🤖 Chat mode enabled")
-    except ImportError as e:
-        print(f"⚠️ Chat failed to load: {e}")
-else:
-    print("📴 Chat mode disabled (Save Memory)")
-
-@app.get("/")
-def home():
-    return {"message": "Server is running", "chat_enabled": ENABLE_CHAT}
 
 # 1. DEFINITION DU LIFESPAN
 @asynccontextmanager
@@ -63,8 +47,20 @@ async def lifespan(app: FastAPI):
             final_cache[k_char] = k_infos
 
         app.state.kanji_cache = final_cache
-        chat.build_vector_store(final_cache)
-        print(f"✅ {len(app.state.kanji_cache)} kanjis en cache (avec composition).")
+        
+        # 4. Construction du cache des boîtes (Performance fix)
+        seen_boxes = set()
+        for k_infos in final_cache.values():
+            box_val = k_infos.get('boite')
+            if box_val is not None:
+                seen_boxes.add(box_val)
+        app.state.available_boxes = sorted(list(seen_boxes))
+
+        if ENABLE_CHAT:
+            await chat.build_vector_store(final_cache)
+            print("🤖 Chat mode enabled & Vector store built.")
+        
+        print(f"✅ {len(app.state.kanji_cache)} kanjis et {len(app.state.available_boxes)} boîtes en cache.")
 
     except Exception as e:
         print(f"❌ Erreur chargement cache kanji: {e}")
@@ -84,6 +80,10 @@ async def lifespan(app: FastAPI):
 
 # 2. CRÉATION DE L'APP (Indispensable à la racine pour Uvicorn)
 app = FastAPI(lifespan=lifespan)
+
+@app.get("/")
+def home():
+    return {"message": "Server is running", "chat_enabled": ENABLE_CHAT}
 # 3. MIDDLEWARE
 app.add_middleware(
     CORSMiddleware,
@@ -106,7 +106,9 @@ app.include_router(stats_router, prefix="/api")
 app.include_router(compose_router, prefix="/api")
 app.include_router(session_router, prefix="/api")
 app.include_router(ranking_router, prefix="/api")
-app.include_router(chat.router, prefix="/api")
+
+if ENABLE_CHAT:
+    app.include_router(chat.router, prefix="/api/chat")
 
 # 5. FICHIERS STATIQUES ET ROUTES SPA
 if FRONTEND_DIR.exists():
@@ -177,35 +179,6 @@ async def get_all_box_progress(user_id: str):
 
 @app.get("/api/available-boxes")
 async def get_available_boxes():
-    all_boxes = []
-    seen = set()
-    limit = 1000
-    offset = 0
-    
-    try:
-        while True:
-            # Fetch 1000 rows at a time, ordered by the database ID
-            # Use data->>boite to extract the value from the JSON column
-            res = supabase.table('kanji').select("id, data->>boite").order("id").range(offset, offset + limit - 1).execute()
-            
-            if not res.data:
-                break
-            
-            for item in res.data:
-                # The select "data->>boite" results in a key named 'boite' in the dict
-                box_val = item.get('boite')
-                if box_val is not None and box_val not in seen:
-                    all_boxes.append(box_val)
-                    seen.add(box_val)
-            
-            # If we got fewer rows than the limit, we've reached the end
-            if len(res.data) < limit:
-                break
-            offset += limit
-            
-        print(f"📦 Found {len(all_boxes)} unique boxes in sequence.")
-        return all_boxes
-    except Exception as e:
-        print(f"❌ Error fetching boxes: {e}")
-        return []
+    """Returns the cached list of unique boxes (O(1) retrieval)"""
+    return getattr(app.state, "available_boxes", [])
 
