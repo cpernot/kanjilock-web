@@ -1,0 +1,818 @@
+[
+    {
+        "departement": "Ain",
+        "keyword": "Bourg-en-Bresse",
+        "image": "<img src='Ain_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Ain_flag.svg'>",
+        "remarques": "01"
+    },
+    {
+        "departement": "Aisne",
+        "keyword": "Laon",
+        "image": "<img src='Aisne_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Aisne_flag.svg'>",
+        "remarques": "02"
+    },
+    {
+        "departement": "Allier",
+        "keyword": "Moulins",
+        "image": "<img src='Allier_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Allier_flag.svg'>",
+        "remarques": "03"
+    },
+    {
+        "departement": "Alpes-de-Haute-Provence",
+        "keyword": "Digne-les-Bains",
+        "image": "<img src='Alpes-de-Haute-Provence_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Alpes-de-Haute-Provence_flag.svg'>",
+        "remarques": "04"
+    },
+    {
+        "departement": "Hautes-Alpes",
+        "keyword": "Gap",
+        "image": "<img src='Hautes-Alpes_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Hautes-Alpes_flag.svg'>",
+        "remarques": "05"
+    },
+    {
+        "departement": "Alpes-Maritimes",
+        "keyword": "Nice",
+        "image": "<img src='Alpes-Maritimes_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Alpes-Maritimes_flag.svg'>",
+        "remarques": "06"
+    },
+    {
+        "departement": "Ardèche",
+        "keyword": "Privas",
+        "image": "<img src='Ardèche_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Ardèche_flag.svg'>",
+        "remarques": "07"
+    },
+    {
+        "departement": "Ardennes",
+        "keyword": "Charleville-Mézières",
+        "image": "<img src='Ardennes_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Ardennes_flag.svg'>",
+        "remarques": "08"
+    },
+    {
+        "departement": "Ariège",
+        "keyword": "Foix",
+        "image": "<img src='Ariège_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Ariège_flag.svg'>",
+        "remarques": "09"
+    },
+    {
+        "departement": "Aube",
+        "keyword": "Troyes",
+        "image": "<img src='Aube_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Aube_flag.svg'>",
+        "remarques": "10"
+    },
+    {
+        "departement": "Aude",
+        "keyword": "Carcassonne",
+        "image": "<img src='Aude_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Aude_flag.svg'>",
+        "remarques": "11"
+    },
+    {
+        "departement": "Aveyron",
+        "keyword": "Rodez",
+        "image": "<img src='Aveyron_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Aveyron_flag.svg'>",
+        "remarques": "12"
+    },
+    {
+        "departement": "Bouches-du-Rhône",
+        "keyword": "Marseille",
+        "image": "<img src='Bouches-du-Rhône_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Bouches-du-Rhône_flag.svg'>",
+        "remarques": "13"
+    },
+    {
+        "departement": "Calvados",
+        "keyword": "Caen",
+        "image": "<img src='Calvados_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Calvados_flag.svg'>",
+        "remarques": "14"
+    },
+    {
+        "departement": "Cantal",
+        "keyword": "Aurillac",
+        "image": "<img src='Cantal_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Cantal_flag.svg'>",
+        "remarques": "15"
+    },
+    {
+        "departement": "Charente",
+        "keyword": "Angoulême",
+        "image": "<img src='Charente_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Charente_flag.svg'>",
+        "remarques": "16"
+    },
+    {
+        "departement": "Charente-Maritime",
+        "keyword": "La Rochelle",
+        "image": "<img src='Charente-Maritime_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Charente-Maritime_flag.svg'>",
+        "remarques": "17"
+    },
+    {
+        "departement": "Cher",
+        "keyword": "Bourges",
+        "image": "<img src='Cher_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Cher_flag.svg'>",
+        "remarques": "18"
+    },
+    {
+        "departement": "Corrèze",
+        "keyword": "Tulle",
+        "image": "<img src='Corrèze_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Corrèze_flag.svg'>",
+        "remarques": "19"
+    },
+    {
+        "departement": "Corse-du-Sud",
+        "keyword": "Ajaccio",
+        "image": "<img src='Corse-du-Sud_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Corse-du-Sud_flag.svg'>",
+        "remarques": "2A"
+    },
+    {
+        "departement": "Haute-Corse",
+        "keyword": "Bastia",
+        "image": "<img src='Haute-Corse_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Haute-Corse_flag.svg'>",
+        "remarques": "2B"
+    },
+    {
+        "departement": "Côte-d'Or",
+        "keyword": "Dijon",
+        "image": "<img src=\"Côte-d'Or_map.svg\">",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src=\"Côte-d'Or_flag.svg\">",
+        "remarques": "21"
+    },
+    {
+        "departement": "Côtes-d'Armor",
+        "keyword": "Saint-Brieuc",
+        "image": "<img src=\"Côte-d'Or_map.svg\">",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src=\"Côte-d'Or_flag.svg\">",
+        "remarques": "22"
+    },
+    {
+        "departement": "Creuse",
+        "keyword": "Guéret",
+        "image": "<img src='Creuse_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Creuse_flag.svg'>",
+        "remarques": "23"
+    },
+    {
+        "departement": "Dordogne",
+        "keyword": "Périgueux",
+        "image": "<img src='Dordogne_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Dordogne_flag.svg'>",
+        "remarques": "24"
+    },
+    {
+        "departement": "Doubs",
+        "keyword": "Besançon",
+        "image": "<img src='Doubs_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Doubs_flag.svg'>",
+        "remarques": "25"
+    },
+    {
+        "departement": "Drôme",
+        "keyword": "Valence",
+        "image": "<img src='Drôme_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Drôme_flag.svg'>",
+        "remarques": "26"
+    },
+    {
+        "departement": "Eure",
+        "keyword": "Évreux",
+        "image": "<img src='Eure_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Eure_flag.svg'>",
+        "remarques": "27"
+    },
+    {
+        "departement": "Eure-et-Loir",
+        "keyword": "Chartres",
+        "image": "<img src='Eure-et-Loir_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Eure-et-Loir_flag.svg'>",
+        "remarques": "28"
+    },
+    {
+        "departement": "Finistère",
+        "keyword": "Quimper",
+        "image": "<img src='Finistère_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Finistère_flag.svg'>",
+        "remarques": "29"
+    },
+    {
+        "departement": "Gard",
+        "keyword": "Nîmes",
+        "image": "<img src='Gard_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Gard_flag.svg'>",
+        "remarques": "30"
+    },
+    {
+        "departement": "Haute-Garonne",
+        "keyword": "Toulouse",
+        "image": "<img src='Haute-Garonne_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Haute-Garonne_flag.svg'>",
+        "remarques": "31"
+    },
+    {
+        "departement": "Gers",
+        "keyword": "Auch",
+        "image": "<img src='Gers_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Gers_flag.svg'>",
+        "remarques": "32"
+    },
+    {
+        "departement": "Gironde",
+        "keyword": "Bordeaux",
+        "image": "<img src='Gironde_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Gironde_flag.svg'>",
+        "remarques": "33"
+    },
+    {
+        "departement": "Hérault",
+        "keyword": "Montpellier",
+        "image": "<img src='Hérault_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Hérault_flag.svg'>",
+        "remarques": "34"
+    },
+    {
+        "departement": "Ille-et-Vilaine",
+        "keyword": "Rennes",
+        "image": "<img src='Ille-et-Vilaine_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Ille-et-Vilaine_flag.svg'>",
+        "remarques": "35"
+    },
+    {
+        "departement": "Indre",
+        "keyword": "Châteauroux",
+        "image": "<img src='Indre_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Indre_flag.svg'>",
+        "remarques": "36"
+    },
+    {
+        "departement": "Indre-et-Loire",
+        "keyword": "Tours",
+        "image": "<img src='Indre-et-Loire_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Indre-et-Loire_flag.svg'>",
+        "remarques": "37"
+    },
+    {
+        "departement": "Isère",
+        "keyword": "Grenoble",
+        "image": "<img src='Isère_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Isère_flag.svg'>",
+        "remarques": "38"
+    },
+    {
+        "departement": "Jura",
+        "keyword": "Lons-le-Saunier",
+        "image": "<img src='Jura_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Jura_flag.svg'>",
+        "remarques": "39"
+    },
+    {
+        "departement": "Landes",
+        "keyword": "Mont-de-Marsan",
+        "image": "<img src='Landes_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Landes_flag.svg'>",
+        "remarques": "40"
+    },
+    {
+        "departement": "Loir-et-Cher",
+        "keyword": "Blois",
+        "image": "<img src='Loir-et-Cher_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Loir-et-Cher_flag.svg'>",
+        "remarques": "41"
+    },
+    {
+        "departement": "Loire",
+        "keyword": "Saint-Étienne",
+        "image": "<img src='Loire_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Loire_flag.svg'>",
+        "remarques": "42"
+    },
+    {
+        "departement": "Haute-Loire",
+        "keyword": "Le Puy-en-Velay",
+        "image": "<img src='Haute-Loire_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Haute-Loire_flag.svg'>",
+        "remarques": "43"
+    },
+    {
+        "departement": "Loire-Atlantique",
+        "keyword": "Nantes",
+        "image": "<img src='Loire-Atlantique_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Loire-Atlantique_flag.svg'>",
+        "remarques": "44"
+    },
+    {
+        "departement": "Loiret",
+        "keyword": "Orléans",
+        "image": "<img src='Loiret_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Loiret_flag.svg'>",
+        "remarques": "45"
+    },
+    {
+        "departement": "Lot",
+        "keyword": "Cahors",
+        "image": "<img src='Lot_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Lot_flag.svg'>",
+        "remarques": "46"
+    },
+    {
+        "departement": "Lot-et-Garonne",
+        "keyword": "Agen",
+        "image": "<img src='Lot-et-Garonne_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Lot-et-Garonne_flag.svg'>",
+        "remarques": "47"
+    },
+    {
+        "departement": "Lozère",
+        "keyword": "Mende",
+        "image": "<img src='Lozère_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Lozère_flag.svg'>",
+        "remarques": "48"
+    },
+    {
+        "departement": "Maine-et-Loire",
+        "keyword": "Angers",
+        "image": "<img src='Maine-et-Loire_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Maine-et-Loire_flag.svg'>",
+        "remarques": "49"
+    },
+    {
+        "departement": "Manche",
+        "keyword": "Saint-Lô",
+        "image": "<img src='Manche_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Manche_flag.svg'>",
+        "remarques": "50"
+    },
+    {
+        "departement": "Marne",
+        "keyword": "Châlons-en-Champagne",
+        "image": "<img src='Marne_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Marne_flag.svg'>",
+        "remarques": "51"
+    },
+    {
+        "departement": "Haute-Marne",
+        "keyword": "Chaumont",
+        "image": "<img src='Haute-Marne_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Haute-Marne_flag.svg'>",
+        "remarques": "52"
+    },
+    {
+        "departement": "Mayenne",
+        "keyword": "Laval",
+        "image": "<img src='Mayenne_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Mayenne_flag.svg'>",
+        "remarques": "53"
+    },
+    {
+        "departement": "Meurthe-et-Moselle",
+        "keyword": "Nancy",
+        "image": "<img src='Meurthe-et-Moselle_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Meurthe-et-Moselle_flag.svg'>",
+        "remarques": "54"
+    },
+    {
+        "departement": "Meuse",
+        "keyword": "Bar-le-Duc",
+        "image": "<img src='Meuse_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Meuse_flag.svg'>",
+        "remarques": "55"
+    },
+    {
+        "departement": "Morbihan",
+        "keyword": "Vannes",
+        "image": "<img src='Morbihan_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Morbihan_flag.svg'>",
+        "remarques": "56"
+    },
+    {
+        "departement": "Moselle",
+        "keyword": "Metz",
+        "image": "<img src='Moselle_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Moselle_flag.svg'>",
+        "remarques": "57"
+    },
+    {
+        "departement": "Nièvre",
+        "keyword": "Nevers",
+        "image": "<img src='Nièvre_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Nièvre_flag.svg'>",
+        "remarques": "58"
+    },
+    {
+        "departement": "Nord",
+        "keyword": "Lille",
+        "image": "<img src='Nord_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Nord_flag.svg'>",
+        "remarques": "59"
+    },
+    {
+        "departement": "Oise",
+        "keyword": "Beauvais",
+        "image": "<img src='Oise_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Oise_flag.svg'>",
+        "remarques": "60"
+    },
+    {
+        "departement": "Orne",
+        "keyword": "Alençon",
+        "image": "<img src='Orne_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Orne_flag.svg'>",
+        "remarques": "61"
+    },
+    {
+        "departement": "Pas-de-Calais",
+        "keyword": "Arras",
+        "image": "<img src='Pas-de-Calais_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Pas-de-Calais_flag.svg'>",
+        "remarques": "62"
+    },
+    {
+        "departement": "Puy-de-Dôme",
+        "keyword": "Clermont-Ferrand",
+        "image": "<img src='Puy-de-Dôme_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Puy-de-Dôme_flag.svg'>",
+        "remarques": "63"
+    },
+    {
+        "departement": "Pyrénées-Atlantiques",
+        "keyword": "Pau",
+        "image": "<img src='Pyrénées-Atlantiques_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Pyrénées-Atlantiques_flag.svg'>",
+        "remarques": "64"
+    },
+    {
+        "departement": "Hautes-Pyrénées",
+        "keyword": "Tarbes",
+        "image": "<img src='Hautes-Pyrénées_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Hautes-Pyrénées_flag.svg'>",
+        "remarques": "65"
+    },
+    {
+        "departement": "Pyrénées-Orientales",
+        "keyword": "Perpignan",
+        "image": "<img src='Pyrénées-Orientales_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Pyrénées-Orientales_flag.svg'>",
+        "remarques": "66"
+    },
+    {
+        "departement": "Bas-Rhin",
+        "keyword": "Strasbourg",
+        "image": "<img src='Bas-Rhin_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Bas-Rhin_flag.svg'>",
+        "remarques": "67"
+    },
+    {
+        "departement": "Haut-Rhin",
+        "keyword": "Colmar",
+        "image": "<img src='Haut-Rhin_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Haut-Rhin_flag_2081266967.svg'>",
+        "remarques": "68"
+    },
+    {
+        "departement": "Rhône",
+        "keyword": "Lyon (provisional)",
+        "image": "<img src='Rhône_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Rhône_flag.svg'>",
+        "remarques": "69D"
+    },
+    {
+        "departement": "Lyon Metropolis",
+        "keyword": "Lyon",
+        "image": "<img src='Lyon Metropolis_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Lyon Metropolis_flag.svg'>",
+        "remarques": "69M"
+    },
+    {
+        "departement": "Haute-Saône",
+        "keyword": "Vesoul",
+        "image": "<img src='Haute-Saône_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Haute-Saône_flag.svg'>",
+        "remarques": "70"
+    },
+    {
+        "departement": "Saône-et-Loire",
+        "keyword": "Mâcon",
+        "image": "<img src='Saône-et-Loire_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Saône-et-Loire_flag.svg'>",
+        "remarques": "71"
+    },
+    {
+        "departement": "Sarthe",
+        "keyword": "Le Mans",
+        "image": "<img src='Sarthe_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Sarthe_flag.svg'>",
+        "remarques": "72"
+    },
+    {
+        "departement": "Savoie",
+        "keyword": "Chambéry",
+        "image": "<img src='Savoie_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Savoie_flag.svg'>",
+        "remarques": "73"
+    },
+    {
+        "departement": "Haute-Savoie",
+        "keyword": "Annecy",
+        "image": "<img src='Haute-Savoie_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Haute-Savoie_flag.svg'>",
+        "remarques": "74"
+    },
+    {
+        "departement": "Paris",
+        "keyword": "Paris",
+        "image": "",
+        "mot-cle": "",
+        "histoire": "<img src='Paris_flag.svg'>",
+        "remarques": "75"
+    },
+    {
+        "departement": "Seine-Maritime",
+        "keyword": "Rouen",
+        "image": "<img src='Seine-Maritime_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Seine-Maritime_flag.svg'>",
+        "remarques": "76"
+    },
+    {
+        "departement": "Seine-et-Marne",
+        "keyword": "Melun",
+        "image": "<img src='Seine-et-Marne_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Seine-et-Marne_flag.svg'>",
+        "remarques": "77"
+    },
+    {
+        "departement": "Yvelines",
+        "keyword": "Versailles",
+        "image": "<img src='Yvelines_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Yvelines_flag.svg'>",
+        "remarques": "78"
+    },
+    {
+        "departement": "Deux-Sèvres",
+        "keyword": "Niort",
+        "image": "<img src='Deux-Sèvres_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Deux-Sèvres_flag.svg'>",
+        "remarques": "79"
+    },
+    {
+        "departement": "Somme",
+        "keyword": "Amiens",
+        "image": "<img src='Somme_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Somme_flag.svg'>",
+        "remarques": "80"
+    },
+    {
+        "departement": "Tarn",
+        "keyword": "Albi",
+        "image": "<img src='Tarn_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Tarn_flag.svg'>",
+        "remarques": "81"
+    },
+    {
+        "departement": "Tarn-et-Garonne",
+        "keyword": "Montauban",
+        "image": "<img src='Tarn-et-Garonne_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Tarn-et-Garonne_flag.svg'>",
+        "remarques": "82"
+    },
+    {
+        "departement": "Var",
+        "keyword": "Toulon",
+        "image": "<img src='Var_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Var_flag.svg'>",
+        "remarques": "83"
+    },
+    {
+        "departement": "Vaucluse",
+        "keyword": "Avignon",
+        "image": "<img src='Vaucluse_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Vaucluse_flag.svg'>",
+        "remarques": "84"
+    },
+    {
+        "departement": "Vendée",
+        "keyword": "La Roche-sur-Yon",
+        "image": "<img src='Vendée_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Vendée_flag.svg'>",
+        "remarques": "85"
+    },
+    {
+        "departement": "Vienne",
+        "keyword": "Poitiers",
+        "image": "<img src='Vienne_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Vienne_flag.svg'>",
+        "remarques": "86"
+    },
+    {
+        "departement": "Haute-Vienne",
+        "keyword": "Limoges",
+        "image": "<img src='Haute-Vienne_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Haute-Vienne_flag.svg'>",
+        "remarques": "87"
+    },
+    {
+        "departement": "Vosges",
+        "keyword": "Épinal",
+        "image": "<img src='Vosges_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Vosges_flag.svg'>",
+        "remarques": "88"
+    },
+    {
+        "departement": "Yonne",
+        "keyword": "Auxerre",
+        "image": "<img src='Yonne_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Yonne_flag.svg'>",
+        "remarques": "89"
+    },
+    {
+        "departement": "Territoire de Belfort",
+        "keyword": "Belfort",
+        "image": "<img src='Territoire de Belfort_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Territoire de Belfort_flag.svg'>",
+        "remarques": "90"
+    },
+    {
+        "departement": "Essonne",
+        "keyword": "Évry",
+        "image": "<img src='Essonne_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Essonne_flag.svg'>",
+        "remarques": "91"
+    },
+    {
+        "departement": "Hauts-de-Seine",
+        "keyword": "Nanterre",
+        "image": "<img src='Hauts-de-Seine_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Hauts-de-Seine_flag.svg'>",
+        "remarques": "92"
+    },
+    {
+        "departement": "Seine-Saint-Denis",
+        "keyword": "Bobigny",
+        "image": "<img src='Seine-Saint-Denis_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Seine-Saint-Denis_flag.svg'>",
+        "remarques": "93"
+    },
+    {
+        "departement": "Val-de-Marne",
+        "keyword": "Créteil",
+        "image": "<img src='Val-de-Marne_map.svg'>",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src='Val-de-Marne_flag.svg'>",
+        "remarques": "94"
+    },
+    {
+        "departement": "Val-d'Oise",
+        "keyword": "Pontoise ",
+        "image": "<img src=\"Val-d'Oise_map.svg\">",
+        "mot-cle": "<img src='map_template_svg.svg'>",
+        "histoire": "<img src=\"Val-d'Oise_flag.svg\">",
+        "remarques": "95"
+    },
+    {
+        "departement": "Guadeloupe",
+        "keyword": "Basse-Terre",
+        "image": "<img src=\"Guadeloupe_in_France_2016.svg\">",
+        "mot-cle": "",
+        "histoire": "<img src='Guadeloupe_flag.svg'>",
+        "remarques": "971"
+    },
+    {
+        "departement": "Martinique",
+        "keyword": "Fort-de-France",
+        "image": "<img src=\"Martinique_in_France_2016.svg\">",
+        "mot-cle": "",
+        "histoire": "<img src='Martinique_flag.svg'>",
+        "remarques": "972"
+    },
+    {
+        "departement": "Guyane",
+        "keyword": "Cayenne",
+        "image": "<img src=\"French_Guiana_in_France_2016.svg\">",
+        "mot-cle": "",
+        "histoire": "<img src='Guyane_flag.svg'>",
+        "remarques": "973"
+    },
+    {
+        "departement": "La Réunion",
+        "keyword": "Saint-Denis",
+        "image": "<img src=\"Département_974_in_France_(zoom).svg\">",
+        "mot-cle": "",
+        "histoire": "<img src='La Réunion_flag.svg'>",
+        "remarques": "974"
+    },
+    {
+        "departement": "Mayotte",
+        "keyword": "Mamoudzou",
+        "image": "<img src=\"Département_976_in_France_(zoom).svg\">",
+        "mot-cle": "",
+        "histoire": "<img src='Mayotte_flag_2081266967.svg'>",
+        "remarques": "976"
+    }
+]

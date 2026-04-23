@@ -3,8 +3,22 @@ __pycache__/
 *.py[cod]
 *$py.class
 venv/
+.venv/
 .env
+.env.*
 kanjilock_js_files.txt
+
+# JavaScript / Node
+node_modules/
+.npm/
+.next/
+out/
+build/
+dist/
+.vercel
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # VS Code
 .vscode/
@@ -13,18 +27,16 @@ kanjilock_js_files.txt
 .DS_Store
 Thumbs.db
 
-# Logs locaux (puisqu'on passe sur Supabase)
+# Logs locaux
 *.log
-main_data/*
+main_data/*.log
+main_data/events.log.jsonl
+
+# Data & Backups
+main_data/progress.json
+main_data/sessions.jsonl
 
 # Excel temporaire
 ~$*
-
-# Données sensibles ou lourdes (Optionnel : tu peux garder les JSON de main_data sur git si tu veux une sauvegarde, 
-# mais si tu veux que Supabase soit la seule source de vérité, tu peux les ignorer aussi).
-# Pour l'instant, je te conseille de NE PAS ignorer main_data/kanjilock.json (garde-le en backup sur git)
-# Par contre, ignore les données perso :
-main_data/progress.json
-main_data/sessions.jsonl
 
 

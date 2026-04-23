@@ -21,7 +21,7 @@ const Flashcard = ({ card, onEvaluate }) => {
 
     return (
         <div style={styles.container}>
-            <div 
+            <div
                 style={{
                     ...styles.cardInner,
                     transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)"
@@ -43,7 +43,7 @@ const Flashcard = ({ card, onEvaluate }) => {
                 {/* BACK SIDE */}
                 <div style={{ ...styles.cardFace, ...styles.cardBack, border: `2px solid ${accentColor}44` }}>
                     <div style={styles.detailsHeader}>Details</div>
-                    
+
                     <div style={styles.detailSection}>
                         <div style={styles.detailTitle}>Kanji</div>
                         <div style={styles.detailRow}>
@@ -100,22 +100,24 @@ const styles = {
         width: "100%",
         height: "100%",
         backfaceVisibility: "hidden",
+        WebkitBackfaceVisibility: "hidden",
         borderRadius: "24px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: "rgba(30, 41, 59, 0.7)",
+        background: "rgba(30, 41, 59, 0.85)", // Increased to help backdrop-filter isolation
         backdropFilter: "blur(12px)",
         boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
         padding: "20px",
         boxSizing: "border-box"
     },
     cardFront: {
-        zIndex: 2
+        zIndex: 2,
+        transform: "translateZ(1px)" // Force front to be physically in front
     },
     cardBack: {
-        transform: "rotateY(180deg)",
+        transform: "rotateY(180deg) translateZ(1px)", // Force back to be physically in front of its own plane
         textAlign: "left",
         justifyContent: "flex-start",
         paddingTop: "40px"

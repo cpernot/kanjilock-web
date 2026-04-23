@@ -110,22 +110,10 @@ app.include_router(ranking_router, prefix="/api")
 if ENABLE_CHAT:
     app.include_router(chat.router, prefix="/api/chat")
 
-# 5. FICHIERS STATIQUES ET ROUTES SPA
-if FRONTEND_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR / "static")), name="static")
-    app.mount("/pages", StaticFiles(directory=str(FRONTEND_DIR / "pages")), name="static_pages")
-
-@app.get("/")
-@app.get("/quiz-page")
-@app.get("/intrus-page")
-@app.get("/stats-page")
-@app.get("/compose-page")
-@app.get("/ranking-page")
-def spa_index():
-    index_file = FRONTEND_DIR / "index.html"
-    if index_file.exists():
-        return FileResponse(index_file)
-    return {"error": "Frontend files not found"}
+# 5. API STATUS
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "version": "2.0"}
 @app.get("/api/quiz/session")
 async def get_box_session(box_id: int, player_id: str):
     # 1. Get all kanji from cache
