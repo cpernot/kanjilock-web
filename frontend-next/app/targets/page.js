@@ -126,9 +126,9 @@ const styles = {
     toggleRow: { display: "flex", gap: "10px" },
     toggleBtn: { flex: 1, padding: "12px", border: "none", borderRadius: "12px", color: "white", cursor: "pointer", transition: "all 0.2s" },
     select: { width: "100%", padding: "12px", background: "#0f172a", border: "1px solid #334155", borderRadius: "12px", color: "#fff" },
-    grid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px" },
+    grid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px" },
     goalItem: { display: "flex", flexDirection: "column" },
-    goalLabel: { fontSize: "0.8rem", color: "#94a3b8", marginBottom: "8px" },
-    input: { padding: "12px", background: "#0f172a", border: "1px solid #334155", borderRadius: "12px", color: "#fff" },
+    goalLabel: { fontSize: "0.7rem", color: "#94a3b8", marginBottom: "8px", whiteSpace: "nowrap" },
+    input: { width: "100%", boxSizing: "border-box", padding: "10px 8px", background: "#0f172a", border: "1px solid #334155", borderRadius: "12px", color: "#fff" },
     btn: { padding: "14px", border: "none", borderRadius: "12px", color: "white", fontWeight: "bold", background: "#2196F3", cursor: "pointer" }
 };

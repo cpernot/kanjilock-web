@@ -93,12 +93,36 @@ export default function SettingsPage() {
                 </div>
 
                 <button onClick={handleSave} style={styles.btn}>Save Settings</button>
+
+                <div style={{ marginTop: "40px", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "20px" }}>
+                    <button 
+                        onClick={() => {
+                            localStorage.removeItem("kanjilock_player");
+                            window.location.href = "/login";
+                        }} 
+                        style={styles.logoutBtn}
+                    >
+                        🚪 Logout
+                    </button>
+                </div>
             </div>
         </div>
     );
 }
 
 const styles = {
+    logoutBtn: {
+        width: "100%",
+        padding: "12px",
+        background: "rgba(239, 68, 68, 0.1)",
+        color: "#ef4444",
+        border: "1px solid rgba(239, 68, 68, 0.2)",
+        borderRadius: "12px",
+        fontSize: "0.9rem",
+        fontWeight: "600",
+        cursor: "pointer",
+        transition: "all 0.2s"
+    },
     container: {
         maxWidth: "500px",
         margin: "0 auto",

@@ -63,18 +63,16 @@ const Flashcard = ({ card, onEvaluate }) => {
                     </div>
 
                     <div style={styles.hint}>Click to flip back</div>
+
+                    {/* EVALUATION BUTTONS (now inside the back face) */}
+                    <div style={styles.evalInside} onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => onEvaluate(1)} style={{ ...styles.evalBtn, background: levelColors[1] }}>Unknown</button>
+                        <button onClick={() => onEvaluate(2)} style={{ ...styles.evalBtn, background: levelColors[2] }}>Review</button>
+                        <button onClick={() => onEvaluate(3)} style={{ ...styles.evalBtn, background: levelColors[3] }}>Good</button>
+                        <button onClick={() => onEvaluate(4)} style={{ ...styles.evalBtn, background: levelColors[4] }}>Mastered</button>
+                    </div>
                 </div>
             </div>
-
-            {/* RADIAL / BUTTON EVALUATION MENU (shows when flipped) */}
-            {flipped && (
-                <div style={styles.evalContainer}>
-                    <button onClick={() => onEvaluate(1)} style={{ ...styles.evalBtn, background: levelColors[1] }}>Unknown</button>
-                    <button onClick={() => onEvaluate(2)} style={{ ...styles.evalBtn, background: levelColors[2] }}>Review</button>
-                    <button onClick={() => onEvaluate(3)} style={{ ...styles.evalBtn, background: levelColors[3] }}>Good</button>
-                    <button onClick={() => onEvaluate(4)} style={{ ...styles.evalBtn, background: levelColors[4] }}>Mastered</button>
-                </div>
-            )}
         </div>
     );
 };
@@ -192,16 +190,16 @@ const styles = {
     detailSep: {
         color: "rgba(255,255,255,0.2)"
     },
-    evalContainer: {
+    evalInside: {
         position: "absolute",
-        bottom: "-70px",
-        left: "50%",
-        transform: "translateX(-50%)",
+        bottom: "40px",
+        left: "0",
         display: "flex",
-        gap: "8px",
+        gap: "6px",
         width: "100%",
         justifyContent: "center",
-        animation: "slideUp 0.3s ease-out"
+        padding: "0 10px",
+        boxSizing: "border-box"
     },
     evalBtn: {
         border: "none",

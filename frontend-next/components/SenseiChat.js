@@ -37,12 +37,20 @@ export default function SenseiChat() {
             if (!res.ok) throw new Error("Failed to reach Sensei");
 
             const data = await res.json();
-            setMessages(prev => [...prev, { role: "sensei", text: data.response || data.reply || "Désolé, je n'ai pas pu répondre." }]);
+            setMessages(prev => [...prev, { 
+                role: "sensei", 
+                text: data.response || data.reply || "Désolé, je n'ai pas pu répondre.",
+                thought: data.thought || ""
+            }]);
         } catch (e) {
             setMessages(prev => [...prev, { role: "sensei", text: "Oh, mon cerveau de robot est un peu fatigué... (Erreur de connexion)" }]);
         } finally {
             setIsTyping(false);
         }
+    };
+
+    const toggleThought = (index) => {
+        setMessages(prev => prev.map((m, i) => i === index ? { ...m, showThought: !m.showThought } : m));
     };
 
     return (
@@ -63,14 +71,37 @@ export default function SenseiChat() {
                     <div ref={scrollRef} style={styles.messageList}>
                         {messages.map((m, i) => (
                             <div key={i} style={{
-                                ...styles.message,
                                 alignSelf: m.role === "user" ? "flex-end" : "flex-start",
-                                background: m.role === "user" ? "#3b82f6" : "rgba(255,255,255,0.05)",
-                                border: m.role === "user" ? "none" : "1px solid rgba(255,255,255,0.1)",
-                                borderBottomRightRadius: m.role === "user" ? "4px" : "16px",
-                                borderBottomLeftRadius: m.role === "sensei" ? "4px" : "16px",
+                                display: "flex",
+                                flexDirection: "column",
+                                maxWidth: "85%",
+                                gap: "4px"
                             }}>
-                                {m.text}
+                                {m.thought && (
+                                    <div style={{ alignSelf: "flex-start" }}>
+                                        <button 
+                                            onClick={() => toggleThought(i)}
+                                            style={styles.thinkToggle}
+                                        >
+                                            {m.showThought ? "📖 hide thought" : "💡 think"}
+                                        </button>
+                                        {m.showThought && (
+                                            <div style={styles.thoughtBox}>
+                                                {m.thought}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                <div style={{
+                                    ...styles.message,
+                                    background: m.role === "user" ? "#3b82f6" : "rgba(255,255,255,0.05)",
+                                    border: m.role === "user" ? "none" : "1px solid rgba(255,255,255,0.1)",
+                                    borderBottomRightRadius: m.role === "user" ? "4px" : "16px",
+                                    borderBottomLeftRadius: m.role === "sensei" ? "4px" : "16px",
+                                    maxWidth: "100%"
+                                }}>
+                                    {m.text}
+                                </div>
                             </div>
                         ))}
                         {isTyping && (
@@ -194,5 +225,30 @@ const styles = {
         padding: "8px 12px",
         cursor: "pointer",
         fontWeight: "bold"
+    },
+    thinkToggle: {
+        background: "none",
+        border: "none",
+        color: "#94a3b8",
+        fontSize: "0.75rem",
+        cursor: "pointer",
+        padding: "0",
+        marginBottom: "4px",
+        display: "flex",
+        alignItems: "center",
+        gap: "4px",
+        fontStyle: "italic"
+    },
+    thoughtBox: {
+        background: "rgba(255,255,255,0.02)",
+        border: "1px solid rgba(255,255,255,0.05)",
+        borderRadius: "8px",
+        padding: "10px",
+        fontSize: "0.75rem",
+        color: "#64748b",
+        marginBottom: "8px",
+        lineHeight: "1.3",
+        whiteSpace: "pre-wrap",
+        fontStyle: "italic"
     }
 };

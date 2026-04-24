@@ -26,7 +26,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <Navbar />
-        <main style={{ padding: "20px" }}>
+        <main style={{ padding: "80px 20px 120px 20px" }}>
           {children}
         </main>
         <SenseiChat />

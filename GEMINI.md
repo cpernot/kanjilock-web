@@ -11,10 +11,11 @@ Task-Specific Guidelines
 When fixing code, do not affect other parts of the code. If you need to modify other parts of the code which may affect other functionalities, ask for permission first.
 DO NOT REMOVE or CHANGE any functionality of the code or existing prompts without my permission. 
 
+
+## Review Output Format
 When ASKED, and only when ASKED to review code, provide structured, actionable feedback 
 covering all critical dimensions of software quality.
-## Review Output Format
-For every code review, return EXACTLY this structure:
+When doing a code review, return EXACTLY this structure:
 
 ---
 ## 📋 Code Review Report

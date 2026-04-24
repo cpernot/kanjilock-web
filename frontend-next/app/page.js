@@ -116,23 +116,11 @@ export default function Home() {
         </div>
 
       <div style={styles.menuGrid}>
-        <Link href="/quiz" style={{ ...styles.menuBtn, background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)" }}>
-          Quiz
-        </Link>
-        <Link href="/targets" style={styles.menuBtn}>
-          Targets
-        </Link>
         <Link href="/ranking" style={styles.menuBtn}>
           Ranking
         </Link>
         <Link href="/stats" style={styles.menuBtn}>
           Stats
-        </Link>
-      </div>
-
-      <div style={{ marginBottom: "40px" }}>
-        <Link href="/settings" style={styles.settingsBtn}>
-          ⚙️ Settings
         </Link>
       </div>
 
@@ -154,11 +142,12 @@ const styles = {
   periodBadge: { padding: "4px 10px", background: "#2196F3", borderRadius: "8px", fontSize: "0.65rem", fontWeight: "900", color: "#fff" },
   dashboardSection: { background: "rgba(30, 41, 59, 0.3)", borderRadius: "24px", padding: "20px", border: "1px solid rgba(255,255,255,0.05)", marginBottom: "30px" },
   progressGrid: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "5px",
-    maxWidth: "500px",
-    margin: "0 auto"
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "30px",
+    maxWidth: "320px",
+    margin: "0 auto",
+    marginBottom: "40px"
   },
   menuGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "20px" },
   menuBtn: { textDecoration: "none", background: "#1e293b", padding: "18px", borderRadius: "16px", color: "#fff", fontWeight: "bold", fontSize: "1rem", border: "1px solid rgba(255,255,255,0.05)", transition: "all 0.2s" },
