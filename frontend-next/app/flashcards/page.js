@@ -207,7 +207,7 @@ const styles = {
         minHeight: "100vh",
         background: "#020617",
         color: "#fff",
-        padding: "20px",
+        padding: "5px 20px",
         fontFamily: "'Inter', sans-serif",
         display: "flex",
         flexDirection: "column",
@@ -287,18 +287,18 @@ const styles = {
         transition: "width 0.3s ease"
     },
     cardArea: {
-        flex: 1,
         display: "flex",
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: "flex-start",
         width: "100%",
-        minHeight: "380px"
+        minHeight: "400px",
+        paddingTop: "0px"
     },
     manualNav: {
         display: "flex",
         gap: "20px",
         marginTop: "20px",
-        marginBottom: "40px"
+        marginBottom: "10px"
     },
     navBtn: {
         background: "transparent",
