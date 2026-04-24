@@ -17,7 +17,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 # 📁 Dossiers
 BACKEND_DIR = PROJECT_ROOT / "backend"
-FRONTEND_DIR = PROJECT_ROOT / "frontend"
+FRONTEND_DIR = PROJECT_ROOT / "frontend-next" / "out"
 DATA_DIR = PROJECT_ROOT / "main_data"
 
 # 📄 Fichiers

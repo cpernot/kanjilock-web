@@ -17,11 +17,23 @@ export default function SenseiChat() {
         }
     }, [messages, isTyping]);
 
-    const handleSend = async () => {
-        if (!input.trim()) return;
+    useEffect(() => {
+        const handleAsk = (e) => {
+            const msg = e.detail;
+            if (msg) {
+                setIsOpen(true);
+                handleSend(msg);
+            }
+        };
+        window.addEventListener("askSensei", handleAsk);
+        return () => window.removeEventListener("askSensei", handleAsk);
+    }, []);
 
-        const userMsg = input.trim();
-        setInput("");
+    const handleSend = async (customMsg = null) => {
+        const userMsg = typeof customMsg === "string" ? customMsg : input.trim();
+        if (!userMsg) return;
+
+        if (typeof customMsg !== "string") setInput("");
         setMessages(prev => [...prev, { role: "user", text: userMsg }]);
         setIsTyping(true);
 
@@ -131,8 +143,8 @@ export default function SenseiChat() {
 const styles = {
     chatWrapper: {
         position: "fixed",
-        bottom: "30px",
-        right: "30px",
+        bottom: "100px",
+        right: "20px",
         zIndex: 2000,
         fontFamily: "'Inter', sans-serif"
     },

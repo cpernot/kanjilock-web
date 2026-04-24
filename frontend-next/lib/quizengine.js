@@ -163,19 +163,25 @@ export function getNextQuestion(mode, progressiveMode = false) {
 
     // A. FILTERING CANDIDATES
     let candidates = [];
-    if (currentBoxFilter) {
-        candidates = allKeys.filter(k => String(staticData[k].boite) === currentBoxFilter);
-    } else if (progressiveMode) {
-        // All-Box in Progressive Mode: only kanji from visible boxes
-        const visibleBoxes = getVisibleBoxes(true, mode);
-        candidates = allKeys.filter(k => visibleBoxes.includes(String(staticData[k].boite)));
-    } else {
-        candidates = allKeys;
-    }
 
-    // A.1 SPECIAL FILTER FOR QH & QG (must have comp_words)
     if (mode === "qh" || mode === "qg") {
-        candidates = candidates.filter(k => staticData[k].comp_words && staticData[k].comp_words.trim().length > 0);
+        // SPECIAL FILTER FOR QH & QG: Ignore box filter, force ALL BOXES, and must have comp_words
+        candidates = allKeys.filter(k => {
+            const cw = staticData[k].comp_words;
+            if (!cw) return false;
+            if (Array.isArray(cw)) return cw.length > 0;
+            return typeof cw === 'string' && cw.trim().length > 0;
+        });
+    } else {
+        if (currentBoxFilter) {
+            candidates = allKeys.filter(k => String(staticData[k].boite) === currentBoxFilter);
+        } else if (progressiveMode) {
+            // All-Box in Progressive Mode: only kanji from visible boxes
+            const visibleBoxes = getVisibleBoxes(true, mode);
+            candidates = allKeys.filter(k => visibleBoxes.includes(String(staticData[k].boite)));
+        } else {
+            candidates = allKeys;
+        }
     }
 
     if (candidates.length === 0) {
@@ -226,7 +232,12 @@ export function getNextQuestion(mode, progressiveMode = false) {
         extras: modeDef.extras(kData),
         mode: mode,
         // qh/qg specific
-        correctAnswers: (mode === "qh" || mode === "qg") ? (kData.comp_words || "").split(",").map(w => w.trim()).filter(w => w.length > 0) : null
+        correctAnswers: (mode === "qh" || mode === "qg") 
+            ? (Array.isArray(kData.comp_words) 
+                ? kData.comp_words 
+                : (typeof kData.comp_words === 'string' ? kData.comp_words.split(",") : [])
+              ).map(w => w.trim()).filter(w => w.length > 0) 
+            : null
     };
 }
 
@@ -257,7 +268,11 @@ function generateOptions(correctKey, modeDef, candidates, mode) {
     const isComposeMode = (mode === "qh" || mode === "qg");
 
     if (isComposeMode) {
-        const correctWords = (correctData.comp_words || "").split(",").map(w => w.trim()).filter(w => w.length > 0);
+        // Handle both Array and comma-separated String
+        let rawCorrect = correctData.comp_words || [];
+        if (typeof rawCorrect === 'string') rawCorrect = rawCorrect.split(",");
+        const correctWords = rawCorrect.map(w => w.trim()).filter(w => w.length > 0);
+        
         const distractors = [];
         let attempts = 0;
 
@@ -270,7 +285,11 @@ function generateOptions(correctKey, modeDef, candidates, mode) {
             const otherData = staticData[randomKey];
             if (!otherData.comp_words) continue;
 
-            const otherWords = otherData.comp_words.split(",").map(w => w.trim());
+            let rawOther = otherData.comp_words;
+            if (typeof rawOther === 'string') rawOther = rawOther.split(",");
+            const otherWords = rawOther.map(w => w.trim()).filter(w => w.length > 0);
+            
+            if (otherWords.length === 0) continue;
             const randomWord = otherWords[Math.floor(Math.random() * otherWords.length)];
 
             if (randomWord && !correctWords.includes(randomWord) && !distractors.includes(randomWord)) {

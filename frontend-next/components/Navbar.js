@@ -28,9 +28,14 @@ export default function Navbar() {
         <Link href="/" style={styles.logo}>
           <span style={styles.logoLock}>Kanji</span>Lock
         </Link>
-        <Link href="/settings" style={styles.settingsBtn}>
-          <span style={styles.icon}>⚙️</span>
-        </Link>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <Link href="/pricing" style={styles.settingsBtn} title="Pricing">
+            <span style={styles.icon}>💎</span>
+          </Link>
+          <Link href="/settings" style={styles.settingsBtn} title="Settings">
+            <span style={styles.icon}>⚙️</span>
+          </Link>
+        </div>
       </header>
 
       {/* Bottom Navigation */}

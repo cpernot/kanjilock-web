@@ -12,6 +12,7 @@ export default function Quiz({ forcedMode = null }) {
     const [question, setQuestion] = useState(null);
     const [result, setResult] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     // UI State for dropdowns
     const [selectedMode, setSelectedMode] = useState("qa");
@@ -133,6 +134,7 @@ export default function Quiz({ forcedMode = null }) {
                 }
             });
         }
+        setIsLoading(false);
     }
 
     function startNewSession(forceStart = false) {
@@ -156,6 +158,13 @@ export default function Quiz({ forcedMode = null }) {
         const newMode = e.target.value;
         setSelectedMode(newMode);
         saveMode(newMode);
+        
+        // Force Global Box for Composition Modes
+        if (newMode === "qh" || newMode === "qg") {
+            setSelectedBox("");
+            setBoxContext(null);
+        }
+        
         setIsPlaying(false);
     }
 
@@ -363,6 +372,19 @@ export default function Quiz({ forcedMode = null }) {
     // MODES_OPTS moved to centralized quizModes.js labels
     const MODES_OPTS = Object.keys(MODES);
 
+    if (isLoading) {
+        return (
+            <div style={{...styles.container, justifyContent: 'center', alignItems: 'center'}}>
+                <div style={{ fontSize: '3rem', animation: 'spin 2s linear infinite' }}>⏳</div>
+                <p style={{ marginTop: '20px', color: '#94a3b8', textAlign: 'center', maxWidth: '80%' }}>
+                    ☁️ Préparation du quiz...<br/>
+                    <small>(Le serveur IA démarre, merci de patienter quelques secondes)</small>
+                </p>
+                <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+            </div>
+        );
+    }
+
     if (!question && isPlaying) return <div style={styles.container}>Loading question...</div>;
 
     // Initial Screen or Paused Screen if no question shown?
@@ -382,7 +404,12 @@ export default function Quiz({ forcedMode = null }) {
                         ))}
                     </select>
 
-                    <select value={selectedBox} onChange={handleBoxChange} style={styles.select}>
+                    <select 
+                        value={selectedBox} 
+                        onChange={handleBoxChange} 
+                        style={styles.select}
+                        disabled={selectedMode === "qh" || selectedMode === "qg"}
+                    >
                         {boxes.map(b => {
                             const lvl = getBoxLevel(b, selectedMode);
                             const star = lvl === 4 ? "⭐ " : "";

@@ -5,7 +5,7 @@ node_modules
 __pycache__
 *.pyc
 .env
-frontend-next
-main_data
+frontend-next/node_modules
+frontend-next/.next
 kanjilock_backup.txt
 kanjilock_js_files.txt

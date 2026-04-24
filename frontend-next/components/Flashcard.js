@@ -8,6 +8,13 @@ const Flashcard = ({ card, onEvaluate }) => {
 
     const handleFlip = () => setFlipped(!flipped);
 
+    const askSensei = (e, word) => {
+        e.stopPropagation(); // Prevent card from flipping
+        if (!word) return;
+        const msg = `Fais une phrase d'exemple en japonais avec le mot "${word}" et donne la traduction en français.`;
+        window.dispatchEvent(new CustomEvent('askSensei', { detail: msg }));
+    };
+
     // Mastery colors (1: Unknown, 2: Review, 3: Good, 4: Mastered)
     const levelColors = {
         1: "#ef4444", // Red
@@ -34,8 +41,14 @@ const Flashcard = ({ card, onEvaluate }) => {
                         {cardLevel === 4 ? "Mastered" : `Level ${cardLevel}`}
                     </div>
                     <div style={styles.kanjiMain}>{card.kanji}</div>
-                    <div style={styles.compoundBox}>
-                        <div style={styles.compoundTxt}>{card.mot}</div>
+                    <div 
+                        style={{...styles.compoundBox, cursor: 'pointer'}} 
+                        onClick={(e) => askSensei(e, card.mot)}
+                        title="Demander une phrase d'exemple à Sensei"
+                    >
+                        <div style={{...styles.compoundTxt, textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.3)'}}>
+                            {card.mot}
+                        </div>
                     </div>
                     <div style={styles.hint}>Click to flip</div>
                 </div>
@@ -54,7 +67,13 @@ const Flashcard = ({ card, onEvaluate }) => {
                     </div>
 
                     <div style={styles.detailSection}>
-                        <div style={styles.detailTitle}>Compound ({card.mot})</div>
+                        <div 
+                            style={{...styles.detailTitle, cursor: 'pointer', textDecoration: 'underline'}}
+                            onClick={(e) => askSensei(e, card.mot)}
+                            title="Demander un exemple à Sensei"
+                        >
+                            Compound ({card.mot}) 💡
+                        </div>
                         <div style={styles.detailRow}>
                             <span style={styles.detailVal}>{card.lecture_mot}</span>
                             <span style={styles.detailSep}>•</span>

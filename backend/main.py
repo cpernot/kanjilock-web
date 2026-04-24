@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -40,9 +40,12 @@ async def lifespan(app: FastAPI):
             k_infos = row['data']      # Le contenu JSON (romaji, signification...) [cite: 17]
 
             # FUSION : On injecte la liste de mots DANS l'objet d'infos
-            # C'est important pour que le frontend puisse faire 'staticData[k].comp_words'
+            # On vérifie d'abord dans comp_map (table kanji_mot)
             if k_char in comp_map:
                 k_infos['comp_words'] = comp_map[k_char]
+            # Sinon, on vérifie si c'est déjà dans 'data' sous 'custom_keywords' (venant de migrate_csv_keywords)
+            elif 'custom_keywords' in k_infos:
+                k_infos['comp_words'] = k_infos['custom_keywords']
             
             final_cache[k_char] = k_infos
 
@@ -84,6 +87,7 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/")
 def home():
     return {"message": "Server is running", "chat_enabled": ENABLE_CHAT}
+
 # 3. MIDDLEWARE
 app.add_middleware(
     CORSMiddleware,
