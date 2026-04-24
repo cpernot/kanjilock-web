@@ -50,8 +50,9 @@ export default function SessionEndPage() {
             )}
 
             <div style={styles.actions}>
-                <Link href="/quiz" style={styles.btn}>🔁 Replay</Link>
-                <Link href="/" style={{ ...styles.btn, background: "#666" }}>🏠 Home</Link>
+                <Link href="/quiz" style={styles.btn}>➡️ Continue</Link>
+                <Link href="/quiz" style={{ ...styles.btn, background: "#8b5cf6" }}>🔁 Replay Box</Link>
+                <Link href="/" style={{ ...styles.btn, background: "#475569" }}>🏠 Home</Link>
             </div>
         </div>
     );

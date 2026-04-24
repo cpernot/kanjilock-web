@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { getNextQuestion, checkLocalAnswer, updateEngineAfterAnswer, updateBoxRanking, currentBoxFilter, setBoxContext, getAvailableBoxes, getVisibleBoxes, getBoxKanjiCount, getBoxLevel } from "../lib/quizengine";
-import { startSession, recordAnswer, getSessionSummary } from "../lib/quizSession";
+import { startSession, recordAnswer, getSessionSummary, isSessionFinished } from "../lib/quizSession";
 import { getMode, setMode as saveMode } from "../lib/modeManager";
 import { getPlayer_setting } from "../lib/settings";
 import config from "../lib/config";
@@ -307,6 +307,8 @@ export default function Quiz({ forcedMode = null }) {
         });
 
         if (finished) {
+            // If session is finished, don't allow loading another question
+            setIsPlaying(false); 
             setTimeout(async () => {
                 await finishSession(mode);
             }, 1500);
@@ -481,8 +483,13 @@ export default function Quiz({ forcedMode = null }) {
             {result && (
                 <div
                     onClick={() => {
-                        // Proceed to next question
-                        loadQuestion();
+                        // Only load next if NOT finished
+                        if (isSessionFinished()) {
+                           // Option to force transition or just wait for timer
+                           finishSession(forcedMode || selectedMode);
+                        } else {
+                           loadQuestion();
+                        }
                     }}
                     style={{
                         ...styles.resultBox,

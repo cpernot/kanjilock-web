@@ -173,13 +173,6 @@ export default function FlashcardsPage() {
                 )}
             </div>
 
-            <div style={styles.progressHeader}>
-                Card {currentIndex + 1} of {deck.length}
-                <div style={styles.progressBar}>
-                    <div style={{ ...styles.progressFill, width: `${((currentIndex + 1) / deck.length) * 100}%` }} />
-                </div>
-            </div>
-
             {currentCard && (
                 <div style={styles.manualNav}>
                     <button 
@@ -194,10 +187,17 @@ export default function FlashcardsPage() {
                         disabled={currentIndex === deck.length - 1}
                         style={styles.navBtn}
                     >
-                        Skip
+                        Next
                     </button>
                 </div>
             )}
+
+            <div style={styles.progressHeader}>
+                Card {currentIndex + 1} of {deck.length}
+                <div style={styles.progressBar}>
+                    <div style={{ ...styles.progressFill, width: `${((currentIndex + 1) / deck.length) * 100}%` }} />
+                </div>
+            </div>
         </div>
     );
 }
@@ -219,7 +219,7 @@ const styles = {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: "30px"
+        marginBottom: "10px"
     },
     backLink: { color: "#3b82f6", textDecoration: "none", fontWeight: "600" },
     filterBtn: { 
@@ -237,7 +237,7 @@ const styles = {
         backdropFilter: "blur(20px)",
         borderRadius: "24px",
         padding: "20px",
-        marginBottom: "30px",
+        marginBottom: "15px",
         border: "1px solid rgba(255,255,255,0.1)",
         boxSizing: "border-box"
     },
@@ -297,7 +297,7 @@ const styles = {
     manualNav: {
         display: "flex",
         gap: "20px",
-        marginTop: "80px", // Reduced
+        marginTop: "20px",
         marginBottom: "40px"
     },
     navBtn: {
