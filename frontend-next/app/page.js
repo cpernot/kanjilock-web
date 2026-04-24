@@ -114,7 +114,6 @@ export default function Home() {
             />
           ))}
         </div>
-      </div>
 
       <div style={styles.menuGrid}>
         <Link href="/quiz" style={{ ...styles.menuBtn, background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)" }}>
