@@ -20,7 +20,7 @@ export default function LoginPage() {
     // Trigger the custom event for the Navbar
     window.dispatchEvent(new Event("playerLogin"));
     // Full redirect to ensure app-wide state sync
-    window.location.href = "/quiz";
+    router.push("/quiz");
   }
 
   return (

@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import { TIPS } from '@/lib/tips';
 
 const SAMPLE_KANJI = [
   { k: "愛", m: "Love" },
@@ -26,11 +27,16 @@ const SAMPLE_KANJI = [
 
 export default function LoadingOverlay({ message = "Initializing..." }) {
   const [randomKanji, setRandomKanji] = useState([]);
+  const [randomTips, setRandomTips] = useState([]);
 
   useEffect(() => {
     // Pick 3 random kanji
-    const shuffled = [...SAMPLE_KANJI].sort(() => 0.5 - Math.random());
-    setRandomKanji(shuffled.slice(0, 3));
+    const shuffledKanji = [...SAMPLE_KANJI].sort(() => 0.5 - Math.random());
+    setRandomKanji(shuffledKanji.slice(0, 3));
+
+    // Pick 5 random tips
+    const shuffledTips = [...TIPS].sort(() => 0.5 - Math.random());
+    setRandomTips(shuffledTips.slice(0, 5));
   }, []);
 
   return (
@@ -58,10 +64,9 @@ export default function LoadingOverlay({ message = "Initializing..." }) {
 
           <h3 style={styles.subtitle}>Did you know?</h3>
           <ul style={styles.list}>
-            <li><b>SRS Learning:</b> KanjiLock uses Spaced Repetition to ensure you never forget.</li>
-            <li><b>Mastery Levels:</b> Cards move from L1 to L4. L4 means you've mastered it!</li>
-            <li><b>Custom Targets:</b> You can set daily or weekly goals in the Targets page.</li>
-            <li><b>Progressive Mode:</b> New boxes unlock only when you master previous ones.</li>
+            {randomTips.map((tip, i) => (
+                <li key={i}>{tip}</li>
+            ))}
           </ul>
         </div>
 

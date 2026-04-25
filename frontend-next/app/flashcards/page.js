@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { initEngine, getStaticData, getBoxProgress, getUserProgress, currentBoxFilter } from "@/lib/quizengine";
-import { getPlayer_setting } from "@/lib/settings";
+import { getPlayer_setting, getSettings } from "@/lib/settings";
 import { loadFlashcardProgress, saveFlashcardEvaluation, prepareDeck } from "@/lib/flashcards";
 import Flashcard from "@/components/Flashcard";
 
@@ -17,6 +17,7 @@ export default function FlashcardsPage() {
     });
     const [availableBoxes, setAvailableBoxes] = useState([]);
     const [showFilters, setShowFilters] = useState(false);
+    const [appSettings, setAppSettings] = useState(null);
 
     useEffect(() => {
         setup();
@@ -31,22 +32,26 @@ export default function FlashcardsPage() {
         const data = getStaticData();
         const boxes = Array.from(new Set(Object.values(data).map(k => String(k.boite)))).sort();
         setAvailableBoxes(boxes);
+
+        const settings = getSettings(player);
+        setAppSettings(settings);
         
-        refreshDeck();
+        refreshDeck(settings);
     }
 
-    function refreshDeck() {
+    function refreshDeck(settingsOverride = null) {
         setLoading(true);
         const player = getPlayer_setting();
         const allKanjis = getStaticData();
         const srsProgress = getUserProgress();
         const boxProgress = getBoxProgress();
         const flashProgress = loadFlashcardProgress();
+        const settings = settingsOverride || appSettings;
 
         const newDeck = prepareDeck(allKanjis, {
             ...filters,
             progress: flashProgress
-        }, srsProgress, boxProgress);
+        }, srsProgress, boxProgress, settings?.sequentialOrder);
 
         setDeck(newDeck);
         setCurrentIndex(0);

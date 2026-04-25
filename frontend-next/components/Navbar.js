@@ -35,6 +35,17 @@ export default function Navbar() {
           <Link href="/settings" style={styles.settingsBtn} title="Settings">
             <span style={styles.icon}>⚙️</span>
           </Link>
+          <button 
+            onClick={() => {
+                localStorage.removeItem("kanjilock_player");
+                window.dispatchEvent(new Event("playerLogin"));
+                window.location.href = "/login";
+            }} 
+            style={styles.logoutBtn} 
+            title="Logout"
+          >
+            <span style={styles.icon}>🚪</span>
+          </button>
         </div>
       </header>
 
@@ -103,7 +114,25 @@ const styles = {
     background: "rgba(255, 255, 255, 0.05)",
     textDecoration: "none",
     fontSize: "1.2rem",
-    transition: "all 0.2s"
+    transition: "all 0.2s",
+    border: "none",
+    cursor: "pointer",
+    color: "#fff"
+  },
+  logoutBtn: {
+    width: "40px",
+    height: "40px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: "12px",
+    background: "rgba(239, 68, 68, 0.1)",
+    border: "1px solid rgba(239, 68, 68, 0.2)",
+    textDecoration: "none",
+    fontSize: "1.2rem",
+    transition: "all 0.2s",
+    cursor: "pointer",
+    color: "#ef4444"
   },
   bottomNav: {
     position: "fixed",

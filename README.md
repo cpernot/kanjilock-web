@@ -5,16 +5,27 @@
 ![Status](https://img.shields.io/badge/Status-Active-success)
 ![Backend](https://img.shields.io/badge/Backend-FastAPI-blue)
 ![Frontend](https://img.shields.io/badge/Frontend-Next.js-black)
-![AI](https://img.shields.io/badge/AI-SenseiLock_Groq-orange)
+![AI](https://img.shields.io/badge/AI-UnLock_Groq-orange)
 ![Database](https://img.shields.io/badge/Database-Supabase-green)
 
 ## ✨ Features
 
 - **Smart SRS Engine:** Automated Spaced Repetition logic to prioritize Kanji you struggle with.
-- **SenseiLock AI:** A RAG-powered Japanese tutor using Groq (Llama 3) to answer questions about Kanji and app rules.
-- **Box System:** Progress through 150+ boxes, unlocking new levels as you master each set.
-- **Modern UI:** Transitioning to a high-performance Next.js frontend with smooth animations.
-- **Cross-Platform:** Works as a PWA on mobile and desktop.
+- **UnLock AI:** A RAG-powered Japanese tutor using Groq (Llama 3) to answer questions about Kanji and app rules.
+- **Sequential Learning:** Choose between SRS-weighted randomness or a fixed sequential path based on database order.
+- **Dynamic Tips:** 50+ rotating learning tips displayed during loading screens.
+- **Box System:** Progress through 150+ boxes, unlocking new levels (1-4) as you master each set with persistent mastery tracking.
+- **Modern UI:** Glassmorphism aesthetics with a new top-bar containing quick access to Pricing, Settings, and Logout.
+- **Cross-Platform:** Full PWA support for mobile and desktop mastery on the go.
+
+## 🚀 Quick Start (Local Development)
+
+To start both the frontend and backend locally on Windows:
+1. Ensure you have Miniconda/Anaconda installed with the `kanji-env` environment.
+2. Double-click **`starting-kanjilock.bat`** in the root directory.
+3. The app will be available at:
+   - Frontend: `http://localhost:3000`
+   - Backend API: `http://localhost:8000`
 
 ## 🏗 Architecture
 
@@ -22,7 +33,7 @@ The application operates on a free-tier architecture optimized for cost-efficien
 
 * **Frontend (Vercel):** Next.js application for a modern, responsive user experience.
 * **Backend (Render):** Python FastAPI service handling SRS logic, vector storage for AI, and database orchestration.
-* **Database (Supabase):** Cloud PostgreSQL for Kanji data and persistent user progress.
+* **Database (Supabase):** Cloud PostgreSQL for Kanji data, persistent user progress (SRS), and Box Mastery tracking.
 * **AI Engine:** LangChain + FAISS + Groq for retrieval-augmented generation.
 
 ## 📂 File Structure
@@ -70,6 +81,7 @@ KanjiLock/
    pip install -r requirements.txt
    cd ..
    python start.py
+   ```
 
     The app will be available at http://localhost:8000.
 
@@ -83,10 +95,21 @@ Since this project runs on free-tier infrastructure, please be aware of the foll
 
     Vercel Functions: If using serverless functions on Vercel, execution time is capped at 10 seconds.
 
-🛠 Future Roadmap (V2)
+## 🛠 Future Roadmap
 
-    Chatbot Integration: AI-powered tutor using GroqCloud.
+- **Advanced Analytics:** Heatmaps and detailed learning curves per Kanji category.
+- **Gamification:** Achievement badges and community leaderboards.
+- **Enhanced AI:** Voice-interactive Sensei and personalized study plans.
 
-    Advanced SRS: New "Box" ranking system (Levels 1-4).
-
-    Enhanced UI: Detailed progress visualization per Kanji box.
+## 🔌 Supabase MCP Troubleshooting
+If you are using the **Supabase MCP Server** with an AI agent (like Cursor or Gemini) and encounter an **"Unauthorized"** error during initialization:
+1.  **Switch to `stdio` transport**: Do not use the hosted `serverUrl` (`mcp.supabase.com/mcp`).
+2.  **Use a Service Token**: Use your **Personal Access Token** (starting with `sb_secret_`) as the `--access-token` argument in your `mcp_config.json`.
+3.  **Command Template**:
+    ```json
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase", "--access-token", "YOUR_SB_SECRET_KEY"],
+      "env": { "SUPABASE_URL": "YOUR_PROJECT_URL" }
+    }
+    ```

@@ -7,10 +7,15 @@ from supabase import create_client, Client
 load_dotenv()
 
 url: str = os.environ.get("SUPABASE_URL")
-# Ici, utilise la clé 'anon' pour le backend de l'appli (plus sûr)
 key: str = os.environ.get("SUPABASE_KEY") 
 
-supabase: Client = create_client(url, key)
+# Check if we have credentials before creating the client to avoid crashing on import
+if url and key:
+    supabase: Client = create_client(url, key)
+else:
+    print("⚠️ Warning: SUPABASE_URL or SUPABASE_KEY missing. Supabase client not initialized.")
+    supabase = None
+
 
 # 📁 Racine du projet
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

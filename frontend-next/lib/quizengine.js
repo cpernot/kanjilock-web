@@ -155,7 +155,7 @@ export function resetEngineSession() {
 /* ============================
    3. QUESTION GENERATION
    ============================ */
-export function getNextQuestion(mode, progressiveMode = false) {
+export function getNextQuestion(mode, progressiveMode = false, sequentialOrder = false) {
     const modeDef = MODES[mode] || MODES["qa"];
     const srs = userProgress[mode] || {};
 
@@ -205,7 +205,10 @@ export function getNextQuestion(mode, progressiveMode = false) {
     // D. SELECT KANJI
     let selectedKanji = null;
 
-    if (currentBoxFilter) {
+    if (sequentialOrder) {
+        // SEQUENTIAL MODE: Pick the first available in candidate list
+        selectedKanji = availablePool[0];
+    } else if (currentBoxFilter) {
         // BOX MODE: Random selection
         selectedKanji = availablePool[Math.floor(Math.random() * availablePool.length)];
     } else {

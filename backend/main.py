@@ -60,8 +60,10 @@ async def lifespan(app: FastAPI):
         app.state.available_boxes = sorted(list(seen_boxes))
 
         if ENABLE_CHAT:
-            await chat.build_vector_store(final_cache)
-            print("🤖 Chat mode enabled & Vector store built.")
+            import asyncio
+            # Build vector store in background to avoid blocking startup (prevents Cloud Run timeout)
+            asyncio.create_task(chat.build_vector_store(final_cache))
+            print("🤖 Chat mode enabled (Vector store building in background...)")
         
         print(f"✅ {len(app.state.kanji_cache)} kanjis et {len(app.state.available_boxes)} boîtes en cache.")
 
@@ -70,12 +72,12 @@ async def lifespan(app: FastAPI):
         # En cas d'erreur critique, on évite que l'app plante, mais le quiz sera vide
         app.state.kanji_cache = {}
 
-    # --- AFFICHAGE DES ROUTES (Le print que tu aimes) ---
+    # --- AFFICHAGE DES ROUTES ---
     print("\n--- 🛣️ ROUTES ENREGISTRÉES ---")
     for route in app.routes:
         methods = getattr(route, "methods", "N/A")
-        # print(f"Path: {route.path} | Methods: {methods}")
-    print(f"Path: {len(route.path)} | Methods: {methods}")
+        path = getattr(route, "path", "N/A")
+        print(f"Path: {path:30} | Methods: {methods}")
     print("------------------------------\n")
 
     yield
@@ -84,9 +86,9 @@ async def lifespan(app: FastAPI):
 # 2. CRÉATION DE L'APP (Indispensable à la racine pour Uvicorn)
 app = FastAPI(lifespan=lifespan)
 
-@app.get("/")
-def home():
-    return {"message": "Server is running", "chat_enabled": ENABLE_CHAT}
+# @app.get("/")
+# def home():
+#     return {"message": "Server is running", "chat_enabled": ENABLE_CHAT}
 
 # 3. MIDDLEWARE
 app.add_middleware(
@@ -193,4 +195,21 @@ async def save_settings_api(player: str, settings: dict):
 async def get_available_boxes():
     """Returns the cached list of unique boxes (O(1) retrieval)"""
     return getattr(app.state, "available_boxes", [])
+
+# 6. SERVE FRONTEND (Next.js Static Export)
+# This MUST be after all /api routes
+if FRONTEND_DIR.exists():
+    print(f"📂 Serving frontend from: {FRONTEND_DIR}")
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
+    
+    # Catch-all route for SPA (Next.js) navigation
+    @app.exception_handler(404)
+    async def custom_404_handler(request: Request, exc):
+        if not request.url.path.startswith("/api"):
+            index_path = FRONTEND_DIR / "index.html"
+            if index_path.exists():
+                return FileResponse(index_path)
+        return {"detail": "Not Found"}
+else:
+    print(f"⚠️ Warning: FRONTEND_DIR not found at {FRONTEND_DIR}. Frontend will not be served.")
 

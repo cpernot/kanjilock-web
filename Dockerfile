@@ -52,5 +52,5 @@ EXPOSE 8080
 # Environment variables (to be set in Cloud Run dashboard or via CLI)
 # SUPABASE_URL, SUPABASE_KEY, GROQ_API_KEY, GEMINI_API_KEY, LLM_PROVIDER, ENABLE_CHAT
 
-# Start the application
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Start the application using the PORT environment variable (defaults to 8080 if not set)
+CMD sh -c "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8080}"

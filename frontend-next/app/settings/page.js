@@ -2,12 +2,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getSettings, saveSettings, fetchRemoteSettings, saveRemoteSettings } from "@/lib/settings";
+import { useRouter } from "next/navigation";
 
 import ToggleSwitch from "@/components/ToggleSwitch";
 
 export default function SettingsPage() {
     const [settings, setSettings] = useState(null);
     const [player, setPlayer] = useState("");
+    const router = useRouter();
 
     useEffect(() => {
         const p = localStorage.getItem("kanjilock_player");
@@ -21,9 +23,13 @@ export default function SettingsPage() {
         }
     }, []);
 
-    async function handleSave() {
+    async function handleSaveAndClose() {
         await saveRemoteSettings(player, settings);
-        alert("Settings saved centrally!");
+        router.push("/");
+    }
+
+    function handleDiscardAndClose() {
+        router.push("/");
     }
 
     if (!settings) return <div style={styles.loading}>Loading...</div>;
@@ -98,19 +104,24 @@ export default function SettingsPage() {
                             onChange={val => setSettings({ ...settings, showProgressBar: val })}
                         />
                     </div>
+
+                    <div style={styles.toggleItem}>
+                        <span style={styles.toggleDesc}>Sequential Order (No Random)</span>
+                        <ToggleSwitch
+                            checked={settings.sequentialOrder}
+                            onChange={val => setSettings({ ...settings, sequentialOrder: val })}
+                        />
+                    </div>
                 </div>
 
-                <button onClick={handleSave} style={styles.btn}>Save Settings</button>
+                <button onClick={handleSaveAndClose} style={styles.btn}>Save & Close</button>
 
                 <div style={{ marginTop: "40px", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "20px" }}>
                     <button 
-                        onClick={() => {
-                            localStorage.removeItem("kanjilock_player");
-                            window.location.href = "/login";
-                        }} 
-                        style={styles.logoutBtn}
+                        onClick={handleDiscardAndClose} 
+                        style={styles.discardBtn}
                     >
-                        🚪 Logout
+                        ✖ Discard & Close
                     </button>
                 </div>
             </div>
@@ -119,12 +130,12 @@ export default function SettingsPage() {
 }
 
 const styles = {
-    logoutBtn: {
+    discardBtn: {
         width: "100%",
         padding: "12px",
-        background: "rgba(239, 68, 68, 0.1)",
-        color: "#ef4444",
-        border: "1px solid rgba(239, 68, 68, 0.2)",
+        background: "rgba(148, 163, 184, 0.1)",
+        color: "#94a3b8",
+        border: "1px solid rgba(148, 163, 184, 0.2)",
         borderRadius: "12px",
         fontSize: "0.9rem",
         fontWeight: "600",

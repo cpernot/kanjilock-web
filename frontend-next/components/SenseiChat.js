@@ -5,7 +5,7 @@ import config from "../lib/config";
 export default function SenseiChat() {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
-        { role: "sensei", text: "Bonjour ! Je suis SenseiLock. Comment puis-je t'aider aujourd'hui ?" }
+        { role: "sensei", text: "Bonjour ! Je suis UnLock. Comment puis-je t'aider aujourd'hui ?" }
     ]);
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
@@ -39,7 +39,7 @@ export default function SenseiChat() {
 
         try {
             const player = typeof window !== 'undefined' ? localStorage.getItem("kanjilock_player") || "Anonymous" : "Anonymous";
-            
+
             const res = await fetch(`${config.apiBaseUrl}/chat/`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -49,8 +49,8 @@ export default function SenseiChat() {
             if (!res.ok) throw new Error("Failed to reach Sensei");
 
             const data = await res.json();
-            setMessages(prev => [...prev, { 
-                role: "sensei", 
+            setMessages(prev => [...prev, {
+                role: "sensei",
                 text: data.response || data.reply || "Désolé, je n'ai pas pu répondre.",
                 thought: data.thought || ""
             }]);
@@ -77,7 +77,7 @@ export default function SenseiChat() {
                 <div style={styles.window}>
                     <div style={styles.header}>
                         <div style={styles.status}></div>
-                        <span>SenseiLock AI</span>
+                        <span>UnLock AI</span>
                     </div>
 
                     <div ref={scrollRef} style={styles.messageList}>
@@ -91,7 +91,7 @@ export default function SenseiChat() {
                             }}>
                                 {m.thought && (
                                     <div style={{ alignSelf: "flex-start" }}>
-                                        <button 
+                                        <button
                                             onClick={() => toggleThought(i)}
                                             style={styles.thinkToggle}
                                         >
@@ -118,7 +118,7 @@ export default function SenseiChat() {
                         ))}
                         {isTyping && (
                             <div style={{ ...styles.message, alignSelf: "flex-start", background: "rgba(255,255,255,0.02)", fontStyle: "italic", fontSize: "0.8rem", color: "#94a3b8" }}>
-                                Sensei réfléchit...
+                                UnLock réfléchit...
                             </div>
                         )}
                     </div>

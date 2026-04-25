@@ -381,7 +381,7 @@ async def chat_with_sensei(data: ChatInput):
         )
 
         prompt = f"""
-        You are 'SenseiLock', a helpful Japanese teacher.
+        You are 'UnLock', a helpful Japanese teacher.
         Use the context to answer. Be concise.
         
         CONTEXT:

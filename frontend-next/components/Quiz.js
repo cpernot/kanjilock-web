@@ -218,7 +218,7 @@ export default function Quiz({ forcedMode = null }) {
         // However, to be absolutely safe, we pass it or read from current scope if this is triggered from render.
         const mode = forcedMode || selectedMode;
 
-        const data = getNextQuestion(mode, appSettings?.progressiveMode);
+        const data = getNextQuestion(mode, appSettings?.progressiveMode, appSettings?.sequentialOrder);
 
         if (data.done) {
             setQuestion(null);

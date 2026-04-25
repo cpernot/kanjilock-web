@@ -28,7 +28,7 @@ export function saveFlashcardEvaluation(kanji, level) {
 /**
  * Filters and prepares a deck based on user criteria.
  */
-export function prepareDeck(allKanjis, filters, srsProgress, boxProgressMap) {
+export function prepareDeck(allKanjis, filters, srsProgress, boxProgressMap, sequentialOrder = false) {
     let deck = Object.entries(allKanjis).map(([kanji, data]) => {
         // Find max SRS level across all modes (qa, qb, qc, etc.)
         let maxSrsLevel = 0;
@@ -65,6 +65,7 @@ export function prepareDeck(allKanjis, filters, srsProgress, boxProgressMap) {
         deck = deck.filter(card => String(card.srsLevel) === String(filters.srsLevel));
     }
 
-    // Shuffle
+    // Return deck (Shuffle only if NOT sequential)
+    if (sequentialOrder) return deck;
     return deck.sort(() => Math.random() - 0.5);
 }
