@@ -164,24 +164,23 @@ export function getNextQuestion(mode, progressiveMode = false) {
     // A. FILTERING CANDIDATES
     let candidates = [];
 
+    if (currentBoxFilter) {
+        candidates = allKeys.filter(k => String(staticData[k].boite) === currentBoxFilter);
+    } else if (progressiveMode) {
+        const visibleBoxes = getVisibleBoxes(true, mode);
+        candidates = allKeys.filter(k => visibleBoxes.includes(String(staticData[k].boite)));
+    } else {
+        candidates = allKeys;
+    }
+
+    // Additional Filter for Composition Modes: must have comp_words
     if (mode === "qh" || mode === "qg") {
-        // SPECIAL FILTER FOR QH & QG: Ignore box filter, force ALL BOXES, and must have comp_words
-        candidates = allKeys.filter(k => {
+        candidates = candidates.filter(k => {
             const cw = staticData[k].comp_words;
             if (!cw) return false;
             if (Array.isArray(cw)) return cw.length > 0;
             return typeof cw === 'string' && cw.trim().length > 0;
         });
-    } else {
-        if (currentBoxFilter) {
-            candidates = allKeys.filter(k => String(staticData[k].boite) === currentBoxFilter);
-        } else if (progressiveMode) {
-            // All-Box in Progressive Mode: only kanji from visible boxes
-            const visibleBoxes = getVisibleBoxes(true, mode);
-            candidates = allKeys.filter(k => visibleBoxes.includes(String(staticData[k].boite)));
-        } else {
-            candidates = allKeys;
-        }
     }
 
     if (candidates.length === 0) {
@@ -368,7 +367,10 @@ export function updateEngineAfterAnswer(kanji, isCorrect, mode) {
 
         // Increment Level locally
         state.level = Math.min((state.level || 1) + 1, 4);
+        return state;
     }
+    
+    return userProgress[mode]?.[kanji] || null;
 }
 
 /* ============================
@@ -431,29 +433,36 @@ export async function updateBoxRanking(boxId, sessionStats, mode) {
     // SAVE 2: Supabase / Backend
     const progressData = {
         user_id: player,
-        boite: String(boxId),
+        boite: isNaN(boxId) ? String(boxId) : parseInt(boxId), // Fix: ensure integer for DB if possible
         mode: mode,
-        level: newLevel,
+        level: current.level,
         last_attempt: now.toISOString()
     };
 
     try {
-        // Use API route wrapper for cors/security if needed
+        console.log(`📡 Syncing box ${boxId} level ${current.level} to server for player: ${player}...`);
         const response = await fetch(`${config.apiBaseUrl}/box-progress/save`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(progressData)
         });
-        if (!response.ok) throw new Error("Sync failed");
+        
+        const result = await response.json();
+        
+        if (!response.ok || result.status === "error") {
+            const errorMsg = result.message || "Unknown server error";
+            throw new Error(`Sync failed: ${errorMsg}`);
+        }
+        
+        console.log("✅ Box progress synced successfully");
     } catch (err) {
-        console.error("❌ Sync Error:", err);
-        // Offline Fallback
+        console.error("❌ Sync Error:", err.message);
         if (typeof window !== 'undefined') {
             localStorage.setItem(`offline_box_${boxId}`, JSON.stringify(progressData));
         }
     }
 
-    return { level: newLevel, message: message };
+    return { level: current.level, message: message, sessionLevel: newLevel };
 }
 
 /* ============================

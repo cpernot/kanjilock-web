@@ -41,15 +41,29 @@ export async function fetchBoxCounts(player, mode = null) {
     try {
         const res = await fetch(`${config.apiBaseUrl}/box-progress/${encodeURIComponent(player)}`);
         if (res.ok) {
-            const data = await res.json(); // { "box_id": { "qa": 2, "qb": 1 } }
+            const data = await res.json(); 
+            console.log("📦 Box Progress Data from API:", data);
             const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
 
             Object.values(data).forEach(modes => {
-                const level = mode ? (modes[mode] || 0) : Math.max(...Object.values(modes), 0);
+                let level = 0;
+                if (mode) {
+                    level = modes[mode] || 0;
+                } else {
+                    // Core Modes
+                    const coreModes = Object.entries(modes)
+                        .filter(([m]) => m !== "qh" && m !== "qg")
+                        .map(([, l]) => l);
+                    if (coreModes.length > 0) {
+                        level = Math.max(...coreModes);
+                    }
+                }
+
                 if (level >= 1 && level <= 4) {
                     counts[level]++;
                 }
             });
+            console.log("🧮 Calculated Box Counts:", counts);
             return counts;
         }
     } catch (e) {
@@ -81,9 +95,10 @@ export function calculateProgress(settings, currentCounts) {
     const levels = [1, 2, 3, 4];
 
     levels.forEach(lvl => {
-        const targetValue = settings.targets.levels[lvl] || 0;
-        const baselineValue = settings.targets.baselines[lvl] || 0;
-        const currentCount = currentCounts[lvl] || 0;
+        // Handle both numeric and string keys (Supabase JSON uses strings)
+        const targetValue = (settings.targets.levels[lvl] || settings.targets.levels[String(lvl)]) || 0;
+        const baselineValue = (settings.targets.baselines[lvl] || settings.targets.baselines[String(lvl)]) || 0;
+        const currentCount = (currentCounts[lvl] || currentCounts[String(lvl)]) || 0;
 
         // Incremental gain since period start
         const gained = Math.max(0, currentCount - baselineValue);

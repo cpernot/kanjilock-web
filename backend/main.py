@@ -131,43 +131,51 @@ async def get_box_session(box_id: int, player_id: str):
 
 @app.post("/api/box-progress/save")
 async def save_box_progress(data: dict):
-    # Ensure types match your DB schema
-    payload = {
-        "user_id": data['user_id'],
-        "boite": data['boite'], 
-        "mode": data.get('mode', 'qa'),
-        "level": int(data['level']),
-        "last_attempt": data['last_attempt']
-    }    
+    from fastapi.responses import JSONResponse
     try:
-        # Update on_conflict to include mode
+        payload = {
+            "user_id": data['user_id'],
+            "boite": data['boite'], 
+            "mode": data.get('mode', 'qa'),
+            "level": int(data['level']),
+            "last_attempt": data.get('last_attempt')
+        }
         res = supabase.table('box_progress').upsert(
             payload, 
             on_conflict="user_id,boite,mode" 
         ).execute()
-        return {"status": "success"}
+        return {"status": "success", "data": res.data}
     except Exception as e:
-        print(f"❌ Supabase Error: {e}")
-        return {"status": "error", "message": str(e)}
+        print(f"❌ Erreur save_box_progress: {e}")
+        # Return proper error message and status
+        return JSONResponse(
+            status_code=401 if "unauthorized" in str(e).lower() else 500,
+            content={"status": "error", "message": str(e)}
+        )
 
 @app.get("/api/box-progress/{user_id}")
 async def get_all_box_progress(user_id: str):
-    # Select mode as well
-    res = supabase.table('box_progress').select("boite, level, mode").eq("user_id", user_id).execute()
-    
-    # Transform into a nested dictionary: { "box_id": { "qa": 2, "qb": 1 } }
-    progress_map = {}
-    for item in res.data:
-        b_id = str(item['boite'])
-        mode = item.get('mode', 'qa')
-        lvl = item['level']
+    try:
+        # Select mode as well
+        res = supabase.table('box_progress').select("boite, level, mode").eq("user_id", user_id).execute()
         
-        if b_id not in progress_map:
-            progress_map[b_id] = {}
-        
-        progress_map[b_id][mode] = lvl
-        
-    return progress_map
+        # Transform into a nested dictionary: { "box_id": { "qa": 2, "qb": 1 } }
+        progress_map = {}
+        for item in res.data:
+            b_id = str(item['boite'])
+            mode = item.get('mode', 'qa')
+            lvl = item['level']
+            
+            if b_id not in progress_map:
+                progress_map[b_id] = {}
+            
+            progress_map[b_id][mode] = lvl
+            
+        return progress_map
+    except Exception as e:
+        print(f"❌ Erreur get_all_box_progress: {e}")
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.get("/api/settings/{player}")
 async def get_settings_api(player: str):

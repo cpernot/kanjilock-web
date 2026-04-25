@@ -90,6 +90,14 @@ export default function SettingsPage() {
                             onChange={val => setSettings({ ...settings, soundEnabled: val })}
                         />
                     </div>
+                    
+                    <div style={styles.toggleItem}>
+                        <span style={styles.toggleDesc}>Show Progress Bar</span>
+                        <ToggleSwitch
+                            checked={settings.showProgressBar}
+                            onChange={val => setSettings({ ...settings, showProgressBar: val })}
+                        />
+                    </div>
                 </div>
 
                 <button onClick={handleSave} style={styles.btn}>Save Settings</button>

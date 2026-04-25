@@ -26,6 +26,7 @@ export const DEFAULT_SETTINGS = {
   autoDismissAnswer: false,
   progressiveMode: true,
   soundEnabled: false,
+  showProgressBar: true,
   targets: {
     period: "week", // day, week, month
     type: "box",  // kanji, box

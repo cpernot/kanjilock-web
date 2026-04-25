@@ -43,7 +43,7 @@ export default function SessionEndPage() {
                     <div style={styles.transition}>
                         <span style={styles.oldLevel}>{summary.boxRanking.oldLevel}</span>
                         <span style={styles.arrow}>→</span>
-                        <span style={styles.newLevel}>{summary.boxRanking.newLevel}</span>
+                        <span style={styles.newLevel}>{summary.boxRanking.level}</span>
                     </div>
                     {boxMsg && <p style={styles.boxMsg}>{boxMsg}</p>}
                 </div>
@@ -53,6 +53,25 @@ export default function SessionEndPage() {
                 <Link href="/quiz" style={styles.btn}>➡️ Continue</Link>
                 <Link href="/quiz" style={{ ...styles.btn, background: "#8b5cf6" }}>🔁 Replay Box</Link>
                 <Link href="/" style={{ ...styles.btn, background: "#475569" }}>🏠 Home</Link>
+            </div>
+
+            {/* Detailed Kanji History */}
+            <div style={styles.historyList}>
+                <h4 style={{ color: "#94a3b8", margin: "30px 0 15px 0" }}>Détails par Kanji</h4>
+                <div style={styles.grid}>
+                    {summary.history.map((h, i) => (
+                        <div key={i} style={{
+                            ...styles.historyItem,
+                            borderColor: h.correct ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)"
+                        }}>
+                            <span style={styles.kanjiChar}>{h.kanji}</span>
+                            <span style={styles.kanjiLevel}>
+                                {h.newLevel ? `Niv. ${h.newLevel}` : "---"}
+                                {h.newLevel === 4 && " ⭐"}
+                            </span>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );
@@ -71,5 +90,18 @@ const styles = {
     oldLevel: { fontSize: "2rem", color: "#94a3b8", fontWeight: "bold" },
     newLevel: { fontSize: "3rem", color: "#3b82f6", fontWeight: "bold" },
     arrow: { fontSize: "1.5rem", color: "rgba(255,255,255,0.2)" },
-    boxMsg: { fontSize: "0.9rem", color: "#cbd5e1", marginTop: "10px" }
+    boxMsg: { fontSize: "0.9rem", color: "#cbd5e1", marginTop: "10px" },
+    historyList: { marginTop: "20px", textAlign: "left" },
+    grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: "10px" },
+    historyItem: { 
+        padding: "10px", 
+        background: "rgba(255,255,255,0.05)", 
+        borderRadius: "10px", 
+        border: "1px solid",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center"
+    },
+    kanjiChar: { fontSize: "1.5rem", fontWeight: "bold" },
+    kanjiLevel: { fontSize: "0.8rem", color: "#94a3b8" }
 };

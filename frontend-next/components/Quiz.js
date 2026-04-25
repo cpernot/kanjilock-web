@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { getNextQuestion, checkLocalAnswer, updateEngineAfterAnswer, updateBoxRanking, currentBoxFilter, setBoxContext, getAvailableBoxes, getVisibleBoxes, getBoxKanjiCount, getBoxLevel } from "../lib/quizengine";
-import { startSession, recordAnswer, getSessionSummary, isSessionFinished } from "../lib/quizSession";
+import { startSession, recordAnswer, getSessionSummary, isSessionFinished, updateSessionSummary, getSession } from "../lib/quizSession";
 import { getMode, setMode as saveMode } from "../lib/modeManager";
 import { getPlayer_setting } from "../lib/settings";
 import config from "../lib/config";
@@ -13,6 +13,7 @@ export default function Quiz({ forcedMode = null }) {
     const [result, setResult] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [isCompiling, setIsCompiling] = useState(false);
 
     // UI State for dropdowns
     const [selectedMode, setSelectedMode] = useState("qa");
@@ -302,7 +303,7 @@ export default function Quiz({ forcedMode = null }) {
         const data = checkLocalAnswer(question, choice, rt_ms);
 
         const mode = forcedMode || selectedMode;
-        updateEngineAfterAnswer(question.kanji, data.correct, mode);
+        const newState = updateEngineAfterAnswer(question.kanji, data.correct, mode);
 
         setResult(data);
         playSound(data.correct ? "success.wav" : "BOMB.WAV");
@@ -312,12 +313,14 @@ export default function Quiz({ forcedMode = null }) {
             correct: data.correct,
             rt_ms: rt_ms,
             kanji: question.kanji,
-            mode: mode
+            mode: mode,
+            newLevel: newState?.level
         });
 
         if (finished) {
             // If session is finished, don't allow loading another question
             setIsPlaying(false); 
+            setIsCompiling(true); // Start compiling feedback immediately
             setTimeout(async () => {
                 await finishSession(mode);
             }, 1500);
@@ -332,16 +335,22 @@ export default function Quiz({ forcedMode = null }) {
     }
 
     async function finishSession(mode) {
+        setIsCompiling(true);
         const summary = getSessionSummary();
         const player = getPlayer_setting();
 
-        if (currentBoxFilter) {
-            const oldLevel = getBoxLevel(currentBoxFilter, mode);
-            const ranking = await updateBoxRanking(currentBoxFilter, summary, mode);
-            summary.boxRanking = {
+        // Evaluate Box Mastery only for core modes (not qh/qg)
+        const isCoreMode = (mode !== "qh" && mode !== "qg");
+        
+        if (selectedBox && isCoreMode) {
+            const oldLevel = getBoxLevel(selectedBox, mode);
+            const ranking = await updateBoxRanking(selectedBox, summary, mode);
+            const boxRanking = {
                 ...ranking,
                 oldLevel: oldLevel
             };
+            summary.boxRanking = boxRanking;
+            updateSessionSummary({ boxRanking }); // Sync back to session manager
         }
 
         const payload = {
@@ -393,6 +402,15 @@ export default function Quiz({ forcedMode = null }) {
 
     return (
         <div ref={containerRef} style={styles.container}>
+            {/* Compiling Overlay */}
+            {isCompiling && (
+                <div style={styles.compilingOverlay}>
+                    <div style={styles.spinner}>⏳</div>
+                    <h3 style={{ color: '#fff' }}>Compiling results...</h3>
+                    <p style={{ color: '#94a3b8' }}>Please wait a moment</p>
+                </div>
+            )}
+
             {/* Controls - Only show if not forced mode */}
             {!forcedMode && (
                 <div style={styles.controls}>
@@ -445,6 +463,21 @@ export default function Quiz({ forcedMode = null }) {
 
             {isPlaying && question && (
                 <>
+                    {/* Session Progress Bar */}
+                    {appSettings?.showProgressBar !== false && (
+                        <div style={styles.sessionProgressContainer}>
+                            <div 
+                                style={{
+                                    ...styles.sessionProgressFill,
+                                    width: `${((getSession()?.current || 0) / (getSession()?.size || 1)) * 100}%`
+                                }}
+                            ></div>
+                            <span style={styles.sessionProgressText}>
+                                {getSession()?.current || 0} / {getSession()?.size || 0}
+                            </span>
+                        </div>
+                    )}
+
                     {/* Timer Bar */}
                     <div style={styles.timerContainer}>
                         <div ref={barRef} style={styles.timerFill}></div>
@@ -695,5 +728,50 @@ const styles = {
         fontWeight: "600",
         cursor: "pointer",
         boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
+    },
+    compilingOverlay: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 2000,
+        backdropFilter: 'blur(8px)'
+    },
+    spinner: {
+        fontSize: '4rem',
+        marginBottom: '20px',
+        animation: 'spin 2s linear infinite'
+    },
+    sessionProgressContainer: {
+        width: "100%",
+        height: "20px",
+        background: "rgba(255, 255, 255, 0.05)",
+        borderRadius: "10px",
+        overflow: "hidden",
+        marginBottom: "20px",
+        position: "relative",
+        border: "1px solid rgba(255,255,255,0.1)"
+    },
+    sessionProgressFill: {
+        height: "100%",
+        background: "linear-gradient(to right, #4caf50, #81c784)",
+        transition: "width 0.4s ease-out",
+        borderRadius: "10px"
+    },
+    sessionProgressText: {
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        fontSize: "0.75rem",
+        fontWeight: "bold",
+        color: "rgba(255,255,255,0.9)",
+        textShadow: "0 1px 2px rgba(0,0,0,0.5)"
     }
 };

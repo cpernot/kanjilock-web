@@ -37,7 +37,7 @@ export default function LoadingOverlay({ message = "Initializing..." }) {
     <div style={styles.overlay}>
       <div style={styles.content}>
         <h1 style={styles.title}>KanjiLock</h1>
-        
+
         <div style={styles.kanjiRow}>
           {randomKanji.map((item, i) => (
             <div key={i} style={styles.kanjiCard}>
@@ -49,13 +49,13 @@ export default function LoadingOverlay({ message = "Initializing..." }) {
 
         <div style={styles.infoBox}>
           <p style={styles.waitText}>
-            <span style={{ fontSize: "1.2rem", color: "#3b82f6", fontWeight: "bold" }}>🚀 Server is waking up...</span><br/>
-            Render and Vercel are spinning up the backend. This typically takes <b>1-2 minutes</b> during cold starts. 
-            Once connected, your progress will sync instantly.
+            <span style={{ fontSize: "1.2rem", color: "#3b82f6", fontWeight: "bold" }}>
+              🚀 Loading 🚀
+            </span>
           </p>
-          
+
           <div style={styles.divider} />
-          
+
           <h3 style={styles.subtitle}>Did you know?</h3>
           <ul style={styles.list}>
             <li><b>SRS Learning:</b> KanjiLock uses Spaced Repetition to ensure you never forget.</li>
@@ -94,20 +94,20 @@ const styles = {
   content: { maxWidth: '500px', width: '100%', textAlign: 'center' },
   title: { fontSize: '3rem', fontWeight: '900', marginBottom: '40px', background: 'linear-gradient(135deg, #fff 0%, #3b82f6 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
   kanjiRow: { display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '40px' },
-  kanjiCard: { 
-    background: 'rgba(255,255,255,0.05)', 
-    padding: '15px', 
-    borderRadius: '20px', 
+  kanjiCard: {
+    background: 'rgba(255,255,255,0.05)',
+    padding: '15px',
+    borderRadius: '20px',
     border: '1px solid rgba(255,255,255,0.1)',
     width: '100px',
     animation: 'pulse 2s infinite ease-in-out'
   },
   kanjiChar: { fontSize: '2.5rem', marginBottom: '5px' },
   kanjiMeaning: { fontSize: '0.75rem', color: '#94a3b8', fontWeight: '600' },
-  infoBox: { 
-    background: 'rgba(30, 41, 59, 0.5)', 
-    padding: '25px', 
-    borderRadius: '24px', 
+  infoBox: {
+    background: 'rgba(30, 41, 59, 0.5)',
+    padding: '25px',
+    borderRadius: '24px',
     border: '1px solid rgba(255,255,255,0.1)',
     textAlign: 'left',
     lineHeight: '1.6'

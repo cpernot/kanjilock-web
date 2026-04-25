@@ -51,7 +51,8 @@ export function recordAnswer({ correct, rt_ms, kanji, mode }) {
         kanji: kanjiId,
         correct: correct,
         mode: quizMode,
-        speed_factor: (rt_ms < 3000) ? 1.0 : (rt_ms < 5000 ? 0.8 : 0.6)
+        speed_factor: (rt_ms < 3000) ? 1.0 : (rt_ms < 5000 ? 0.8 : 0.6),
+        newLevel: arguments[0].newLevel
     });
 
     return isSessionFinished();
@@ -72,6 +73,15 @@ export function getSessionSummary() {
             Math.round((session.speedScore / (session.size * 10)) * 100)
         )
     };
+}
+
+/**
+ * Updates the current session object with extra data (like boxRanking).
+ */
+export function updateSessionSummary(extraData) {
+    if (session) {
+        Object.assign(session, extraData);
+    }
 }
 
 export function resetSession() {

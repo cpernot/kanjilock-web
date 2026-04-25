@@ -21,6 +21,7 @@ export default function Home() {
 
   async function loadHomeData() {
     const p = getPlayer_setting();
+    console.log("👤 Current Player ID:", p);
     if (!p) {
       setLoading(false);
       return;
@@ -46,23 +47,44 @@ export default function Home() {
         const res = await fetch(`${config.apiBaseUrl}/stats?player=${encodeURIComponent(p)}`);
         if (res.ok) {
           const stats = await res.json();
-          // Assuming stats returns { 1: count, 2: count, ... }
-          currentCounts = stats;
+          // Fix: Ensure keys are numbers and access srs_levels
+          const normalized = { 1: 0, 2: 0, 3: 0, 4: 0 };
+          if (stats.srs_levels) {
+            Object.keys(stats.srs_levels).forEach(k => {
+              normalized[parseInt(k)] = stats.srs_levels[k];
+            });
+          }
+          currentCounts = normalized;
         }
       } else {
         currentCounts = await fetchBoxCounts(p);
       }
 
+      console.log("📊 currentCounts fetched:", currentCounts);
+      
       // 4. Check Period Reset
       if (checkPeriodReset(settings)) {
+        console.log("🕒 Period reset detected, updating baselines...");
         await updateBaselines(p, currentCounts);
-        // Re-fetch settings after baseline update
         settings = await fetchRemoteSettings(p);
       }
 
-      // 5. Calculate Progress
-      const prog = calculateProgress(settings, currentCounts);
-      setProgressData(prog);
+      // 5. Calculate Progress - Show TOTAL mastery, not just gains
+      const totalProg = {};
+      const levels = [1, 2, 3, 4];
+      console.log("⚙️ settings.targets:", settings.targets);
+      
+      levels.forEach(lvl => {
+        const target = (settings.targets?.levels && (settings.targets.levels[lvl] || settings.targets.levels[String(lvl)])) || 10;
+        const current = currentCounts[lvl] || currentCounts[String(lvl)] || 0;
+        console.log(`L${lvl}: current=${current}, target=${target}`);
+        totalProg[lvl] = {
+          current: current,
+          target: target,
+          percent: target > 0 ? Math.min(100, (current / target) * 100) : 0
+        };
+      });
+      setProgressData(totalProg);
 
     } catch (e) {
       console.error("Home load error", e);
@@ -132,15 +154,15 @@ export default function Home() {
 }
 
 const styles = {
-  container: { maxWidth: "700px", margin: "0 auto", padding: "40px 20px", textAlign: "center" },
+  container: { maxWidth: "700px", margin: "0 auto", padding: "10px 20px", textAlign: "center" },
   loading: { display: "flex", justifyContent: "center", alignItems: "center", height: "80vh", fontSize: "1.2rem", color: "#94a3b8" },
   loginCard: { marginTop: "100px", background: "rgba(30, 41, 59, 0.4)", padding: "40px", borderRadius: "24px", border: "1px solid rgba(255,255,255,0.1)" },
-  header: { marginBottom: "40px" },
+  header: { marginBottom: "15px" },
   title: { fontSize: "1.8rem", fontWeight: "800", color: "#fff" },
-  subtitle: { display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginTop: "10px" },
+  subtitle: { display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginTop: "5px" },
   progLabel: { color: "#94a3b8", fontSize: "0.9rem", fontWeight: "600" },
   periodBadge: { padding: "4px 10px", background: "#2196F3", borderRadius: "8px", fontSize: "0.65rem", fontWeight: "900", color: "#fff" },
-  dashboardSection: { background: "rgba(30, 41, 59, 0.3)", borderRadius: "24px", padding: "20px", border: "1px solid rgba(255,255,255,0.05)", marginBottom: "30px" },
+  dashboardSection: { background: "rgba(30, 41, 59, 0.3)", borderRadius: "24px", padding: "10px", border: "1px solid rgba(255,255,255,0.05)", marginBottom: "20px" },
   progressGrid: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
