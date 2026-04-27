@@ -15,16 +15,18 @@ logger = logging.getLogger(__name__)
 try:
     from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain_groq import ChatGroq
-    from langchain_community.vectorstores import FAISS
+    from langchain_community.vectorstores import SupabaseVectorStore
     from langchain_huggingface import HuggingFaceEmbeddings
     from langchain_core.documents import Document
+    from backend.core.config import supabase
     CHAT_AVAILABLE = True
 except ImportError as e:
     CHAT_AVAILABLE = False
     logger.error(f"⚠️ LangChain or AI libraries not found: {e}")
 
 router = APIRouter()
-vector_store: Optional[FAISS] = None
+vector_store: Optional[SupabaseVectorStore] = None
+
 
 # --- MODELS ---
 
@@ -51,6 +53,29 @@ def get_embeddings():
         return None
     logger.info("🧠 Loading Embeddings model...")
     return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+
+def get_vector_store():
+    """Returns the Supabase vector store instance."""
+    global vector_store
+    if vector_store:
+        return vector_store
+    
+    if not CHAT_AVAILABLE:
+        return None
+
+    try:
+        embeddings = get_embeddings()
+        vector_store = SupabaseVectorStore(
+            client=supabase,
+            embedding=embeddings,
+            table_name="knowledge_base",
+            query_name="match_documents",
+        )
+        return vector_store
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize SupabaseVectorStore: {e}")
+        return None
+
 
 def get_llm():
     """Returns a configured LLM instance (Gemini or Groq)."""
@@ -98,9 +123,14 @@ async def chat_with_sensei(data: ChatInput):
         system_rules = SENSEI_SYSTEM_RULES
 
         context = ""
-        if vector_store:
-            docs = vector_store.similarity_search(data.message, k=3)
-            context = "\nContext about KanjiLock:\n" + "\n".join([d.page_content for d in docs])
+        vs = get_vector_store()
+        if vs:
+            try:
+                docs = vs.similarity_search(data.message, k=3)
+                context = "\nContext about KanjiLock:\n" + "\n".join([d.page_content for d in docs])
+            except Exception as e:
+                logger.warning(f"⚠️ Vector search failed (table might not exist yet): {e}")
+
         
         prompt = f"{system_rules}\n{context}\n\nUser Question: {data.message}"
         res = llm.invoke(prompt)
@@ -134,8 +164,9 @@ async def build_vector_store_api(input_data: BuildVectorStoreInput):
         
     try:
         embeddings = get_embeddings()
-        if not embeddings:
-            raise HTTPException(status_code=500, detail="Could not initialize embeddings model")
+        vs = get_vector_store()
+        if not vs:
+            raise HTTPException(status_code=500, detail="Could not initialize vector store")
 
         docs = []
         for k, v in input_data.kanji_cache.items():
@@ -144,13 +175,15 @@ async def build_vector_store_api(input_data: BuildVectorStoreInput):
                 content += f". Example: {v.mot} ({v.signification_mot})"
             docs.append(Document(page_content=content, metadata={"kanji": k}))
 
-        vector_store = FAISS.from_documents(docs, embeddings)
-        logger.info(f"✅ Vector store built with {len(docs)} documents.")
+        # Note: We use add_documents to append/sync.
+        vs.add_documents(docs)
+        logger.info(f"✅ Vector store synced with {len(docs)} documents.")
         return {"status": "success", "count": len(docs)}
         
     except Exception as e:
         logger.error(f"Build error: {e}")
-        return {"status": "error", "message": "Failed to build knowledge base."}
+        return {"status": "error", "message": str(e)}
+
 
 # Helper for direct call from lifespan
 async def build_vector_store(kanji_cache: dict):
