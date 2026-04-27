@@ -5,6 +5,7 @@ from typing import Dict, Optional, Union
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from functools import lru_cache
+from backend.core.config import SENSEI_SYSTEM_RULES, LLM_PROVIDER, GEMINI_MODEL, GROQ_MODEL
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -56,7 +57,7 @@ def get_llm():
     if not CHAT_AVAILABLE:
         return None
         
-    provider = os.getenv("LLM_PROVIDER", "gemini").lower()
+    provider = LLM_PROVIDER
     
     if provider == "groq":
         api_key = os.getenv("GROQ_API_KEY")
@@ -64,7 +65,7 @@ def get_llm():
             logger.warning("🔑 GROQ_API_KEY not found.")
             return None
         return ChatGroq(
-            model_name="qwen/qwen3-32b",
+            model_name=GROQ_MODEL,
             groq_api_key=api_key,
             temperature=0.5
         )
@@ -76,7 +77,7 @@ def get_llm():
             return None
             
         return ChatGoogleGenerativeAI(
-            model="gemma-3-27b-it", 
+            model=GEMINI_MODEL, 
             google_api_key=api_key,
             temperature=0.5
         )
@@ -94,15 +95,7 @@ async def chat_with_sensei(data: ChatInput):
         return {"response": "Désolé, l'IA n'est pas configurée (Clé API manquante)."}
     
     try:
-        system_rules = (
-            "You are an expert trilingual language teacher fluent in Japanese, French, and English.\n"
-            "Keep you reply within 100 characters except if specified otherwise.\n"
-            "Your behavior rules:\n"
-            "1. Code-Switching: Respond primarily in the language the user speaks, but mix in the target language.\n"
-            "2. Contextual Translation: Provide translations in brackets for complex terms, e.g., 'C'est une nuance importante [It is an important nuance].'\n"
-            "3. Persona: Be encouraging. Gently correct grammar before answering.\n"
-            "4. Multimodal: Analyze and explain any kanji provided."
-        )
+        system_rules = SENSEI_SYSTEM_RULES
 
         context = ""
         if vector_store:

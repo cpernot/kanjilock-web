@@ -109,8 +109,8 @@ export default function TargetsPage() {
 
                 <div style={{ marginTop: "30px", display: "flex", gap: "10px" }}>
                     <button onClick={save} style={{ ...styles.btn, flex: 2 }}>Save & Close</button>
-                    <button onClick={setBaselines} style={{ ...styles.btn, flex: 1, background: "#475569" }}>Reset Period</button>
-                    <button onClick={() => router.back()} style={{ ...styles.btn, flex: 1, background: "#ef4444" }}>Cancel</button>
+                    <button onClick={setBaselines} style={{ ...styles.btn, flex: 1, background: "var(--accent-gray)" }}>Reset Period</button>
+                    <button onClick={() => router.back()} style={{ ...styles.btn, flex: 1, background: "var(--accent-red)" }}>Cancel</button>
                 </div>
             </div>
         </div>
@@ -119,19 +119,19 @@ export default function TargetsPage() {
 
 const styles = {
     container: { maxWidth: "600px", margin: "0 auto", padding: "5px 20px" },
-    loading: { textAlign: "center", padding: "100px", color: "#94a3b8" },
+    loading: { textAlign: "center", padding: "100px", color: "var(--text-secondary)" },
     nav: { marginBottom: "20px" },
-    backLink: { color: "#94a3b8", textDecoration: "none" },
-    title: { fontSize: "2rem", fontWeight: "800", color: "#fff", marginBottom: "15px", textAlign: "center" },
-    card: { background: "rgba(30, 41, 59, 0.4)", padding: "10px", borderRadius: "24px", border: "1px solid rgba(255,255,255,0.1)" },
+    backLink: { color: "var(--text-secondary)", textDecoration: "none" },
+    title: { fontSize: "2rem", fontWeight: "800", color: "var(--text-primary)", marginBottom: "15px", textAlign: "center" },
+    card: { background: "var(--bg-card)", padding: "10px", borderRadius: "24px", border: "1px solid var(--border-color)" },
     section: { marginBottom: "15px" },
-    label: { display: "block", color: "#94a3b8", fontSize: "0.9rem", marginBottom: "12px", fontWeight: "600" },
+    label: { display: "block", color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "12px", fontWeight: "600" },
     toggleRow: { display: "flex", gap: "10px" },
     toggleBtn: { flex: 1, padding: "12px", border: "none", borderRadius: "12px", color: "white", cursor: "pointer", transition: "all 0.2s" },
-    select: { width: "100%", padding: "12px", background: "#0f172a", border: "1px solid #334155", borderRadius: "12px", color: "#fff" },
+    select: { width: "100%", padding: "12px", background: "var(--input-bg)", border: "1px solid var(--input-border)", borderRadius: "12px", color: "var(--text-primary)" },
     grid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", maxWidth: "400px", margin: "0 auto" },
     goalItem: { display: "flex", flexDirection: "column" },
-    goalLabel: { fontSize: "0.7rem", color: "#94a3b8", marginBottom: "8px", textAlign: "center" },
-    input: { width: "100%", boxSizing: "border-box", padding: "10px 8px", background: "#0f172a", border: "1px solid #334155", borderRadius: "12px", color: "#fff", textAlign: "center" },
-    btn: { padding: "14px", border: "none", borderRadius: "12px", color: "white", fontWeight: "bold", background: "#2196F3", cursor: "pointer" }
+    goalLabel: { fontSize: "0.7rem", color: "var(--text-secondary)", marginBottom: "8px", textAlign: "center" },
+    input: { width: "100%", boxSizing: "border-box", padding: "10px 8px", background: "var(--input-bg)", border: "1px solid var(--input-border)", borderRadius: "12px", color: "var(--text-primary)", textAlign: "center" },
+    btn: { padding: "14px", border: "none", borderRadius: "12px", color: "white", fontWeight: "bold", background: "var(--accent-blue)", cursor: "pointer" }
 };

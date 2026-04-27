@@ -133,7 +133,7 @@ export default function StatsPage() {
                 </div>
                 <div style={styles.summaryCard}>
                     <div style={styles.summaryValue}>
-                        {Object.keys(dailyData).length}
+                        {summary.days_active || 0}
                     </div>
                     <div style={styles.summaryLabel}>Days Active</div>
                 </div>
@@ -290,22 +290,22 @@ const styles = {
         maxWidth: "1000px",
         margin: "0 auto",
         padding: "40px 20px",
-        background: "#020617",
+        background: "var(--bg-main)",
         minHeight: "100vh",
-        color: "#fff",
+        color: "var(--text-primary)",
         fontFamily: "'Inter', sans-serif"
     },
     header: { marginBottom: "40px", textAlign: "left" },
     backLink: {
         textDecoration: "none",
-        color: "#3b82f6",
+        color: "var(--accent-blue)",
         fontSize: "0.9rem",
         fontWeight: "600",
         marginBottom: "20px",
         display: "inline-block"
     },
     title: { fontSize: "2.5rem", fontWeight: "800", marginBottom: "8px" },
-    subtitle: { color: "#64748b", fontSize: "1.1rem" },
+    subtitle: { color: "var(--text-secondary)", fontSize: "1.1rem" },
     filterSection: { marginBottom: "30px" },
     filterRow: {
         display: "flex",
@@ -319,8 +319,8 @@ const styles = {
         marginBottom: "30px"
     },
     summaryCard: {
-        background: "linear-gradient(135deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.4) 100%)",
-        border: "1px solid rgba(255, 255, 255, 0.05)",
+        background: "linear-gradient(135deg, var(--bg-card) 0%, rgba(15, 23, 42, 0.4) 100%)",
+        border: "1px solid var(--border-color)",
         borderRadius: "20px",
         padding: "20px",
         textAlign: "center"
@@ -328,27 +328,27 @@ const styles = {
     summaryValue: {
         fontSize: "1.8rem",
         fontWeight: "800",
-        color: "#3b82f6",
+        color: "var(--accent-blue)",
         marginBottom: "5px"
     },
     summaryLabel: {
         fontSize: "0.8rem",
-        color: "#94a3b8",
+        color: "var(--text-secondary)",
         fontWeight: "600",
         textTransform: "uppercase",
         letterSpacing: "1px"
     },
     glassCard: {
-        background: "rgba(30, 41, 59, 0.4)",
-        border: "1px solid rgba(255, 255, 255, 0.05)",
+        background: "var(--bg-card)",
+        border: "1px solid var(--border-color)",
         borderRadius: "24px",
         padding: "30px",
         height: "100%"
     },
     select: {
-        background: "rgba(15, 23, 42, 0.8)",
-        color: "#fff",
-        border: "1px solid rgba(255, 255, 255, 0.1)",
+        background: "var(--input-bg)",
+        color: "var(--text-primary)",
+        border: "1px solid var(--input-border)",
         padding: "10px 15px",
         borderRadius: "12px",
         outline: "none",
@@ -361,7 +361,7 @@ const styles = {
         marginBottom: "20px"
     },
     fullWidthSection: { marginBottom: "20px" },
-    cardTitle: { fontSize: "1.1rem", color: "#94a3b8", marginBottom: "25px", fontWeight: "600", textAlign: "left" },
+    cardTitle: { fontSize: "1.1rem", color: "var(--text-secondary)", marginBottom: "25px", fontWeight: "600", textAlign: "left" },
     barChart: {
         display: "flex",
         justifyContent: "space-around",
@@ -399,8 +399,8 @@ const styles = {
         transform: "translateX(-50%)",
         fontSize: "0.8rem",
         fontWeight: "bold",
-        color: "#fff"
+        color: "var(--text-primary)"
     },
-    barLabel: { fontSize: "0.8rem", color: "#64748b", fontWeight: "500" }
+    barLabel: { fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }
 };
 

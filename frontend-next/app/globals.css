@@ -1,10 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
 
+:root {
+  --bg-main: #0f172a;
+  --bg-card: rgba(30, 41, 59, 0.4);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --input-bg: #0f172a;
+  --input-border: #334155;
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --accent-blue: #2196F3;
+  --accent-red: #ef4444;
+  --accent-gray: #475569;
+}
+
 body {
   margin: 0;
   font-family: 'Inter', 'Outfit', sans-serif;
-  background: #0f172a;
-  color: white;
+  background: var(--bg-main);
+  color: var(--text-primary);
 }
 
 a {
