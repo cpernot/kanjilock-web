@@ -1,6 +1,5 @@
 import os
 import json
-from backend.core.config import PROGRESS_FILE 
 from backend.core.config import supabase
 
 def load_data(user_id: str):

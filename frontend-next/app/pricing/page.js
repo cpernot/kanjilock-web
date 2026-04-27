@@ -1,7 +1,10 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 
 export default function PricingPage() {
+    const [showNotice, setShowNotice] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
     const plans = [
         {
             name: "Free",
@@ -71,17 +74,46 @@ export default function PricingPage() {
                             ))}
                         </ul>
 
-                        <button style={{
-                            ...styles.btn,
-                            background: plan.highlight ? plan.color : "transparent",
-                            border: `2px solid ${plan.color}`,
-                            color: plan.highlight ? "#0f172a" : plan.color
-                        }}>
+                        <button 
+                            onClick={() => setShowNotice(true)}
+                            style={{
+                                ...styles.btn,
+                                background: plan.highlight ? plan.color : "transparent",
+                                border: `2px solid ${plan.color}`,
+                                color: plan.highlight ? "#0f172a" : plan.color
+                            }}
+                        >
                             {plan.btnText}
                         </button>
                     </div>
                 ))}
             </div>
+
+            {showNotice && (
+                <div style={styles.overlay} onClick={() => setShowNotice(false)}>
+                    <div style={styles.noticeCard} onClick={e => e.stopPropagation()}>
+                        <h2 style={styles.noticeTitle}>Early Access Status</h2>
+                        <p style={styles.noticeText}>
+                            KanjiLock is currently in early access. Enjoy full access to all premium features at no cost during this initial trial period!
+                        </p>
+                        <p style={styles.noticeDisclaimer}>
+                            *Note: Some features are in active development and may be modified or temporarily unavailable without prior notice as we continue to improve the experience.
+                        </p>
+                        <button 
+                            style={{
+                                ...styles.noticeBtn,
+                                transform: isHovered ? "scale(1.05)" : "scale(1)",
+                                background: isHovered ? "#7dd3fc" : "#38bdf8"
+                            }} 
+                            onMouseEnter={() => setIsHovered(true)}
+                            onMouseLeave={() => setIsHovered(false)}
+                            onClick={() => setShowNotice(false)}
+                        >
+                            Understood
+                        </button>
+                    </div>
+                </div>
+            )}
 
 
         </div>
@@ -119,5 +151,58 @@ const styles = {
     featureItem: { marginBottom: "12px", fontSize: "0.95rem", color: "#cbd5e1", display: "flex", alignItems: "start" },
     btn: { padding: "14px", borderRadius: "12px", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", transition: "all 0.2s" },
     footer: { marginTop: "60px", textAlign: "center" },
-    backLink: { color: "#94a3b8", textDecoration: "none", fontSize: "0.9rem" }
+    backLink: { color: "#94a3b8", textDecoration: "none", fontSize: "0.9rem" },
+    overlay: {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: "rgba(0, 0, 0, 0.7)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+        backdropFilter: "blur(8px)"
+    },
+    noticeCard: {
+        background: "rgba(30, 41, 59, 0.95)",
+        padding: "40px",
+        borderRadius: "24px",
+        maxWidth: "500px",
+        width: "90%",
+        border: "1px solid rgba(255, 255, 255, 0.1)",
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+        textAlign: "center"
+    },
+    noticeTitle: {
+        fontSize: "1.8rem",
+        fontWeight: "bold",
+        marginBottom: "20px",
+        color: "#fff"
+    },
+    noticeText: {
+        fontSize: "1.1rem",
+        lineHeight: "1.6",
+        color: "#cbd5e1",
+        marginBottom: "20px"
+    },
+    noticeDisclaimer: {
+        fontSize: "0.85rem",
+        color: "#94a3b8",
+        fontStyle: "italic",
+        marginBottom: "30px",
+        lineHeight: "1.4"
+    },
+    noticeBtn: {
+        padding: "12px 30px",
+        borderRadius: "12px",
+        background: "#38bdf8",
+        color: "#0f172a",
+        border: "none",
+        fontWeight: "bold",
+        cursor: "pointer",
+        fontSize: "1rem",
+        transition: "transform 0.2s"
+    }
 };
