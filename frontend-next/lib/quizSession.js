@@ -1,8 +1,5 @@
-/* ============================
-   QUIZ SESSION MANAGER (Next.js Port)
-   ============================ */
-
 import { getSettings } from "./settings";
+import { reinjectKanji, currentBoxFilter, getReinjectionQueueSize } from "./quizengine";
 
 // Keeping session state in module scope is acceptable for this simple app structure,
 // but for a more robust React app, this should likely be in a Context or Reducer.
@@ -36,14 +33,30 @@ export function recordAnswer({ correct, rt_ms, kanji, mode }) {
     if (!session) return false;
 
     const settings = getSettings();
+    const isBoxSession = currentBoxFilter !== null;
+    const isTooSlow = rt_ms > settings.maxTimeMs;
+    const isActuallyCorrect = correct && !isTooSlow;
 
-    session.current++;
+    if (settings.allGood && isBoxSession) {
+        if (isActuallyCorrect) {
+            session.current++;
+            session.correct++;
+        } else {
+            // Reinject!
+            session.wrong++;
+            reinjectKanji(kanji);
+            console.log(`[All-Good] Failed/Slow answer for ${kanji}. Reinjected. Current progress: ${session.current}/${session.size}`);
+        }
+    } else {
+        // Normal mode
+        session.current++;
+        if (correct) session.correct++;
+        else session.wrong++;
+    }
+
     session.totalTime += rt_ms ?? settings.maxTimeMs;
-
-    if (correct) session.correct++;
-    else session.wrong++;
-
     session.speedScore += computeSpeedScore(rt_ms, settings);
+    
     const kanjiId = kanji || "unknown";
     const quizMode = mode || "qa";
 
@@ -52,14 +65,25 @@ export function recordAnswer({ correct, rt_ms, kanji, mode }) {
         correct: correct,
         mode: quizMode,
         speed_factor: (rt_ms < 3000) ? 1.0 : (rt_ms < 5000 ? 0.8 : 0.6),
-        newLevel: arguments[0].newLevel
+        newLevel: arguments[0].newLevel,
+        isActuallyCorrect: isActuallyCorrect // Extra flag for UI if needed
     });
 
     return isSessionFinished();
 }
 
 export function isSessionFinished() {
-    return session && session.current >= session.size;
+    if (!session) return true;
+    
+    const settings = getSettings();
+    const baseFinished = session.current >= session.size;
+    
+    if (settings.allGood && currentBoxFilter !== null) {
+        // Must reach size AND have no pending reinjections
+        return baseFinished && getReinjectionQueueSize() === 0;
+    }
+    
+    return baseFinished;
 }
 
 export function getSessionSummary() {

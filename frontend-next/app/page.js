@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getPlayer_setting, getSettings, fetchRemoteSettings } from "@/lib/settings";
-import { initEngine } from "@/lib/quizengine";
+import { initEngine, isInitialized } from "@/lib/quizengine";
 import { checkPeriodReset, calculateProgress, updateBaselines, fetchBoxCounts } from "@/lib/targets";
 import CircularProgress from "@/components/CircularProgress";
 import LoadingOverlay from "@/components/LoadingOverlay";
@@ -93,7 +93,17 @@ export default function Home() {
     }
   }
 
-  if (loading) return <LoadingOverlay message="Initializing Dashboard..." />;
+  if (loading) {
+    if (!isInitialized) {
+      return <LoadingOverlay message="Synchronizing Kanji Database..." />;
+    }
+    return (
+      <div style={styles.loading}>
+        <div style={{ ...styles.spinner, marginRight: '10px' }}>⏳</div>
+        Updating Dashboard...
+      </div>
+    );
+  }
 
   if (!player) {
     return (

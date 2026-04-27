@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { getNextQuestion, checkLocalAnswer, updateEngineAfterAnswer, updateBoxRanking, currentBoxFilter, setBoxContext, getAvailableBoxes, getVisibleBoxes, getBoxKanjiCount, getBoxLevel } from "../lib/quizengine";
+import { getNextQuestion, checkLocalAnswer, updateEngineAfterAnswer, updateBoxRanking, currentBoxFilter, setBoxContext, getAvailableBoxes, getVisibleBoxes, getBoxKanjiCount, getBoxLevel, resetEngineSession, isInitialized } from "../lib/quizengine";
 import { startSession, recordAnswer, getSessionSummary, isSessionFinished, updateSessionSummary, getSession } from "../lib/quizSession";
 import { getMode, setMode as saveMode } from "../lib/modeManager";
 import { getPlayer_setting } from "../lib/settings";
 import config from "../lib/config";
 import { useRouter } from "next/navigation";
 import { MODES } from "../lib/quizModes";
+import LoadingOverlay from "./LoadingOverlay";
 
 export default function Quiz({ forcedMode = null }) {
     const [question, setQuestion] = useState(null);
@@ -115,7 +116,7 @@ export default function Quiz({ forcedMode = null }) {
 
             // Default selection for Progressive Mode
             if (settings.progressiveMode && visible.length > 0) {
-                const defaultBox = visible[0]; // Highest unlocked
+                const defaultBox = visible[visible.length - 1]; // Highest unlocked
                 setSelectedBox(defaultBox);
                 mod.setBoxContext(defaultBox);
             }
@@ -128,7 +129,7 @@ export default function Quiz({ forcedMode = null }) {
                     setBoxes(updatedVisible);
                     // If we haven't selected anything yet, pick the default
                     if (remoteSettings.progressiveMode && updatedVisible.length > 0 && !selectedBox) {
-                        const db = updatedVisible[0];
+                        const db = updatedVisible[updatedVisible.length - 1];
                         setSelectedBox(db);
                         mod.setBoxContext(db);
                     }
@@ -143,6 +144,8 @@ export default function Quiz({ forcedMode = null }) {
         if (selectedBox && selectedBox !== "") {
             size = getBoxKanjiCount(selectedBox);
         }
+        
+        resetEngineSession();
         startSession(size);
         setQuestion(null);
         setResult(null);
@@ -174,6 +177,8 @@ export default function Quiz({ forcedMode = null }) {
         setSelectedBox(val);
         setBoxContext(val === "" ? null : val);
         setIsPlaying(false);
+        // Persist the choice to handle dropdown ordering
+        localStorage.setItem("kanjilock_last_box_selection", val);
     }
 
     function togglePause() {
@@ -382,14 +387,14 @@ export default function Quiz({ forcedMode = null }) {
     const MODES_OPTS = Object.keys(MODES);
 
     if (isLoading) {
+        if (!isInitialized) {
+            return <LoadingOverlay message="Synchronizing Kanji Database..." />;
+        }
+        // Subtle loading for already-initialized engine
         return (
-            <div style={{...styles.container, justifyContent: 'center', alignItems: 'center'}}>
-                <div style={{ fontSize: '3rem', animation: 'spin 2s linear infinite' }}>⏳</div>
-                <p style={{ marginTop: '20px', color: '#94a3b8', textAlign: 'center', maxWidth: '80%' }}>
-                    ☁️ Préparation du quiz...<br/>
-                    <small>(Le serveur IA démarre, merci de patienter quelques secondes)</small>
-                </p>
-                <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+            <div style={{ ...styles.container, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <div style={styles.spinner}>⏳</div>
+                <p style={{ marginLeft: '10px', color: '#94a3b8' }}>Preparing Quiz...</p>
             </div>
         );
     }
@@ -428,16 +433,29 @@ export default function Quiz({ forcedMode = null }) {
                         style={styles.select}
                         disabled={selectedMode === "qh" || selectedMode === "qg"}
                     >
-                        {boxes.map(b => {
-                            const lvl = getBoxLevel(b, selectedMode);
-                            const star = lvl === 4 ? "⭐ " : "";
-                            return (
-                                <option key={b} value={b}>
-                                    {star}Box {b} (Niv. {lvl})
-                                </option>
+                        {(() => {
+                            const lastSelection = typeof window !== 'undefined' ? localStorage.getItem("kanjilock_last_box_selection") : "";
+                            const sortedBoxes = [...boxes].reverse();
+                            const allBoxesOption = (
+                                <option key="all-boxes" value="">All Boxes (Global)</option>
                             );
-                        })}
-                        <option value="">All Boxes (Global)</option>
+
+                            if (lastSelection === "") {
+                                // All Boxes was last selected -> Put at top
+                                return [allBoxesOption, ...sortedBoxes.map(b => (
+                                    <option key={b} value={b}>
+                                        {getBoxLevel(b, selectedMode) === 4 ? "⭐ " : ""}Box {b} (Niv. {getBoxLevel(b, selectedMode)})
+                                    </option>
+                                ))];
+                            } else {
+                                // Specific box was last selected -> Put All Boxes at bottom
+                                return [...sortedBoxes.map(b => (
+                                    <option key={b} value={b}>
+                                        {getBoxLevel(b, selectedMode) === 4 ? "⭐ " : ""}Box {b} (Niv. {getBoxLevel(b, selectedMode)})
+                                    </option>
+                                )), allBoxesOption];
+                            }
+                        })()}
                     </select>
                 </div>
             )}

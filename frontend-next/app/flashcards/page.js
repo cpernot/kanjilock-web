@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { initEngine, getStaticData, getBoxProgress, getUserProgress, currentBoxFilter } from "@/lib/quizengine";
+import { initEngine, getStaticData, getBoxProgress, getUserProgress, currentBoxFilter, getAvailableBoxes, isInitialized } from "@/lib/quizengine";
 import { getPlayer_setting, getSettings } from "@/lib/settings";
 import { loadFlashcardProgress, saveFlashcardEvaluation, prepareDeck } from "@/lib/flashcards";
 import Flashcard from "@/components/Flashcard";
@@ -29,8 +29,7 @@ export default function FlashcardsPage() {
 
         await initEngine(player);
         
-        const data = getStaticData();
-        const boxes = Array.from(new Set(Object.values(data).map(k => String(k.boite)))).sort();
+        const boxes = getAvailableBoxes();
         setAvailableBoxes(boxes);
 
         const settings = getSettings(player);
@@ -89,11 +88,20 @@ export default function FlashcardsPage() {
         setFilters({ ...filters, selectedLevels: newLevels });
     };
 
-    if (loading) return (
-        <div style={styles.container}>
-            <div style={styles.loader}>Shuffling Cards...</div>
-        </div>
-    );
+    if (loading) {
+        if (!isInitialized) {
+            return (
+                <div style={styles.container}>
+                    <div style={styles.loader}>Synchronizing Kanji Database...</div>
+                </div>
+            );
+        }
+        return (
+            <div style={styles.container}>
+                <div style={styles.loader}>Shuffling Cards...</div>
+            </div>
+        );
+    }
 
     const currentCard = deck[currentIndex];
 

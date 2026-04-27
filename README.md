@@ -16,6 +16,7 @@
 - **Dynamic Tips:** 50+ rotating learning tips displayed during loading screens.
 - **Box System:** Progress through 150+ boxes, unlocking new levels (1-4) as you master each set with persistent mastery tracking.
 - **Modern UI:** Glassmorphism aesthetics with a new top-bar containing quick access to Pricing, Settings, and Logout.
+- **"All-Good" Mode:** A high-discipline mode where errors don't count towards progress; you must repeat failed questions at the end of the session until they are all correct.
 - **Cross-Platform:** Full PWA support for mobile and desktop mastery on the go.
 
 ## 🚀 Quick Start (Local Development)
@@ -100,6 +101,43 @@ Since this project runs on free-tier infrastructure, please be aware of the foll
 - **Advanced Analytics:** Heatmaps and detailed learning curves per Kanji category.
 - **Gamification:** Achievement badges and community leaderboards.
 - **Enhanced AI:** Voice-interactive Sensei and personalized study plans.
+- **Mobile PWA:** Full offline support and native-like installation.
+
+## 🚀 Deployment (Google Cloud Run)
+
+To deploy the application to Google Cloud Run, you can use the following command template. For convenience, it is recommended to create a `deploy-cloud.bat` file (not tracked by git) in the root directory.
+
+```bash
+gcloud run deploy kanjilock-web \
+  --source . \
+  --region asia-northeast1 \
+  --allow-unauthenticated \
+  --memory 2Gi \
+  --set-env-vars "SUPABASE_URL=YOUR_URL,SUPABASE_KEY=YOUR_KEY,GROQ_API_KEY=YOUR_KEY,ENABLE_CHAT=true,LLM_PROVIDER=groq"
+```
+
+> [!IMPORTANT]
+> Never commit your real API keys to the repository. Use environment variables or a local `.bat` file excluded via `.gitignore`.
+
+## 🗄️ Database Reset & Maintenance
+
+If you need to perform a factory reset or clean up your logs in Supabase, understand the difference between **History** and **Progress**:
+
+### 1. Resetting History (Safe)
+This will clear your activity logs but keep your mastered Kanjis and Box levels.
+*   **Table: `sessions`**: Deleting this will reset your **Activity Heatmap** and **Statistics Summary** (Total Answers, Days Active) to zero.
+*   **Table: `logs`**: Safe to clear; contains internal event tracking.
+
+### 2. Factory Reset (Deletes Everything)
+This will reset your account to zero, as if you just started for the first time.
+*   **Table: `progress`**: **CRITICAL.** This stores every Kanji's SRS level and your **User Settings**. Deleting this will lock all Kanjis and reset your targets.
+*   **Table: `box_progress`**: Stores your Box Mastery ranks (Level 1-4). Deleting this resets all boxes to Level 0.
+
+### 3. Static Data (Do Not Delete)
+*   **Tables: `kanji`, `kanji_mot`, `flashcards`**: These are the core content. If deleted, the app will have no data to display or quiz on.
+
+---
+*Note: Always perform a backup before manual database deletions.*
 
 ## 🔌 Supabase MCP Troubleshooting
 If you are using the **Supabase MCP Server** with an AI agent (like Cursor or Gemini) and encounter an **"Unauthorized"** error during initialization:

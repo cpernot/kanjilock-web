@@ -112,6 +112,14 @@ export default function SettingsPage() {
                             onChange={val => setSettings({ ...settings, sequentialOrder: val })}
                         />
                     </div>
+
+                    <div style={styles.toggleItem}>
+                        <span style={styles.toggleDesc}>"All-Good" Mode (Reinstate fails)</span>
+                        <ToggleSwitch
+                            checked={settings.allGood}
+                            onChange={val => setSettings({ ...settings, allGood: val })}
+                        />
+                    </div>
                 </div>
 
                 <button onClick={handleSaveAndClose} style={styles.btn}>Save & Close</button>

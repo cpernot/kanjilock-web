@@ -11,66 +11,73 @@ import os
 # 環境変数が "true" の場合のみチャット機能をロードする
 ENABLE_CHAT = os.getenv("ENABLE_CHAT", "false").lower() == "true"
 
-# 1. DEFINITION DU LIFESPAN
-@asynccontextmanager
-async def lifespan(app: FastAPI):    
-    print("🚀 STARTUP: Initialisation du serveur...")
+async def initialize_cache(app: FastAPI):
+    print("🚀 STARTUP: Initialisation du cache kanji...")
     try:
         # 1. Récupérer TOUS les kanjis (pagination)
         all_data = []
         chunk_size = 1000
         start = 0
         while True:
-            res = supabase.table('kanji').select("*").range(start, start + chunk_size - 1).execute()
+            res = supabase.table('kanji').select("*").order('id').range(start, start + chunk_size - 1).execute()
             all_data.extend(res.data)
             if len(res.data) < chunk_size: break
             start += chunk_size
 
-        # 2. Récupérer la table de composition (CSV importé)
-        # Note: Si la table est très grande, il faudrait aussi paginer, 
-        # mais pour un fichier CSV de kanjis ça devrait passer d'un coup.
+        # 2. Récupérer la table de composition
         response_comp = supabase.table("kanji_mot").select("*").execute()
         comp_map = {item['kanji']: item['liste_de_mots'] for item in response_comp.data}
 
         # 3. Construction du cache final
         final_cache = {}
-
         for row in all_data:
-            k_char = row['kanji']      # Le caractère (Clé)
-            k_infos = row['data']      # Le contenu JSON (romaji, signification...) [cite: 17]
-
-            # FUSION : On injecte la liste de mots DANS l'objet d'infos
-            # On vérifie d'abord dans comp_map (table kanji_mot)
+            k_char = row['kanji']
+            k_infos = row['data']
             if k_char in comp_map:
                 k_infos['comp_words'] = comp_map[k_char]
-            # Sinon, on vérifie si c'est déjà dans 'data' sous 'custom_keywords' (venant de migrate_csv_keywords)
             elif 'custom_keywords' in k_infos:
                 k_infos['comp_words'] = k_infos['custom_keywords']
-            
             final_cache[k_char] = k_infos
 
         app.state.kanji_cache = final_cache
         
-        # 4. Construction du cache des boîtes (Performance fix)
-        seen_boxes = set()
+        # 4. Construction du cache des boîtes
+        seen_boxes_list = []
         for k_infos in final_cache.values():
             box_val = k_infos.get('boite')
             if box_val is not None:
-                seen_boxes.add(box_val)
-        app.state.available_boxes = sorted(list(seen_boxes))
+                box_str = str(box_val)
+                if box_str not in seen_boxes_list:
+                    seen_boxes_list.append(box_str)
+        app.state.available_boxes = seen_boxes_list
 
         if ENABLE_CHAT:
+            from backend.api import chat
             import asyncio
-            # Build vector store in background to avoid blocking startup (prevents Cloud Run timeout)
             asyncio.create_task(chat.build_vector_store(final_cache))
             print("🤖 Chat mode enabled (Vector store building in background...)")
         
-        print(f"✅ {len(app.state.kanji_cache)} kanjis et {len(app.state.available_boxes)} boîtes en cache.")
+        app.state.is_ready = True
+        print(f"✅ Cache prêt: {len(app.state.kanji_cache)} kanjis.")
 
     except Exception as e:
         print(f"❌ Erreur chargement cache kanji: {e}")
-        # En cas d'erreur critique, on évite que l'app plante, mais le quiz sera vide
         app.state.kanji_cache = {}
+        app.state.available_boxes = []
+
+# 1. DEFINITION DU LIFESPAN
+@asynccontextmanager
+async def lifespan(app: FastAPI):    
+    print("🚀 STARTUP: Initialisation du serveur...")
+    
+    # Initialisation de l'état par défaut (pour éviter les erreurs 500 pendant le chargement)
+    app.state.kanji_cache = {}
+    app.state.available_boxes = []
+    app.state.is_ready = False
+
+    # Lancement du chargement en arrière-plan
+    import asyncio
+    asyncio.create_task(initialize_cache(app))
 
     # --- AFFICHAGE DES ROUTES ---
     print("\n--- 🛣️ ROUTES ENREGISTRÉES ---")
@@ -120,6 +127,14 @@ if ENABLE_CHAT:
 @app.get("/health")
 def health_check():
     return {"status": "ok", "version": "2.0"}
+
+@app.get("/api/ready")
+def ready_check():
+    """Returns whether the cache is fully loaded and ready."""
+    return {
+        "ready": getattr(app.state, "is_ready", False),
+        "count": len(getattr(app.state, "kanji_cache", {}))
+    }
 @app.get("/api/quiz/session")
 async def get_box_session(box_id: int, player_id: str):
     # 1. Get all kanji from cache

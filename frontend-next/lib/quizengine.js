@@ -4,7 +4,8 @@
    ============================================================================ */
 
 import config from "./config";
-import { getPlayer_setting } from "./settings"; // You'll need to implement this or pass player as arg
+import { getPlayer_setting, getSettings } from "./settings"; 
+import { getSession } from "./quizSession";
 
 // --- STATE VARIABLES (kept in module scope for now, could be Context in future) ---
 let staticData = {};       // Full Kanji Data (kanjilock.json)
@@ -12,8 +13,10 @@ let userProgress = {};     // User SRS Stats
 let boxProgress = {};      // Local Box Levels
 let sessionHistory = new Set();
 let penaltyQueue = new Map(); // Kanji -> Remaining turns to wait
+let reinjectionQueue = new Set(); // Kanji to be asked again at the end (All-Good mode)
 
 export let currentBoxFilter = null; // null = Global Mode
+export let isInitialized = false;
 
 // --- CONFIGURATION ---
 const WEIGHTS = { 1: 5, 2: 3, 3: 1, 4: 0.2 };
@@ -32,6 +35,27 @@ export async function initEngine(playerOverride = null) {
     if (!player) return;
 
     try {
+        // 0. Wait for backend to be ready (Cache loading)
+        let isReady = false;
+        let readyAttempts = 0;
+        while (!isReady && readyAttempts < 60) {
+            try {
+                const rRes = await fetch(`${config.apiBaseUrl}/ready`);
+                const rData = await rRes.json();
+                if (rData.ready) {
+                    isReady = true;
+                } else {
+                    console.log("⏳ Backend is still initializing cache...");
+                    await new Promise(r => setTimeout(r, 1500));
+                    readyAttempts++;
+                }
+            } catch (e) {
+                console.warn("⚠️ Ready check failed, retrying...", e);
+                await new Promise(r => setTimeout(r, 2000));
+                readyAttempts += 2;
+            }
+        }
+
         // 1. Fetch Data from Backend (Kanji & SRS)
         const res = await fetch(`${config.apiBaseUrl}/quiz/init?player=${encodeURIComponent(player)}`);
         const data = await res.json();
@@ -81,6 +105,7 @@ export async function initEngine(playerOverride = null) {
         }
 
         console.log(`✅ Engine Ready: ${Object.keys(staticData).length} kanjis loaded.`);
+        isInitialized = true;
     } catch (e) {
         console.error("❌ Engine Load Error:", e);
     }
@@ -123,8 +148,8 @@ export function getVisibleBoxes(progressiveMode = false, mode = "qa") {
             break;
         }
     }
-    // Return visible boxes in reverse order of database sequence
-    return visible.reverse();
+    // Return visible boxes in database sequence
+    return visible;
 }
 
 export function getBoxKanjiCount(boxId) {
@@ -145,10 +170,29 @@ export function resetBoxContext() {
     currentBoxFilter = null;
     sessionHistory.clear();
     penaltyQueue.clear();
+    reinjectionQueue.clear();
+}
+
+/**
+ * Removes a kanji from the current session history so it can be picked again.
+ * Used for "All-Good" mode where failed questions are reinjected.
+ */
+/**
+ * Adds a kanji to the reinjection queue to be asked again at the end of the session.
+ * Used for "All-Good" mode.
+ */
+export function reinjectKanji(kanji) {
+    reinjectionQueue.add(kanji);
+    console.log(`♻️ Kanji ${kanji} added to reinjection queue.`);
+}
+
+export function getReinjectionQueueSize() {
+    return reinjectionQueue.size;
 }
 
 export function resetEngineSession() {
     sessionHistory.clear();
+    reinjectionQueue.clear();
     // We do NOT clear penaltyQueue here, so errors persist between quick sessions
 }
 
@@ -196,10 +240,27 @@ export function getNextQuestion(mode, progressiveMode = false, sequentialOrder =
     // C. CREATE POOL (Exclude history & penalties)
     let availablePool = candidates.filter(k => !sessionHistory.has(k) && !penaltyQueue.has(k));
 
-    if (availablePool.length === 0) {
-        // If pool exhausted, reset history (infinite loop prevention)
-        sessionHistory.clear();
-        availablePool = candidates;
+    let fromReinjection = false;
+    const settings = getSettings();
+    const currentSession = getSession();
+    const effectiveSessionSize = currentSession ? currentSession.size : settings.sessionSize;
+    
+    const isAllGood = settings.allGood && currentBoxFilter !== null;
+
+    // In All-Good mode, if we reached the session size, prioritize reinjection
+    if (isAllGood && sessionHistory.size >= effectiveSessionSize && reinjectionQueue.size > 0) {
+        availablePool = Array.from(reinjectionQueue);
+        fromReinjection = true;
+    } else if (availablePool.length === 0) {
+        // If regular pool is empty, check if we have failed questions to reinject
+        if (reinjectionQueue.size > 0) {
+            availablePool = Array.from(reinjectionQueue);
+            fromReinjection = true;
+        } else {
+            // If truly exhausted, reset history (infinite loop prevention)
+            sessionHistory.clear();
+            availablePool = candidates;
+        }
     }
 
     // D. SELECT KANJI
@@ -218,7 +279,12 @@ export function getNextQuestion(mode, progressiveMode = false, sequentialOrder =
 
     if (!selectedKanji) return { done: true, message: "No available kanji." };
 
-    sessionHistory.add(selectedKanji);
+    if (fromReinjection) {
+        reinjectionQueue.delete(selectedKanji);
+        console.log(`🎯 Picked ${selectedKanji} from reinjection queue.`);
+    } else {
+        sessionHistory.add(selectedKanji);
+    }
 
     // E. PREPARE DATA OBJECT
     // IMPORTANT: We inject the 'kanji' key into the object so MODES["qb"] works
@@ -234,11 +300,11 @@ export function getNextQuestion(mode, progressiveMode = false, sequentialOrder =
         extras: modeDef.extras(kData),
         mode: mode,
         // qh/qg specific
-        correctAnswers: (mode === "qh" || mode === "qg") 
-            ? (Array.isArray(kData.comp_words) 
-                ? kData.comp_words 
+        correctAnswers: (mode === "qh" || mode === "qg")
+            ? (Array.isArray(kData.comp_words)
+                ? kData.comp_words
                 : (typeof kData.comp_words === 'string' ? kData.comp_words.split(",") : [])
-              ).map(w => w.trim()).filter(w => w.length > 0) 
+            ).map(w => w.trim()).filter(w => w.length > 0)
             : null
     };
 }
@@ -274,7 +340,7 @@ function generateOptions(correctKey, modeDef, candidates, mode) {
         let rawCorrect = correctData.comp_words || [];
         if (typeof rawCorrect === 'string') rawCorrect = rawCorrect.split(",");
         const correctWords = rawCorrect.map(w => w.trim()).filter(w => w.length > 0);
-        
+
         const distractors = [];
         let attempts = 0;
 
@@ -290,7 +356,7 @@ function generateOptions(correctKey, modeDef, candidates, mode) {
             let rawOther = otherData.comp_words;
             if (typeof rawOther === 'string') rawOther = rawOther.split(",");
             const otherWords = rawOther.map(w => w.trim()).filter(w => w.length > 0);
-            
+
             if (otherWords.length === 0) continue;
             const randomWord = otherWords[Math.floor(Math.random() * otherWords.length)];
 
@@ -372,7 +438,7 @@ export function updateEngineAfterAnswer(kanji, isCorrect, mode) {
         state.level = Math.min((state.level || 1) + 1, 4);
         return state;
     }
-    
+
     return userProgress[mode]?.[kanji] || null;
 }
 
@@ -449,14 +515,14 @@ export async function updateBoxRanking(boxId, sessionStats, mode) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(progressData)
         });
-        
+
         const result = await response.json();
-        
+
         if (!response.ok || result.status === "error") {
             const errorMsg = result.message || "Unknown server error";
             throw new Error(`Sync failed: ${errorMsg}`);
         }
-        
+
         console.log("✅ Box progress synced successfully");
     } catch (err) {
         console.error("❌ Sync Error:", err.message);

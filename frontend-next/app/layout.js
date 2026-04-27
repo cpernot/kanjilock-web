@@ -21,13 +21,17 @@ export const viewport = {
   userScalable: false,
 };
 
+import PageTransition from "@/components/PageTransition";
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
         <Navbar />
         <main style={{ padding: "80px 20px 120px 20px" }}>
-          {children}
+          <PageTransition>
+            {children}
+          </PageTransition>
         </main>
         <SenseiChat />
       </body>

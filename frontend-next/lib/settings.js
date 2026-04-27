@@ -28,12 +28,14 @@ export const DEFAULT_SETTINGS = {
   soundEnabled: false,
   showProgressBar: true,
   sequentialOrder: false,
+  allGood: false,
   targets: {
     period: "week", // day, week, month
     type: "box",  // kanji, box
     levels: { 1: 5, 2: 3, 3: 2, 4: 1 },
     lastBaselineUpdate: null,
-    baselines: { 1: 0, 2: 0, 3: 0, 4: 0 }
+    baselines: { 1: 0, 2: 0, 3: 0, 4: 0 },
+    kanji_baselines: { 1: 0, 2: 0, 3: 0, 4: 0 }
   }
 };
 

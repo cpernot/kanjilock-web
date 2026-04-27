@@ -1,44 +1,107 @@
-from backend.data.progress import load_data
+from datetime import datetime, timedelta
+import calendar
+from backend.data.progress import load_data, get_player_settings
 from backend.data.session_stats import load_sessions 
 # from backend.core.config import USER_ID
 from fastapi import APIRouter, Request
 
 router = APIRouter()
 
+def get_start_of_period(range_type: str, last_baseline_update: str = None):
+    now = datetime.now()
+    if range_type == "today":
+        return now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    if range_type == "all":
+        return None
+    
+    base_date = None
+    if last_baseline_update:
+        try:
+            # Handle different ISO formats (some might have Z, some +00:00)
+            clean_date = last_baseline_update.replace("Z", "+00:00")
+            base_date = datetime.fromisoformat(clean_date)
+        except Exception as e:
+            print(f"Error parsing last_baseline_update: {e}")
+            
+    if range_type == "week":
+        if base_date:
+            target_weekday = base_date.weekday() # 0=Monday, 6=Sunday
+            current_weekday = now.weekday()
+            diff = (current_weekday - target_weekday) % 7
+            start = now - timedelta(days=diff)
+            return start.replace(hour=0, minute=0, second=0, microsecond=0)
+        else:
+            # Default to Monday
+            start = now - timedelta(days=now.weekday())
+            return start.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    if range_type == "month":
+        if base_date:
+            target_day = base_date.day
+            if now.day >= target_day:
+                return now.replace(day=target_day, hour=0, minute=0, second=0, microsecond=0)
+            else:
+                # Previous month calculation
+                first_of_this_month = now.replace(day=1)
+                last_day_prev_month = first_of_this_month - timedelta(days=1)
+                _, days_in_prev = calendar.monthrange(last_day_prev_month.year, last_day_prev_month.month)
+                actual_day = min(target_day, days_in_prev)
+                return last_day_prev_month.replace(day=actual_day, hour=0, minute=0, second=0, microsecond=0)
+        else:
+            return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            
+    return None
+
 @router.get("/stats")
-def stats_api(request: Request, mode: str = "qa", player: str = "Anonymous"):
+def stats_api(request: Request, mode: str = "qa", player: str = "Anonymous", time_range: str = "all"):
     # 1. On importe le cache depuis main pour éviter de relire le fichier JSON
     kanji_cache = getattr(request.app.state, "kanji_cache", {})
     
     # 2. On charge la progression depuis Supabase via load_data (avec l'ID !)
-    # load_data(USER_ID) renvoie déjà {"srs": {...}, "daily_stats": {...}}
     data = load_data(player)
 
     if not data:
         return {"srs_levels": {1: 0, 2: 0, 3: 0, 4: 0}, "kanjis": []}
-    # NOUVEAU : Calcul des stats journalières à partir des sessions--------------------------------------------
-    all_sessions = load_sessions()
+
+    # NOUVEAU : Récupération des réglages pour le filtrage temporel
+    settings = get_player_settings(player) or {}
+    last_reset = settings.get("targets", {}).get("lastBaselineUpdate")
+    
+    start_date = get_start_of_period(time_range, last_reset)
+    print(f"Stats filtering: range={time_range}, start_date={start_date}")
+
+    # 3. Calcul des stats journalières à partir des sessions
+    all_sessions = load_sessions(player)
     daily_stats = {}
+    summary_answers = 0
+    summary_sessions = 0
+    summary_days = set()
+
     for s in all_sessions:
-        # On vérifie que la session appartient au joueur (si tu as une colonne user/player)
-        # s.get("player") == player ...
-        
-        # Récupération de la date (YYYY-MM-DD)
-        # Si session_date est déjà "2024-05-20", on le prend tel quel
         d_str = s.get("session_date") 
         if not d_str: continue
         
-        # On extrait juste la partie date si c'est un timestamp complet
-        date_key = d_str.split("T")[0] 
-        print("Date clé extraite:", date_key)
-        # On compte le nombre de réponses dans cette session
-        # Supposons que 'details' contient la liste des réponses
-        details = s.get("details", [])
-        count = len(details) if isinstance(details, list) else 1
-        
-        if date_key not in daily_stats:
-            daily_stats[date_key] = 0
-        daily_stats[date_key] += count
+        try:
+            # ISO timestamp handling
+            s_dt = datetime.fromisoformat(d_str.replace("Z", "+00:00")).replace(tzinfo=None)
+            date_key = d_str.split("T")[0] 
+            
+            details = s.get("details", {})
+            # FALLBACK logic for older session formats
+            answers = details.get("answers", [])
+            count = len(answers) if isinstance(answers, list) and len(answers) > 0 else int(details.get("correct", 0))
+            
+            # 1. Update Heatmap (All Time)
+            daily_stats[date_key] = daily_stats.get(date_key, 0) + count
+            
+            # 2. Update Summary (Filtered by Period)
+            if not start_date or s_dt >= start_date:
+                summary_answers += count
+                summary_sessions += 1
+                summary_days.add(date_key)
+        except:
+            continue
 
     # 3. Extraction des données SRS pour le mode choisi
     # La structure de data est maintenant simplifiée par load_data
@@ -69,6 +132,12 @@ def stats_api(request: Request, mode: str = "qa", player: str = "Anonymous"):
 
     return {
         "srs_levels": {str(k): v for k, v in srs_levels.items()},
-        "daily_stats": daily_stats, #"daily_stats": data.get("daily_stats", {}),
-        "kanjis": kanji_list
-    }
+        "daily_stats": daily_stats,
+        "kanjis": kanji_list,
+        "summary": {
+            "total_answers": summary_answers,
+            "total_sessions": summary_sessions,
+            "days_active": len(summary_days),
+            "range": time_range
+        }
+    }

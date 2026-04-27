@@ -33,53 +33,62 @@ export function checkPeriodReset(settings) {
 }
 
 /**
- * Fetches the count of boxes at each level (1-4).
- * A box's level is determined by the maximum level reached in any of its modes (or a specific mode if provided).
+ * Fetches the count of boxes and kanji at each level (1-4).
  */
-export async function fetchBoxCounts(player, mode = null) {
-    if (!player) return { 1: 0, 2: 0, 3: 0, 4: 0 };
+export async function fetchStatsCounts(player, mode = null) {
+    if (!player) return { boxes: { 1: 0, 2: 0, 3: 0, 4: 0 }, kanji: { 1: 0, 2: 0, 3: 0, 4: 0 } };
     try {
-        const res = await fetch(`${config.apiBaseUrl}/box-progress/${encodeURIComponent(player)}`);
-        if (res.ok) {
-            const data = await res.json(); 
-            console.log("📦 Box Progress Data from API:", data);
-            const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        const [boxRes, statsRes] = await Promise.all([
+            fetch(`${config.apiBaseUrl}/box-progress/${encodeURIComponent(player)}`),
+            fetch(`${config.apiBaseUrl}/stats?player=${encodeURIComponent(player)}${mode ? `&mode=${mode}` : ''}`)
+        ]);
 
+        const boxCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        const kanjiCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+
+        if (boxRes.ok) {
+            const data = await boxRes.json();
             Object.values(data).forEach(modes => {
                 let level = 0;
                 if (mode) {
                     level = modes[mode] || 0;
                 } else {
-                    // Core Modes
                     const coreModes = Object.entries(modes)
                         .filter(([m]) => m !== "qh" && m !== "qg")
                         .map(([, l]) => l);
-                    if (coreModes.length > 0) {
-                        level = Math.max(...coreModes);
-                    }
+                    if (coreModes.length > 0) level = Math.max(...coreModes);
                 }
-
-                if (level >= 1 && level <= 4) {
-                    counts[level]++;
-                }
+                if (level >= 1 && level <= 4) boxCounts[level]++;
             });
-            console.log("🧮 Calculated Box Counts:", counts);
-            return counts;
         }
+
+        if (statsRes.ok) {
+            const data = await statsRes.json();
+            const srs = data.srs_levels || {};
+            [1, 2, 3, 4].forEach(lvl => {
+                kanjiCounts[lvl] = srs[lvl] || 0;
+            });
+        }
+
+        return { boxes: boxCounts, kanji: kanjiCounts };
     } catch (e) {
-        console.error("Fetch box counts error", e);
+        console.error("Fetch stats counts error", e);
     }
-    return { 1: 0, 2: 0, 3: 0, 4: 0 };
+    return { boxes: { 1: 0, 2: 0, 3: 0, 4: 0 }, kanji: { 1: 0, 2: 0, 3: 0, 4: 0 } };
 }
+
+// Keep the old name for compatibility if needed, but alias it
+export const fetchBoxCounts = async (player, mode) => (await fetchStatsCounts(player, mode)).boxes;
 
 /**
  * Updates the current baselines using the passed counts.
  */
-export async function updateBaselines(player, currentCounts) {
+export async function updateBaselines(player, currentStats) {
     const settings = getSettings(player);
     if (!settings.targets) return;
 
-    settings.targets.baselines = { ...currentCounts };
+    settings.targets.baselines = { ...currentStats.boxes };
+    settings.targets.kanji_baselines = { ...currentStats.kanji };
     settings.targets.lastBaselineUpdate = new Date().toISOString();
 
     await saveRemoteSettings(player, settings);

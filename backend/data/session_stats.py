@@ -4,8 +4,12 @@ from datetime import datetime
 from backend.core.config import SESSION_FILE 
 from backend.core.config import supabase
 
-def load_sessions():
-    response = supabase.table('sessions').select("*").execute()
+def load_sessions(player_id=None):
+    query = supabase.table('sessions').select("*")
+    if player_id:
+        # Filter by player ID inside the JSONB 'details' column
+        query = query.eq("details->>player", player_id)
+    response = query.execute()
     return response.data 
 
 def load_sessions_old():
