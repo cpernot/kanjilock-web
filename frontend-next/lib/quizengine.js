@@ -254,7 +254,7 @@ export function getNextQuestion(mode, progressiveMode = false, sequentialOrder =
         candidates = allKeys;
     }
 
-    if (mode === "qh" || mode === "qg") {
+    if (mode === "qh") {
         candidates = candidates.filter(k => {
             const cw = staticData[k].comp_words;
             return cw && (Array.isArray(cw) ? cw.length > 0 : cw.trim().length > 0);

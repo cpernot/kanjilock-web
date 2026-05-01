@@ -84,8 +84,10 @@ When doing a code review, return EXACTLY this structure:
 - **Mapping:** Each digit corresponds to an SRS level (0-4) for modes: `qa, qb, qc, qd, qe, qf, qg, qh` in order.
 - **Feasibility:** Calculated in `lib/flashcards.js` using the in-memory `userProgress` map during deck preparation.
 
-### 🧩 Composition Quizzes (qh / qg)
-- **Selection Logic:** These modes (`qh` for Kanji Selection, `qg` for Box Selection) require a manual "Validate" (Submit) button instead of immediate dismissal, as they involve multiple choices or pool-based interactions.
+### 🧩 Composition Quizzes (qh / qg) - FIXED
+- **Selection Logic:** These modes (`qh` for Kanji Composition, `qg` for Box Selection) use a pool of chips and require a manual "Validate" (Submit) button.
+- **qh Logic:** Question is a Kanji; options are words from the `comp_words` pool. User selects the words that contain the Kanji.
+- **qg Logic:** Question is a Kanji; options are boxes (0-5). User selects the box the Kanji belongs to.
 - **Context Exclusion:** These modes are generally excluded from "Box Mastery" calculation as they test structural recognition rather than SRS retention.
 
 ### 📊 Data Reflection & RLS
