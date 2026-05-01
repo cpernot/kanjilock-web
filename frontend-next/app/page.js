@@ -81,27 +81,15 @@ export default function Home() {
         settings = await fetchRemoteSettings(p);
       }
 
-      // 5. Calculate Progress - Show TOTAL mastery, not just gains
-      const totalProg = {};
-      const levels = [1, 2, 3, 4];
-      console.log("⚙️ settings.targets:", settings.targets);
-
-      levels.forEach(lvl => {
-        const target = (settings.targets?.levels && (settings.targets.levels[lvl] || settings.targets.levels[String(lvl)])) || 10;
-        const current = currentCounts[lvl] || currentCounts[String(lvl)] || 0;
-        console.log(`L${lvl}: current=${current}, target=${target}`);
-        totalProg[lvl] = {
-          current: current,
-          target: target,
-          percent: target > 0 ? Math.min(100, (current / target) * 100) : 0
-        };
-      });
-      setProgressData(totalProg);
+      // 5. Calculate Progress - Show GAINS relative to baseline (resets to 0 on period start)
+      const progress = calculateProgress(settings, currentCounts);
+      console.log("📈 Progress calculated:", progress);
+      setProgressData(progress);
 
       // Save to cache
       setDashboardCache({
         player: p,
-        progressData: totalProg,
+        progressData: progress,
         targetType: type,
         period: freq
       });

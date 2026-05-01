@@ -91,10 +91,17 @@ export default function SessionEndPage() {
                 <h4 style={{ color: "#94a3b8", margin: "30px 0 15px 0" }}>Détails par Kanji</h4>
                 <div style={styles.grid}>
                     {summary.history.map((h, i) => (
-                        <div key={i} style={{
-                            ...styles.historyItem,
-                            borderColor: h.correct ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)"
-                        }}>
+                        <div key={i}
+                            onClick={() => {
+                                const msg = `Fais une phrase d'exemple en japonais avec le kanji "${h.kanji}" and explains its readings and meaning.`;
+                                window.dispatchEvent(new CustomEvent('askSensei', { detail: msg }));
+                            }}
+                            style={{
+                                ...styles.historyItem,
+                                borderColor: h.correct ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)",
+                                cursor: "pointer"
+                            }}
+                        >
                             <span style={styles.kanjiChar}>{h.kanji}</span>
                             <span style={styles.kanjiLevel}>
                                 {h.newLevel ? `Niv. ${h.newLevel}` : "---"}

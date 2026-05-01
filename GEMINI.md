@@ -86,9 +86,15 @@ When doing a code review, return EXACTLY this structure:
 
 ### 🧩 Composition Quizzes (qh / qg) - FIXED
 - **Selection Logic:** These modes (`qh` for Kanji Composition, `qg` for Box Selection) use a pool of chips and require a manual "Validate" (Submit) button.
-- **qg Logic:** Question is a Kanji; options are boxes (0-5). User selects the box the Kanji belongs to. Always forced to "All Boxes" mode.
-- **qh Logic:** Question is a Kanji; options are words from the `comp_words` pool. User selects the words that contain the Kanji. Can be played in specific boxes or "All Boxes".
+- **qg Logic:** Question is a Kanji; options are boxes (0-5). User selects the box the Kanji belongs to. Always forced to "All Boxes" mode (Enforced in `Quiz.js` and `quizengine.js`).
+- **qh Logic:** Question is a Kanji; options are words from the `comp_words` pool. User selects the words that contain the Kanji. Can be played in specific boxes or "All Boxes". If "All Boxes" is selected, it bypasses Progressive Mode filters to ensure a full selection. Total options are standardized to 7. If a box has insufficient data for distractors, the engine falls back to the global pool to maintain pool size.
 - **Context Exclusion:** These modes are generally excluded from "Box Mastery" calculation as they test structural recognition rather than SRS retention.
+
+### 💬 Chat Integration
+- **Kanji Deep-Dive:** In the `session-end` summary, clicking on any kanji in the "Détails par Kanji" list triggers the global **UnLock AI** bubble with a pre-filled query.
+- **Event-Driven:** Uses the same `askSensei` event system as flashcards, opening the integrated side-chat without leaving the summary page.
+- **Auto-Activation:** (Legacy) The dedicated Chat page also supports auto-activation via the `q` parameter if accessed directly.
+- **Context Persistence:** This allows users to immediately get more information (readings, etymology, mnemonic) for kanji they missed or found interesting during the session.
 
 ### 📊 Data Reflection & RLS
 - **RLS Warning:** If the API returns empty objects `{}` while logs show success, check **Row Level Security (RLS)** in Supabase. Tables like `box_progress` require explicit policies for `anon` access to be "UNRESTRICTED".
@@ -109,6 +115,12 @@ When doing a code review, return EXACTLY this structure:
 - **Settings Persistence:** User settings (targets, baselines) are stored in the `progress` table under the `_settings_` key. A full factory reset on this table will lose all user configuration.
 - **Legacy Fallback:** Some older sessions may lack an `answers` list; the stats API uses a fallback to the `correct` integer field to maintain accuracy for long-time users.
 - **Heatmap Independence:** The Activity Heatmap should remain unfiltered by the current `time_range` to provide a full historical view, while Summary Cards should respect the selected period.
+
+### 📈 Period Targets & Baselines
+- **Incremental Gains:** Progress gauges on the Home and Stats pages reflect incremental gains since the start of the period. Logic: `gained = Math.max(0, currentCount - baseline)`.
+- **Baseline Storage:** The `settings.targets` object contains `baselines` (for Box counts) and `kanji_baselines` (for Kanji counts). These are updated simultaneously during a reset.
+- **Centralized Logic:** `lib/targets.js` is the source of truth for progress calculation. The `calculateProgress` function must be used across all dashboard components to ensure the "Reset Period" functionality works globally.
+- **Auto-Reset Logic:** `checkPeriodReset` (called on Home load) compares the current date with `lastBaselineUpdate`. If the period (Day/Week/Month) has changed, it automatically invokes `updateBaselines` to start a fresh progress cycle.
 
 ## Expertise
 - Vector databases (Chroma)

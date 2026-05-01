@@ -102,11 +102,17 @@ export function calculateProgress(settings, currentCounts) {
 
     const progress = {};
     const levels = [1, 2, 3, 4];
+    const type = settings.targets.type || "kanji";
+
+    // Choose the correct baseline set
+    const baselines = type === "kanji"
+        ? (settings.targets.kanji_baselines || settings.targets.baselines || {})
+        : (settings.targets.baselines || {});
 
     levels.forEach(lvl => {
         // Handle both numeric and string keys (Supabase JSON uses strings)
         const targetValue = (settings.targets.levels[lvl] || settings.targets.levels[String(lvl)]) || 0;
-        const baselineValue = (settings.targets.baselines[lvl] || settings.targets.baselines[String(lvl)]) || 0;
+        const baselineValue = (baselines[lvl] || baselines[String(lvl)]) || 0;
         const currentCount = (currentCounts[lvl] || currentCounts[String(lvl)]) || 0;
 
         // Incremental gain since period start
@@ -115,7 +121,7 @@ export function calculateProgress(settings, currentCounts) {
         progress[lvl] = {
             current: gained,
             target: targetValue,
-            percent: targetValue > 0 ? Math.min(100, (gained / targetValue) * 100) : 100
+            percent: targetValue > 0 ? Math.min(100, (gained / targetValue) * 100) : 0
         };
     });
 

@@ -90,7 +90,8 @@ export default function Quiz({ forcedMode = null }) {
 
             // If in progressive mode and current box is not in visible list, or just switching modes,
             // we might want to default to the highest unlocked box.
-            if (appSettings.progressiveMode && !visible.includes(selectedBox) && visible.length > 0) {
+            // EXCEPTION: qg mode ALWAYS uses All Boxes.
+            if (appSettings.progressiveMode && selectedMode !== "qg" && !visible.includes(selectedBox) && visible.length > 0) {
                 const defaultBox = visible[visible.length - 1];
                 console.log(`🎯 Auto-selecting highest unlocked: ${defaultBox}`);
                 setSelectedBox(defaultBox);
@@ -131,7 +132,7 @@ export default function Quiz({ forcedMode = null }) {
             // 2. Otherwise, use lastBox if valid
             // 3. Fallback to empty (All Boxes)
             let boxToSelect = "";
-            if (settings.progressiveMode && visible.length > 0) {
+            if (settings.progressiveMode && initialMode !== "qg" && visible.length > 0) {
                 boxToSelect = visible[visible.length - 1];
                 console.log(`🚀 Progressive Mode: Auto-advancing to newest box: ${boxToSelect}`);
             } else if (lastBox !== null && (lastBox === "" || visible.includes(lastBox))) {
@@ -161,7 +162,7 @@ export default function Quiz({ forcedMode = null }) {
                     if (isReplay && lastBox !== null && (lastBox === "" || updatedVisible.includes(lastBox))) {
                         db = lastBox;
                         console.log(`🔁 Replay Mode: Sticking to box: ${db}`);
-                    } else if (remoteSettings.progressiveMode && updatedVisible.length > 0) {
+                    } else if (remoteSettings.progressiveMode && initialMode !== "qg" && updatedVisible.length > 0) {
                         db = updatedVisible[updatedVisible.length - 1];
                     } else if (lastBox !== null && (lastBox === "" || updatedVisible.includes(lastBox))) {
                         db = lastBox;
@@ -623,7 +624,8 @@ export default function Quiz({ forcedMode = null }) {
                     <div style={styles.resultQuestion}>{question?.question}</div>
                     
                     {/* Correct Answer Prominent */}
-                    <div style={{ fontSize: "2rem", margin: "10px 0", color: "#fff", fontWeight: "bold" }}>
+                    <div style={{ fontSize: question?.mode === "qh" ? "1.5rem" : "2rem", margin: "10px 0", color: "#fff", fontWeight: "bold" }}>
+                        {question?.mode === "qh" && <span style={{fontSize: "0.9rem", opacity: 0.8, display: "block"}}>Composition :</span>}
                         {Array.isArray(result.bonne) ? result.bonne.join(" + ") : result.bonne}
                     </div>
 

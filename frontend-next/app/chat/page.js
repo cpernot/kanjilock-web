@@ -1,9 +1,11 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import config from "@/lib/config";
 import LoadingOverlay from "@/components/LoadingOverlay";
+import { useSearchParams } from "next/navigation";
 
-export default function ChatPage() {
+function ChatContent() {
+    const searchParams = useSearchParams();
     const [messages, setMessages] = useState([
         { role: "assistant", content: "Bonjour ! Je suis Sensei. Comment puis-je vous aider dans votre apprentissage du japonais aujourd'hui ?" }
     ]);
@@ -11,42 +13,56 @@ export default function ChatPage() {
     const [loading, setLoading] = useState(false);
     const [player, setPlayer] = useState(null);
     const messagesEndRef = useRef(null);
+    const hasAutoSent = useRef(false);
 
     useEffect(() => {
-        setPlayer(localStorage.getItem("kanjilock_player"));
-    }, []);
+        const p = localStorage.getItem("kanjilock_player");
+        setPlayer(p);
+        
+        // Handle auto-query from URL
+        const query = searchParams.get("q");
+        if (query && !hasAutoSent.current) {
+            hasAutoSent.current = true;
+            // We need to wait a tiny bit to ensure state is ready if needed, 
+            // but here we can just call the send logic
+            handleSend(query);
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    const handleSend = async () => {
-        if (!input.trim() || loading) return;
+    const handleSend = async (overrideInput = null) => {
+        const messageToSend = overrideInput || input;
+        if (!messageToSend.trim() || loading) return;
 
-        const userMsg = { role: "user", content: input };
+        const userMsg = { role: "user", content: messageToSend };
         setMessages(prev => [...prev, userMsg]);
-        setInput("");
+        if (!overrideInput) setInput("");
         setLoading(true);
 
         try {
+            const currentPlayer = player || localStorage.getItem("kanjilock_player");
             const res = await fetch(`${config.apiBaseUrl}/chat`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    player: player || "Guest",
-                    message: input,
+                    player: currentPlayer || "Guest",
+                    message: messageToSend,
                     history: messages.slice(-5) // Send last 5 for context
                 })
             });
 
             if (res.ok) {
                 const data = await res.json();
-                setMessages(prev => [...prev, { role: "assistant", content: data.response }]);
+                setMessages(prev => [...prev, { role: "assistant", content: data.reply || data.response }]);
             } else {
                 setMessages(prev => [...prev, { role: "assistant", content: "Désolé, je rencontre une petite difficulté technique. Veuillez réessayer plus tard." }]);
             }
         } catch (e) {
             console.error("Chat error", e);
+            setMessages(prev => [...prev, { role: "assistant", content: "Erreur de connexion au Sensei." }]);
         } finally {
             setLoading(false);
         }
@@ -89,12 +105,20 @@ export default function ChatPage() {
                         style={styles.input}
                         disabled={loading}
                     />
-                    <button onClick={handleSend} style={styles.sendBtn} disabled={loading}>
+                    <button onClick={() => handleSend()} style={styles.sendBtn} disabled={loading}>
                         {loading ? "..." : "✈️"}
                     </button>
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ChatPage() {
+    return (
+        <Suspense fallback={<LoadingOverlay message="Initialisation du Sensei..." />}>
+            <ChatContent />
+        </Suspense>
     );
 }
 

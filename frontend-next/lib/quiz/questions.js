@@ -7,7 +7,7 @@ import { MODES } from "../quizModes";
 export function generateOptions(correctKey, modeDef, candidates, staticData, mode, availableBoxes = []) {
     const correctData = staticData[correctKey];
     if (!correctData) return [];
-    
+
     correctData.kanji = correctKey; // Inject Key
     const isComposeMode = (mode === "qh" || mode === "qg");
 
@@ -16,47 +16,62 @@ export function generateOptions(correctKey, modeDef, candidates, staticData, mod
         let rawCorrect = correctData.comp_words || [];
         if (typeof rawCorrect === 'string') rawCorrect = rawCorrect.split(",");
         const correctWords = rawCorrect.map(w => w.trim()).filter(w => w.length > 0);
-        
+
         const distractors = [];
         let attempts = 0;
-        const allKeys = Object.keys(staticData);
+        
+        // Strategy: Try current candidates first, then fallback to allKeys if needed
+        const pools = [candidates, Object.keys(staticData)];
+        
+        for (const pool of pools) {
+            if (distractors.length >= 10) break;
+            let poolAttempts = 0; // Reset attempts for each pool
+            while (distractors.length < 10 && poolAttempts < 100) {
+                poolAttempts++;
+                attempts++;
+                const randomKey = pool[Math.floor(Math.random() * pool.length)];
+                if (randomKey === correctKey) continue;
 
-        // Find distractors from the entire dataset for better variety
-        while (distractors.length < 8 && attempts < 100) {
-            attempts++;
-            const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
-            if (randomKey === correctKey) continue;
+                const otherData = staticData[randomKey];
+                if (!otherData || !otherData.comp_words) continue;
 
-            const otherData = staticData[randomKey];
-            if (!otherData || !otherData.comp_words) continue;
+                let rawOther = otherData.comp_words;
+                if (typeof rawOther === 'string') rawOther = rawOther.split(",");
+                const otherWords = rawOther.map(w => w.trim()).filter(w => w.length > 0);
 
-            let rawOther = otherData.comp_words;
-            if (typeof rawOther === 'string') rawOther = rawOther.split(",");
-            const otherWords = rawOther.map(w => w.trim()).filter(w => w.length > 0);
-            
-            if (otherWords.length === 0) continue;
-            const randomWord = otherWords[Math.floor(Math.random() * otherWords.length)];
+                if (otherWords.length === 0) continue;
+                const randomWord = otherWords[Math.floor(Math.random() * otherWords.length)];
 
-            if (randomWord && !correctWords.includes(randomWord) && !distractors.includes(randomWord)) {
-                distractors.push(randomWord);
+                if (randomWord && !correctWords.includes(randomWord) && !distractors.includes(randomWord)) {
+                    distractors.push(randomWord);
+                }
             }
         }
 
-        const nbLeurres = Math.max(4, 10 - correctWords.length);
-        const options = [...correctWords, ...distractors.slice(0, nbLeurres)];
+        // Target exactly 7 buttons total
+        const totalTarget = 7;
+        const fillerCount = Math.max(0, totalTarget - correctWords.length);
+        const options = [...correctWords, ...distractors.slice(0, fillerCount)];
+        
+        // If we still have less than 7 (rare), add more from distractors if available
+        if (options.length < totalTarget && distractors.length > fillerCount) {
+             const extraNeeded = totalTarget - options.length;
+             options.push(...distractors.slice(fillerCount, fillerCount + extraNeeded));
+        }
+
         return options.sort(() => Math.random() - 0.5);
     }
 
     if (mode === "qg") {
         // --- QG: KANJI -> BOITE (Box Selection) ---
         const correctBox = String(correctData.boite || "0");
-        
+
         // Use availableBoxes from engine if provided, else fallback
         const pool = availableBoxes.length > 0 ? availableBoxes : ["0", "1", "2", "3", "4", "5"];
-        
+
         const distractors = pool.filter(b => String(b) !== correctBox);
         const shuffledDistractors = distractors.sort(() => Math.random() - 0.5).slice(0, 5);
-        
+
         const options = [correctBox, ...shuffledDistractors];
         return options.sort(() => Math.random() - 0.5);
     }
@@ -87,10 +102,10 @@ export function generateOptions(correctKey, modeDef, candidates, staticData, mod
 export function prepareQuestionObject(selectedKanji, mode, staticData, candidates, availableBoxes = []) {
     const kData = staticData[selectedKanji];
     if (!kData) return null;
-    
+
     // Inject kanji into data object for MODES that need it
     kData.kanji = selectedKanji;
-    
+
     const modeDef = MODES[mode] || MODES["qa"];
 
     // Generate qh/qg correct answers array

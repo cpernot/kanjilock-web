@@ -247,7 +247,7 @@ export function getNextQuestion(mode, progressiveMode = false, sequentialOrder =
     let candidates = [];
     if (currentBoxFilter) {
         candidates = allKeys.filter(k => String(staticData[k].boite) === currentBoxFilter);
-    } else if (progressiveMode) {
+    } else if (progressiveMode && mode !== "qg" && mode !== "qh") {
         const visibleBoxes = getVisibleBoxes(true, mode);
         candidates = allKeys.filter(k => visibleBoxes.includes(String(staticData[k].boite)));
     } else {
