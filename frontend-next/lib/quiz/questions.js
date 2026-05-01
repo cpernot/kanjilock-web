@@ -4,7 +4,7 @@
 
 import { MODES } from "../quizModes";
 
-export function generateOptions(correctKey, modeDef, candidates, staticData, mode) {
+export function generateOptions(correctKey, modeDef, candidates, staticData, mode, availableBoxes = []) {
     const correctData = staticData[correctKey];
     if (!correctData) return [];
     
@@ -50,9 +50,15 @@ export function generateOptions(correctKey, modeDef, candidates, staticData, mod
     if (mode === "qg") {
         // --- QG: KANJI -> BOITE (Box Selection) ---
         const correctBox = String(correctData.boite || "0");
-        // Options are box numbers (standard set 1-5 + 0 if needed)
-        const boxes = ["0", "1", "2", "3", "4", "5"];
-        return boxes.sort(() => Math.random() - 0.5);
+        
+        // Use availableBoxes from engine if provided, else fallback
+        const pool = availableBoxes.length > 0 ? availableBoxes : ["0", "1", "2", "3", "4", "5"];
+        
+        const distractors = pool.filter(b => String(b) !== correctBox);
+        const shuffledDistractors = distractors.sort(() => Math.random() - 0.5).slice(0, 5);
+        
+        const options = [correctBox, ...shuffledDistractors];
+        return options.sort(() => Math.random() - 0.5);
     }
 
     // Standard Modes (qa, qb, qc, qd, qe, qf)
@@ -78,7 +84,7 @@ export function generateOptions(correctKey, modeDef, candidates, staticData, mod
 /**
  * Prepares the full question object for the UI
  */
-export function prepareQuestionObject(selectedKanji, mode, staticData, candidates) {
+export function prepareQuestionObject(selectedKanji, mode, staticData, candidates, availableBoxes = []) {
     const kData = staticData[selectedKanji];
     if (!kData) return null;
     
@@ -103,7 +109,7 @@ export function prepareQuestionObject(selectedKanji, mode, staticData, candidate
         kanji: selectedKanji,
         question: modeDef.q(kData),
         correctAnswer: modeDef.a(kData),
-        options: generateOptions(selectedKanji, modeDef, candidates, staticData, mode),
+        options: generateOptions(selectedKanji, modeDef, candidates, staticData, mode, availableBoxes),
         extras: modeDef.extras ? modeDef.extras(kData) : {},
         mode: mode,
         correctAnswers: correctAnswers

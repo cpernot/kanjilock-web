@@ -305,7 +305,7 @@ export function getNextQuestion(mode, progressiveMode = false, sequentialOrder =
     else sessionHistory.add(selectedKanji);
 
     // E. PREPARE OBJECT
-    return prepareQuestionObject(selectedKanji, mode, staticData, candidates);
+    return prepareQuestionObject(selectedKanji, mode, staticData, candidates, orderedBoxes);
 }
 
 /* ============================

@@ -201,8 +201,8 @@ export default function Quiz({ forcedMode = null }) {
         setSelectedMode(newMode);
         saveMode(newMode);
         
-        // Force Global Box for Composition Modes
-        if (newMode === "qh" || newMode === "qg") {
+        // Force Global Box for Box Selection Mode (qg)
+        if (newMode === "qg") {
             setSelectedBox("");
             setBoxContext(null);
         }
@@ -476,7 +476,7 @@ export default function Quiz({ forcedMode = null }) {
                         value={selectedBox} 
                         onChange={handleBoxChange} 
                         style={styles.select}
-                        disabled={selectedMode === "qh" || selectedMode === "qg"}
+                        disabled={selectedMode === "qg"}
                     >
                         {(() => {
                             const lastSelection = typeof window !== 'undefined' ? localStorage.getItem("kanjilock_last_box_selection") : "";

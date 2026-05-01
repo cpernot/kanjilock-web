@@ -86,8 +86,8 @@ When doing a code review, return EXACTLY this structure:
 
 ### 🧩 Composition Quizzes (qh / qg) - FIXED
 - **Selection Logic:** These modes (`qh` for Kanji Composition, `qg` for Box Selection) use a pool of chips and require a manual "Validate" (Submit) button.
-- **qh Logic:** Question is a Kanji; options are words from the `comp_words` pool. User selects the words that contain the Kanji.
-- **qg Logic:** Question is a Kanji; options are boxes (0-5). User selects the box the Kanji belongs to.
+- **qg Logic:** Question is a Kanji; options are boxes (0-5). User selects the box the Kanji belongs to. Always forced to "All Boxes" mode.
+- **qh Logic:** Question is a Kanji; options are words from the `comp_words` pool. User selects the words that contain the Kanji. Can be played in specific boxes or "All Boxes".
 - **Context Exclusion:** These modes are generally excluded from "Box Mastery" calculation as they test structural recognition rather than SRS retention.
 
 ### 📊 Data Reflection & RLS
