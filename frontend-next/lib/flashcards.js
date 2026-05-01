@@ -32,23 +32,37 @@ export function prepareDeck(allKanjis, filters, srsProgress, boxProgressMap, seq
     let deck = Object.entries(allKanjis).map(([kanji, data]) => {
         // Find max SRS level across all modes (qa, qb, qc, etc.)
         let maxSrsLevel = 0;
-        if (srsProgress) {
-            Object.values(srsProgress).forEach(modeData => {
-                if (modeData && modeData[kanji]) {
-                    const level = modeData[kanji].level || 0;
-                    if (level > maxSrsLevel) maxSrsLevel = level;
-                }
-            });
-        }
+        const modes = ["qa", "qb", "qc", "qd", "qe", "qf", "qg", "qh"];
+        
+        const masteryLevels = modes.map(m => {
+            // Log once per deck to check structure
+            if (srsProgress && srsProgress[m] && srsProgress[m][kanji]) {
+                const lvl = srsProgress[m][kanji].level || 0;
+                if (lvl > maxSrsLevel) maxSrsLevel = lvl;
+                return lvl;
+            }
+            return 0;
+        });
+
+        const code = masteryLevels.join("");
 
         return {
             kanji,
             ...data,
             level: filters.progress[kanji] || 1, // Default to level 1 (Unknown)
             srsLevel: maxSrsLevel,
+            masteryCode: code,
             boxLevel: (boxProgressMap && boxProgressMap[data.boite]) ? (boxProgressMap[data.boite].qa || 0) : 0
         };
     });
+
+    if (deck.length > 0 && srsProgress) {
+        console.log("📊 Deck Prepared. Sample Mastery Data:", {
+            kanji: deck[0].kanji,
+            code: deck[0].masteryCode,
+            hasSrs: Object.keys(srsProgress).length > 0
+        });
+    }
 
     // 1. Filter by Level (Checkbox logic)
     if (filters.selectedLevels && filters.selectedLevels.length > 0) {

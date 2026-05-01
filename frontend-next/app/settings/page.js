@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getSettings, saveSettings, fetchRemoteSettings, saveRemoteSettings } from "@/lib/settings";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { invalidateDashboardCache } from "@/lib/dashboardCache";
 
 import ToggleSwitch from "@/components/ToggleSwitch";
 
@@ -10,6 +11,8 @@ export default function SettingsPage() {
     const [settings, setSettings] = useState(null);
     const [player, setPlayer] = useState("");
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const from = searchParams.get("from");
 
     useEffect(() => {
         const p = localStorage.getItem("kanjilock_player");
@@ -25,11 +28,16 @@ export default function SettingsPage() {
 
     async function handleSaveAndClose() {
         await saveRemoteSettings(player, settings);
-        router.push("/");
+        invalidateDashboardCache();
+        if (from === "quiz") router.push("/quiz");
+        else if (from === "flashcards") router.push("/flashcards");
+        else router.push("/");
     }
 
     function handleDiscardAndClose() {
-        router.push("/");
+        if (from === "quiz") router.push("/quiz");
+        else if (from === "flashcards") router.push("/flashcards");
+        else router.push("/");
     }
 
     if (!settings) return <div style={styles.loading}>Loading...</div>;
@@ -47,29 +55,31 @@ export default function SettingsPage() {
                         type="text"
                         value={player}
                         onChange={e => setPlayer(e.target.value)}
-                        style={styles.input}
+                        style={{ ...styles.input, maxWidth: "200px" }}
                         placeholder="Enter player name"
                     />
                 </div>
 
-                <div style={styles.formGroup}>
-                    <label style={styles.label}>Session Size</label>
-                    <input
-                        type="number"
-                        value={settings.sessionSize}
-                        onChange={e => setSettings({ ...settings, sessionSize: parseInt(e.target.value) })}
-                        style={styles.input}
-                    />
-                </div>
+                <div style={styles.row}>
+                    <div style={{ ...styles.formGroup, flex: 1 }}>
+                        <label style={styles.label}>Session Size</label>
+                        <input
+                            type="number"
+                            value={settings.sessionSize}
+                            onChange={e => setSettings({ ...settings, sessionSize: parseInt(e.target.value) })}
+                            style={{ ...styles.input, maxWidth: "50px" }}
+                        />
+                    </div>
 
-                <div style={styles.formGroup}>
-                    <label style={styles.label}>Max Time (ms)</label>
-                    <input
-                        type="number"
-                        value={settings.maxTimeMs}
-                        onChange={e => setSettings({ ...settings, maxTimeMs: parseInt(e.target.value) })}
-                        style={styles.input}
-                    />
+                    <div style={{ ...styles.formGroup, flex: 1 }}>
+                        <label style={styles.label}>Max Time (ms)</label>
+                        <input
+                            type="number"
+                            value={settings.maxTimeMs}
+                            onChange={e => setSettings({ ...settings, maxTimeMs: parseInt(e.target.value) })}
+                            style={{ ...styles.input, maxWidth: "50px" }}
+                        />
+                    </div>
                 </div>
 
                 <div style={styles.toggleGroup}>
@@ -96,7 +106,7 @@ export default function SettingsPage() {
                             onChange={val => setSettings({ ...settings, soundEnabled: val })}
                         />
                     </div>
-                    
+
                     <div style={styles.toggleItem}>
                         <span style={styles.toggleDesc}>Show Progress Bar</span>
                         <ToggleSwitch
@@ -124,9 +134,9 @@ export default function SettingsPage() {
 
                 <button onClick={handleSaveAndClose} style={styles.btn}>Save & Close</button>
 
-                <div style={{ marginTop: "40px", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "20px" }}>
-                    <button 
-                        onClick={handleDiscardAndClose} 
+                <div style={{ marginTop: "20px", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "20px" }}>
+                    <button
+                        onClick={handleDiscardAndClose}
                         style={styles.discardBtn}
                     >
                         ✖ Discard & Close
@@ -153,7 +163,7 @@ const styles = {
     container: {
         maxWidth: "500px",
         margin: "0 auto",
-        padding: "40px 20px",
+        padding: "10px 20px 40px 20px",
         fontFamily: "'Inter', sans-serif"
     },
     loading: {
@@ -172,7 +182,7 @@ const styles = {
     },
     title: {
         fontSize: "2rem",
-        marginBottom: "30px",
+        marginBottom: "15px",
         textAlign: "center",
         fontWeight: "700",
         background: "linear-gradient(to right, #fff, #94a3b8)",
@@ -182,12 +192,13 @@ const styles = {
     card: {
         background: "rgba(30, 41, 59, 0.5)",
         backdropFilter: "blur(10px)",
-        padding: "30px",
+        padding: "20px",
         borderRadius: "20px",
         border: "1px solid rgba(255, 255, 255, 0.1)",
         boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)"
     },
-    formGroup: { marginBottom: "24px" },
+    formGroup: { marginBottom: "16px" },
+    row: { display: "flex", gap: "15px" },
     label: {
         display: "block",
         marginBottom: "8px",
@@ -207,17 +218,17 @@ const styles = {
         transition: "border-color 0.2s"
     },
     toggleGroup: {
-        marginTop: "30px",
-        marginBottom: "30px",
+        marginTop: "15px",
+        marginBottom: "15px",
         display: "flex",
         flexDirection: "column",
-        gap: "20px"
+        gap: "10px"
     },
     toggleItem: {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        padding: "12px 0",
+        padding: "8px 0",
         borderBottom: "1px solid rgba(255, 255, 255, 0.05)"
     },
     toggleDesc: {

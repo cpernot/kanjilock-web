@@ -54,7 +54,7 @@ def get_start_of_period(range_type: str, last_baseline_update: str = None):
     return None
 
 @router.get("/stats")
-def stats_api(request: Request, mode: str = "qa", player: str = "Anonymous", time_range: str = "all"):
+def stats_api(request: Request, mode: str = "qa", player: str = "Anonymous"):
     # 1. On importe le cache depuis main pour éviter de relire le fichier JSON
     kanji_cache = getattr(request.app.state, "kanji_cache", {})
     
@@ -64,19 +64,22 @@ def stats_api(request: Request, mode: str = "qa", player: str = "Anonymous", tim
     if not data:
         return {"srs_levels": {1: 0, 2: 0, 3: 0, 4: 0}, "kanjis": []}
 
-    # NOUVEAU : Récupération des réglages pour le filtrage temporel
+    # Récupération des réglages pour le filtrage temporel
     settings = get_player_settings(player) or {}
     last_reset = settings.get("targets", {}).get("lastBaselineUpdate")
     
-    start_date = get_start_of_period(time_range, last_reset)
-    print(f"Stats filtering: range={time_range}, start_date={start_date}")
+    ranges = ["today", "week", "month", "all"]
+    start_dates = {r: get_start_of_period(r, last_reset) for r in ranges}
 
     # 3. Calcul des stats journalières à partir des sessions
     all_sessions = load_sessions(player)
     daily_stats = {}
-    summary_answers = 0
-    summary_sessions = 0
-    summary_days = set()
+    
+    # Summaries for all ranges
+    summaries = {
+        r: {"total_answers": 0, "total_sessions": 0, "days_active": set()} 
+        for r in ranges
+    }
 
     for s in all_sessions:
         d_str = s.get("session_date") 
@@ -95,16 +98,21 @@ def stats_api(request: Request, mode: str = "qa", player: str = "Anonymous", tim
             # 1. Update Heatmap (All Time)
             daily_stats[date_key] = daily_stats.get(date_key, 0) + count
             
-            # 2. Update Summary (Filtered by Period)
-            if not start_date or s_dt >= start_date:
-                summary_answers += count
-                summary_sessions += 1
-                summary_days.add(date_key)
+            # 2. Update Summaries
+            for r in ranges:
+                start_date = start_dates[r]
+                if not start_date or s_dt >= start_date:
+                    summaries[r]["total_answers"] += count
+                    summaries[r]["total_sessions"] += 1
+                    summaries[r]["days_active"].add(date_key)
         except:
             continue
 
+    # Convert sets to counts for summaries
+    for r in ranges:
+        summaries[r]["days_active"] = len(summaries[r]["days_active"])
+
     # 3. Extraction des données SRS pour le mode choisi
-    # La structure de data est maintenant simplifiée par load_data
     srs_all_modes = data.get("srs", {})
     srs = srs_all_modes.get(mode, {})
 
@@ -118,26 +126,101 @@ def stats_api(request: Request, mode: str = "qa", player: str = "Anonymous", tim
     # 5. Construction de la liste détaillée des Kanjis
     kanji_list = []
     for k_char, v_stats in srs.items():
-        # On récupère les infos statiques (signification, etc.) dans le cache
         k_info = kanji_cache.get(k_char, {})
-        
         kanji_entry = {
             "kanji": k_char,
             "level": v_stats.get("level"),
             "next_review": v_stats.get("next_review"),
         }
-        # On fusionne avec les infos du dictionnaire kanjilock
         kanji_entry.update(k_info)
         kanji_list.append(kanji_entry)
+
+    # 6. History Calculation (Activity per period)
+    history = {
+        "kanji": {"day": [], "week": [], "month": [], "year": []},
+        "box": {"day": [], "week": [], "month": [], "year": []}
+    }
+
+    sessions_by_date = {}
+    for s in all_sessions:
+        s_date = s.get("session_date", "").split("T")[0]
+        if not s_date: continue
+        details = s.get("details", {})
+        if details.get("mode", "qa") != mode: continue
+        
+        for ans in details.get("answers", []):
+            k, lvl = ans.get("kanji"), ans.get("newLevel")
+            if not k: k = ans.get("character") # Fallback
+            if not lvl: lvl = ans.get("level", 1) # Fallback
+            
+            if s_date not in sessions_by_date:
+                sessions_by_date[s_date] = {"kanji": [], "box": []}
+            sessions_by_date[s_date]["kanji"].append(lvl)
+            
+        box_id = details.get("box")
+        box_rank = details.get("boxRanking")
+        if box_id:
+            if s_date not in sessions_by_date:
+                sessions_by_date[s_date] = {"kanji": [], "box": []}
+            
+            lvl = 1
+            # Check various common key names for levels in session details
+            if isinstance(box_rank, dict):
+                lvl = box_rank.get("level") or box_rank.get("newLevel") or box_rank.get("oldLevel") or 1
+            elif isinstance(box_rank, (int, float)):
+                lvl = int(box_rank)
+                
+            sessions_by_date[s_date]["box"].append(lvl)
+
+    def get_activity_for_period(start_date, end_date):
+        all_kanji_lvls = []
+        all_box_lvls = []
+        for d, data in sessions_by_date.items():
+            if start_date <= d <= end_date:
+                all_kanji_lvls.extend(data["kanji"])
+                all_box_lvls.extend(data["box"])
+        
+        k_levels = {1: 0, 2: 0, 3: 0, 4: 0}
+        b_levels = {1: 0, 2: 0, 3: 0, 4: 0}
+        for lvl in all_kanji_lvls:
+            if lvl in k_levels: k_levels[lvl] += 1
+        for lvl in all_box_lvls:
+            if lvl in b_levels: b_levels[lvl] += 1
+        return {"kanji": k_levels, "box": b_levels}
+
+    now = datetime.now()
+    # Day: Last 12 days
+    for i in range(11, -1, -1):
+        d = (now - timedelta(days=i)).strftime("%Y-%m-%d")
+        act = get_activity_for_period(d, d)
+        history["kanji"]["day"].append({"label": d[5:], "levels": {str(k): v for k,v in act["kanji"].items()}})
+        history["box"]["day"].append({"label": d[5:], "levels": {str(k): v for k,v in act["box"].items()}})
+    # Week: Last 12 weeks
+    for i in range(11, -1, -1):
+        end = (now - timedelta(weeks=i))
+        start = end - timedelta(days=6)
+        act = get_activity_for_period(start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
+        history["kanji"]["week"].append({"label": f"W-{i}" if i > 0 else "Now", "levels": {str(k): v for k,v in act["kanji"].items()}})
+        history["box"]["week"].append({"label": f"W-{i}" if i > 0 else "Now", "levels": {str(k): v for k,v in act["box"].items()}})
+    # Month: Last 12 months
+    for i in range(11, -1, -1):
+        end = (now - timedelta(days=i*30))
+        start = end - timedelta(days=29)
+        act = get_activity_for_period(start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
+        history["kanji"]["month"].append({"label": end.strftime("%b"), "levels": {str(k): v for k,v in act["kanji"].items()}})
+        history["box"]["month"].append({"label": end.strftime("%b"), "levels": {str(k): v for k,v in act["box"].items()}})
+    # Year
+    years = sorted(list(set(d[:4] for d in sessions_by_date.keys())))
+    if not years: years = [str(now.year)]
+    for y in years:
+        act = get_activity_for_period(f"{y}-01-01", f"{y}-12-31")
+        history["kanji"]["year"].append({"label": y, "levels": {str(k): v for k,v in act["kanji"].items()}})
+        history["box"]["year"].append({"label": y, "levels": {str(k): v for k,v in act["box"].items()}})
 
     return {
         "srs_levels": {str(k): v for k, v in srs_levels.items()},
         "daily_stats": daily_stats,
         "kanjis": kanji_list,
-        "summary": {
-            "total_answers": summary_answers,
-            "total_sessions": summary_sessions,
-            "days_active": len(summary_days),
-            "range": time_range
-        }
-    }
+        "history": history,
+        "summaries": summaries
+    }

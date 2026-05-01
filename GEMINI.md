@@ -60,15 +60,29 @@ When doing a code review, return EXACTLY this structure:
 - **Database Types:** Supabase `box_progress` table expects `boite` to be an integer for some constraints. Ensure `parseInt(boxId)` is used before sync to avoid authorization/conflict errors.
 
 ### 🔄 Box Order & Progression
-- **Database Sequence:** Boxes MUST follow the ID-based sequence from the `kanji` table. In the backend (`main.py`), always use `.order('id')` when fetching kanji to maintain this order.
-- **Sorting:** DO NOT use alphabetical or simple numeric sorting on box IDs (e.g., `2A` vs `10`). Instead, preserve the order of first appearance in the ID-sorted data to handle mixed types correctly (e.g., `19, 2A, 2B, 21`).
-- **Frontend Display:** In `quizengine.js`, the box list should be displayed in ascending database order (starting from Box 0). Avoid reversing the list as it disrupts the natural progression flow (0, 1, 2...).
+- **Source of Truth:** `backend/box_metadata.py` is the definitive master list for box sequencing.
+- **Sorting:** The backend sorts boxes using `get_box_sort_index` based on this master list.
+- **Progressive Selection:** On initial load, the quiz engine ALWAYS defaults to the **highest unlocked box** (last item in the visible list) if Progressive Mode is enabled, ensuring users always see their latest achievement.
+- **Frontend Display:** In the quiz dropdown, the box list is reversed (`.reverse()`) so newest achievements appear at the top.
 
 ### ✅ "All-Good" Mode Logic
 - **Definition:** When enabled, any wrong answer or time-out does NOT advance the progress bar.
 - **Reinjection:** The failed kanji is added to a `reinjectionQueue` and reappears only AFTER the initial set of questions has been completed (reinjected "at the end").
-- **Persistence:** The session CANNOT finish until the `reinjectionQueue` is empty. The user is stuck on the failed items until they are correctly mastered within the time limit.
-- **Scope:** This mode is active for Box Sessions (where `currentBoxFilter` is set) but disabled for "All Boxes" global sessions.
+- **Penalty Logic:** A wrong answer results in an immediate **-1 level penalty** (clamped to Level 1).
+- **Promotion Lock:** If a kanji is failed during a session, it is flagged in `sessionFailures`. It will **NOT** increase in level (+1) even if answered correctly during its reinjection phase. Only first-try successes promote.
+- **History Deduplication:** The session summary deduplicates attempts per kanji. In "All-Good" mode, if a kanji was failed at any point during the session, it is reported as `correct: false` to the backend to ensure the penalty is applied, regardless of subsequent successful reinjections.
+- **Persistence:** The session CANNOT finish until the `reinjectionQueue` is empty. 
+
+### ⚡ Speed Score Calculation
+- **Model:** Linear decay based on average response time per answer.
+- **Thresholds:** 100/100 for ≤ 2s avg; 0/100 for ≥ 10s avg.
+- **Normalization:** Decreases by 1 point for approximately every 80ms over the 2s mark.
+- **Display:** "Avg Speed" (s/item) is displayed in the session-end summary to clarify the derivation of the final score.
+
+### 📊 Flashcard Mastery Code
+- **Implementation:** Each card displays an 8-digit monospace string (e.g., `10300100`) in the bottom-left corner.
+- **Mapping:** Each digit corresponds to an SRS level (0-4) for modes: `qa, qb, qc, qd, qe, qf, qg, qh` in order.
+- **Feasibility:** Calculated in `lib/flashcards.js` using the in-memory `userProgress` map during deck preparation.
 
 ### 🧩 Composition Quizzes (qh / qg)
 - **Selection Logic:** These modes (`qh` for Kanji Selection, `qg` for Box Selection) require a manual "Validate" (Submit) button instead of immediate dismissal, as they involve multiple choices or pool-based interactions.
@@ -82,6 +96,11 @@ When doing a code review, return EXACTLY this structure:
 - **Unauthorized Error:** If the MCP server fails to initialize with "Unauthorized", switch the transport from `serverUrl` (HTTP/SSE) to `stdio` in `mcp_config.json`. 
 - **Authentication:** Use a **Personal Access Token (PAT)** starting with `sb_secret_` as the `--access-token` argument for the `stdio` server. Avoid using the hosted gateway `mcp.supabase.com/mcp` as it often requires a browser-based OAuth flow that doesn't work for headless agents.
 - **Consistency:** Ensure the `.env` file uses the standard **Anon JWT** for the Python client, while the MCP config uses the **Secret Token** for administrative tasks.
+
+### 🖼️ Icon Asset Pipeline
+- **Processing:** Use `scratch/process_logos.py` (OpenCV) to convert `.jpg` assets into transparent `.png` files.
+- **Filter:** Navigation icons use a `filter: brightness(0) invert(1)` CSS filter for a consistent premium white appearance in dark mode.
+- **Storage:** Processed icons reside in `frontend-next/public/icons/`.
 
 ### 🗄️ Database Reset Safety
 - **History vs. Progress:** The `sessions` table is safe to truncate for clearing history (Heatmap/Stats), but the `progress` and `box_progress` tables are critical state.

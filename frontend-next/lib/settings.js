@@ -23,12 +23,12 @@ export const DEFAULT_SETTINGS = {
   },
 
   vibration: true,
-  autoDismissAnswer: false,
+  autoDismissAnswer: true,
   progressiveMode: true,
   soundEnabled: false,
   showProgressBar: true,
-  sequentialOrder: false,
-  allGood: false,
+  sequentialOrder: true,
+  allGood: true,
   targets: {
     period: "week", // day, week, month
     type: "box",  // kanji, box

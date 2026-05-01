@@ -18,7 +18,7 @@ def is_kanji_valid(k, mode_def):
     return True
 
 @router.get("/quiz")
-def quiz_api(request: Request, mode: str = "qa",player: str = "Anonymous"):
+def quiz_api(request: Request, mode: str = "qa", player: str = "Anonymous", box: str = None):
     # 1. Utilisation du Cache global (évite l'appel réseau lourd)
     kanji_cache = getattr(request.app.state, "kanji_cache", {})
     
@@ -72,10 +72,18 @@ def quiz_api(request: Request, mode: str = "qa",player: str = "Anonymous"):
     mode_def = QUIZ_MODES[mode]
     
     # Filtrage des kanjis valides (sur le cache en mémoire, donc instantané)
-    filtered_kanjis = {
-        k_char: k_data for k_char, k_data in kanji_cache.items() 
-        if is_kanji_valid(k_data, mode_def)
-    }
+    filtered_kanjis = {}
+    for k_char, k_data in kanji_cache.items():
+        # Check mode validity
+        if not is_kanji_valid(k_data, mode_def):
+            continue
+        
+        # Check box filter if specified (box is a string like "1", "2A", etc.)
+        if box and box != "" and box != "all":
+            if str(k_data.get("boite")) != str(box):
+                continue
+                
+        filtered_kanjis[k_char] = k_data
 
     all_kanji_keys = set(filtered_kanjis.keys())
     seen_keys = set(srs.keys())
@@ -136,19 +144,24 @@ def quiz_api(request: Request, mode: str = "qa",player: str = "Anonymous"):
     }
 
 @router.get("/quiz/init")
-def sync_init(request: Request, player: str): # <--- Ajout du paramètre 'player'
-    # 1. Cache statique (inchangé)
+def sync_init(request: Request, player: str):
+    # Ensure we get the app state correctly
     kanji_cache = getattr(request.app.state, "kanji_cache", {})
     
-    # 2. Progression dynamique
-    # On utilise le pseudo reçu en paramètre au lieu de USER_ID fixe
+    # Log to server console for debugging
+    print(f"📡 sync_init: Player={player}, CacheSize={len(kanji_cache)}")
+    
     user_data = load_data(player) 
     
-    return {
-        "static_data": kanji_cache,
-        "user_progress": user_data.get("srs", {}),
-        "server_time": datetime.now().isoformat()
-    }
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        content={
+            "static_data": kanji_cache,
+            "user_progress": user_data.get("srs", {}),
+            "server_time": datetime.now().isoformat()
+        },
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate"}
+    )
 
 def calculate_kanji_level(stats):
     """

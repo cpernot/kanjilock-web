@@ -16,7 +16,10 @@
 - **Dynamic Tips:** 50+ rotating learning tips displayed during loading screens.
 - **Box System:** Progress through 150+ boxes, unlocking new levels (1-4) as you master each set with persistent mastery tracking.
 - **Modern UI:** Glassmorphism aesthetics with a new top-bar containing quick access to Pricing, Settings, and Logout.
-- **"All-Good" Mode:** A high-discipline mode where errors don't count towards progress; you must repeat failed questions at the end of the session until they are all correct.
+- **"All-Good" Mode (Refined):** High-discipline mode where errors incur a **-1 level penalty**. Missed questions must be repeated at the end of the session, and they cannot gain levels (+1) until the next session.
+- **Flashcard Mastery Code:** Integrated 8-digit progress string on each flashcard, providing a real-time summary of your knowledge across all 8 quiz modes.
+- **Icon Asset Pipeline:** Standardized premium icon set with transparent backgrounds and dark-mode optimization.
+- **Speed Score Mastery:** New linear decay scoring (100 pts for ≤2s, 0 pts for ≥10s) with real-time average speed tracking in the session summary.
 - **Cross-Platform:** Full PWA support for mobile and desktop mastery on the go.
 
 ## 🚀 Quick Start (Local Development)

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSettings, fetchRemoteSettings, saveRemoteSettings } from "@/lib/settings";
 import { fetchStatsCounts, updateBaselines } from "@/lib/targets";
+import { invalidateDashboardCache } from "@/lib/dashboardCache";
 
 export default function TargetsPage() {
     const router = useRouter();
@@ -25,6 +26,7 @@ export default function TargetsPage() {
     async function save() {
         if (!settings) return;
         await saveRemoteSettings(player, settings);
+        invalidateDashboardCache();
         router.back();
     }
 
@@ -44,8 +46,10 @@ export default function TargetsPage() {
         <div style={styles.container}>
 
 
-            <h1 style={styles.title}>🎯 Set Learning Targets</h1>
-
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "15px", marginBottom: "30px" }}>
+                <img src="/icons/target2.png" alt="Target" style={{ width: "40px", height: "40px" }} />
+                <h1 style={{ ...styles.title, margin: 0 }}>Set Learning Targets</h1>
+            </div>
             <div style={styles.card}>
                 <div style={styles.section}>
                     <label style={styles.label}>Target Type</label>

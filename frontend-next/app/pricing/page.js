@@ -74,7 +74,7 @@ export default function PricingPage() {
                             ))}
                         </ul>
 
-                        <button 
+                        <button
                             onClick={() => setShowNotice(true)}
                             style={{
                                 ...styles.btn,
@@ -99,12 +99,12 @@ export default function PricingPage() {
                         <p style={styles.noticeDisclaimer}>
                             *Note: Some features are in active development and may be modified or temporarily unavailable without prior notice as we continue to improve the experience.
                         </p>
-                        <button 
+                        <button
                             style={{
                                 ...styles.noticeBtn,
                                 transform: isHovered ? "scale(1.05)" : "scale(1)",
                                 background: isHovered ? "#7dd3fc" : "#38bdf8"
-                            }} 
+                            }}
                             onMouseEnter={() => setIsHovered(true)}
                             onMouseLeave={() => setIsHovered(false)}
                             onClick={() => setShowNotice(false)}

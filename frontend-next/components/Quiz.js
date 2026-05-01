@@ -5,9 +5,10 @@ import { startSession, recordAnswer, getSessionSummary, isSessionFinished, updat
 import { getMode, setMode as saveMode } from "../lib/modeManager";
 import { getPlayer_setting } from "../lib/settings";
 import config from "../lib/config";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { MODES } from "../lib/quizModes";
 import LoadingOverlay from "./LoadingOverlay";
+import { invalidateDashboardCache } from "../lib/dashboardCache";
 
 export default function Quiz({ forcedMode = null }) {
     const [question, setQuestion] = useState(null);
@@ -32,8 +33,10 @@ export default function Quiz({ forcedMode = null }) {
     const elapsedBeforePauseRef = useRef(0); // Track accumulated time before pause
 
     const router = useRouter();
+    const searchParams = useSearchParams();
     const barRef = useRef(null);
     const containerRef = useRef(null);
+    const finishingRef = useRef(false); // Prevent double finishing
 
     // Dynamic background effect
     useEffect(() => {
@@ -83,10 +86,13 @@ export default function Quiz({ forcedMode = null }) {
             const visible = getVisibleBoxes(appSettings.progressiveMode, selectedMode);
             setBoxes(visible);
 
+            console.log(`📦 Box Sync [${selectedMode}]: Unlocked boxes:`, visible);
+
             // If in progressive mode and current box is not in visible list, or just switching modes,
             // we might want to default to the highest unlocked box.
             if (appSettings.progressiveMode && !visible.includes(selectedBox) && visible.length > 0) {
-                const defaultBox = visible[0];
+                const defaultBox = visible[visible.length - 1];
+                console.log(`🎯 Auto-selecting highest unlocked: ${defaultBox}`);
                 setSelectedBox(defaultBox);
                 setBoxContext(defaultBox);
             }
@@ -114,24 +120,56 @@ export default function Quiz({ forcedMode = null }) {
             const visible = mod.getVisibleBoxes(settings.progressiveMode, initialMode);
             setBoxes(visible);
 
-            // Default selection for Progressive Mode
+            console.log("⚙️ Quiz Init Settings:", settings);
+            console.log("📦 Visible boxes at start:", visible);
+
+            // Restore last selection
+            const lastBox = localStorage.getItem("kanjilock_last_box_selection");
+            
+            // PRIORITY LOGIC:
+            // 1. If Progressive Mode is ON, always default to the HIGHEST unlocked box (visible.at(-1))
+            // 2. Otherwise, use lastBox if valid
+            // 3. Fallback to empty (All Boxes)
+            let boxToSelect = "";
             if (settings.progressiveMode && visible.length > 0) {
-                const defaultBox = visible[visible.length - 1]; // Highest unlocked
-                setSelectedBox(defaultBox);
-                mod.setBoxContext(defaultBox);
+                boxToSelect = visible[visible.length - 1];
+                console.log(`🚀 Progressive Mode: Auto-advancing to newest box: ${boxToSelect}`);
+            } else if (lastBox !== null && (lastBox === "" || visible.includes(lastBox))) {
+                boxToSelect = lastBox;
             }
 
+            setSelectedBox(boxToSelect);
+            mod.setBoxContext(boxToSelect === "" ? null : boxToSelect);
+
+            // REPLAY LOGIC: If we are replaying, we want to stick to the box we just finished
+            const isReplay = searchParams.get("replay") === "true";
+            
             // Sync from remote (async)
             fetchRemoteSettings(player).then(remoteSettings => {
                 if (remoteSettings) {
                     setAppSettings(remoteSettings);
                     const updatedVisible = mod.getVisibleBoxes(remoteSettings.progressiveMode, initialMode);
                     setBoxes(updatedVisible);
-                    // If we haven't selected anything yet, pick the default
-                    if (remoteSettings.progressiveMode && updatedVisible.length > 0 && !selectedBox) {
-                        const db = updatedVisible[updatedVisible.length - 1];
+                    // Update box selection after remote sync
+                    const lastBox = localStorage.getItem("kanjilock_last_box_selection");
+                    let db = "";
+                    
+                    // Priority: 
+                    // 1. Replay mode -> use lastBox
+                    // 2. Progressive mode -> use highest unlocked
+                    // 3. Last box -> use lastBox
+                    if (isReplay && lastBox !== null && (lastBox === "" || updatedVisible.includes(lastBox))) {
+                        db = lastBox;
+                        console.log(`🔁 Replay Mode: Sticking to box: ${db}`);
+                    } else if (remoteSettings.progressiveMode && updatedVisible.length > 0) {
+                        db = updatedVisible[updatedVisible.length - 1];
+                    } else if (lastBox !== null && (lastBox === "" || updatedVisible.includes(lastBox))) {
+                        db = lastBox;
+                    }
+
+                    if (db !== selectedBox) {
                         setSelectedBox(db);
-                        mod.setBoxContext(db);
+                        mod.setBoxContext(db === "" ? null : db);
                     }
                 }
             });
@@ -146,7 +184,7 @@ export default function Quiz({ forcedMode = null }) {
         }
         
         resetEngineSession();
-        startSession(size);
+        startSession(size, selectedBox);
         setQuestion(null);
         setResult(null);
         setIsProcessing(false);
@@ -325,10 +363,11 @@ export default function Quiz({ forcedMode = null }) {
         if (finished) {
             // If session is finished, don't allow loading another question
             setIsPlaying(false); 
-            setIsCompiling(true); // Start compiling feedback immediately
+            // Give the user time to see the last answer before showing compilation overlay
             setTimeout(async () => {
+                setIsCompiling(true); 
                 await finishSession(mode);
-            }, 1500);
+            }, 2500);
         } else {
             // Check settings for autoDismiss
             if (appSettings?.autoDismissAnswer !== false) {
@@ -340,7 +379,11 @@ export default function Quiz({ forcedMode = null }) {
     }
 
     async function finishSession(mode) {
+        if (finishingRef.current) return;
+        finishingRef.current = true;
+        
         setIsCompiling(true);
+        invalidateDashboardCache();
         const summary = getSessionSummary();
         const player = getPlayer_setting();
 
@@ -361,6 +404,8 @@ export default function Quiz({ forcedMode = null }) {
         const payload = {
             player: player,
             mode: mode,
+            box: summary.boxId, // Include box context
+            boxRanking: summary.boxRanking, // Needed for mastery trend graphs
             session_size: summary.size,
             correct: summary.correct,
             wrong: summary.wrong,

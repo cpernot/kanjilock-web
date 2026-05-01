@@ -24,10 +24,17 @@ export function checkLocalAnswer(questionObj, userChoice, rt_ms) {
     };
 }
 
-export function updateEngineStateAfterAnswer(kanji, isCorrect, mode, userProgress, penaltyQueue, COOLDOWN_ERROR) {
+export function updateEngineStateAfterAnswer(kanji, isCorrect, mode, userProgress, penaltyQueue, COOLDOWN_ERROR, hasFailedBefore) {
     // A. PENALTY (Wrong Answer)
     if (!isCorrect) {
         penaltyQueue.set(kanji, COOLDOWN_ERROR);
+        
+        if (!userProgress[mode]) userProgress[mode] = {};
+        if (!userProgress[mode][kanji]) userProgress[mode][kanji] = { level: 1 };
+
+        const state = userProgress[mode][kanji];
+        // Rule: Level of the kanji lose 1 point (Math.max(1, lvl - 1))
+        state.level = Math.max((state.level || 1) - 1, 1);
     }
 
     // B. SUCCESS (Local SRS Update)
@@ -42,8 +49,11 @@ export function updateEngineStateAfterAnswer(kanji, isCorrect, mode, userProgres
         tomorrow.setDate(tomorrow.getDate() + 1);
         state.next_review = tomorrow.toISOString();
 
-        // Increment Level locally
-        state.level = Math.min((state.level || 1) + 1, 4);
+        // Increment Level locally ONLY if it hasn't failed in this session
+        if (!hasFailedBefore) {
+            state.level = Math.min((state.level || 1) + 1, 4);
+        }
+        
         return state;
     }
 

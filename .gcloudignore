@@ -1,8 +1,8 @@
 .gcloudignore
 .git
 .gitignore
-node_modules/
-.next/
+**/node_modules/
+**/.next/
 .venv/
 venv/
 __pycache__/
@@ -16,3 +16,5 @@ temp.json
 google-cloud-sdk/
 .gemini/
 .vscode/
+build_log.txt
+deploy_log.txt

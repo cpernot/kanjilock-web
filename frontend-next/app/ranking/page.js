@@ -5,52 +5,92 @@ import config from "@/lib/config";
 
 export default function RankingPage() {
     const [ranking, setRanking] = useState([]);
-    const [range, setRange] = useState("global");
+    const [period, setPeriod] = useState("all");
+    const [box, setBox] = useState("all");
+    const [availableBoxes, setAvailableBoxes] = useState([]);
     const [currentPlayer, setCurrentPlayer] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const p = localStorage.getItem("kanjilock_player");
         setCurrentPlayer(p);
-        loadRanking(range);
-    }, [range]);
+        fetchBoxes();
+    }, []);
 
-    async function loadRanking(r) {
-        let url = `${config.apiBaseUrl}/ranking/global`;
-        if (r === "month") {
-            const now = new Date();
-            const ym = now.toISOString().slice(0, 7);
-            url = `${config.apiBaseUrl}/ranking/month/${ym}`;
+    useEffect(() => {
+        loadRanking();
+    }, [period, box]);
+
+    async function fetchBoxes() {
+        try {
+            const res = await fetch(`${config.apiBaseUrl}/available-boxes`);
+            if (res.ok) {
+                const data = await res.json();
+                setAvailableBoxes(data.map(String));
+            }
+        } catch (e) {
+            console.error("Fetch boxes error", e);
         }
+    }
 
+    async function loadRanking() {
+        setLoading(true);
+        let url = `${config.apiBaseUrl}/ranking?period=${period}&box=${box}`;
+        
         try {
             const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
-                if (Array.isArray(data)) setRanking(data);
-                else setRanking([]);
+                setRanking(Array.isArray(data) ? data : []);
             }
         } catch (e) {
             console.error("Ranking fetch error", e);
+        } finally {
+            setLoading(false);
         }
     }
 
+    const formatTime = (ms) => {
+        if (!ms || ms === 0) return "---";
+        const seconds = (ms / 1000).toFixed(1);
+        return `${seconds}s`;
+    };
+
     return (
         <div style={styles.container}>
-            <h1 style={styles.title}>🏆 Leaderboard</h1>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "15px", marginBottom: "30px" }}>
+                <img src="/icons/ranking1.png" alt="Ranking" style={{ width: "40px", height: "40px", filter: "brightness(0) invert(1)" }} />
+                <h1 style={{ ...styles.title, margin: 0 }}>Leaderboard</h1>
+            </div>
 
             <div style={styles.controls}>
-                <button 
-                    onClick={() => setRange("global")} 
-                    style={range === "global" ? styles.activeBtn : styles.btn}
-                >
-                    All Time
-                </button>
-                <button 
-                    onClick={() => setRange("month")} 
-                    style={range === "month" ? styles.activeBtn : styles.btn}
-                >
-                    This Month
-                </button>
+                <div style={styles.filterGroup}>
+                    <label style={styles.label}>Period:</label>
+                    <select 
+                        value={period} 
+                        onChange={(e) => setPeriod(e.target.value)}
+                        style={styles.select}
+                    >
+                        <option value="all">All Time</option>
+                        <option value="month">This Month</option>
+                        <option value="week">This Week</option>
+                        <option value="today">Today</option>
+                    </select>
+                </div>
+
+                <div style={styles.filterGroup}>
+                    <label style={styles.label}>Box:</label>
+                    <select 
+                        value={box} 
+                        onChange={(e) => setBox(e.target.value)}
+                        style={styles.select}
+                    >
+                        <option value="all">All Boxes</option>
+                        {availableBoxes.map(b => (
+                            <option key={b} value={b}>Box {b}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             <div style={styles.card}>
@@ -59,13 +99,17 @@ export default function RankingPage() {
                         <tr style={styles.theadRow}>
                             <th style={styles.th}>Rank</th>
                             <th style={styles.th}>Player</th>
-                            <th style={styles.th}>Score</th>
-                            <th style={styles.th}>Correct</th>
+                            <th style={styles.th}>{box === "all" ? "Total Score" : "Speed (Score)"}</th>
+                            <th style={styles.th}>Date (DD/MM/YY)</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {ranking.map((p, i) => {
+                        {loading ? (
+                            <tr><td colSpan="4" style={styles.noData}>Loading...</td></tr>
+                        ) : ranking.map((p, i) => {
                             const isCurrent = p.player === currentPlayer;
+                            const scoreValue = box === "all" ? p.score : p.speed;
+                            
                             return (
                                 <tr key={i} style={{ 
                                     ...styles.tr, 
@@ -76,12 +120,14 @@ export default function RankingPage() {
                                     <td style={{ ...styles.td, fontWeight: isCurrent ? "bold" : "normal" }}>
                                         {p.player} {isCurrent && " (You)"}
                                     </td>
-                                    <td style={styles.td}>{p.score.toLocaleString()}</td>
-                                    <td style={styles.td}>{p.correct.toLocaleString()}</td>
+                                    <td style={{ ...styles.td, color: "#3b82f6", fontWeight: "bold" }}>
+                                        {scoreValue?.toLocaleString() || 0}
+                                    </td>
+                                    <td style={styles.td}>{p.date || "---"}</td>
                                 </tr>
                             );
                         })}
-                        {ranking.length === 0 && (
+                        {!loading && ranking.length === 0 && (
                             <tr><td colSpan="4" style={styles.noData}>No Data Available</td></tr>
                         )}
                     </tbody>
@@ -92,40 +138,47 @@ export default function RankingPage() {
 }
 
 const styles = {
-    container: { maxWidth: "800px", margin: "0 auto", padding: "40px 20px" },
+    container: { maxWidth: "1000px", margin: "0 auto", padding: "40px 20px" },
     title: { fontSize: "2.5rem", fontWeight: "800", color: "#fff", marginBottom: "30px", textAlign: "center" },
-    controls: { display: "flex", justifyContent: "center", gap: "10px", marginBottom: "30px" },
-    btn: { 
-        padding: "12px 24px", 
-        borderRadius: "12px", 
-        background: "rgba(30, 41, 59, 0.5)", 
-        color: "#94a3b8", 
-        border: "1px solid rgba(255,255,255,0.1)", 
-        cursor: "pointer",
-        fontWeight: "600",
-        transition: "all 0.2s"
+    controls: { 
+        display: "flex", 
+        justifyContent: "center", 
+        gap: "20px", 
+        marginBottom: "30px",
+        flexWrap: "wrap" 
     },
-    activeBtn: { 
-        padding: "12px 24px", 
-        borderRadius: "12px", 
-        background: "#2196F3", 
-        color: "white", 
-        border: "none", 
+    filterGroup: {
+        display: "flex",
+        alignItems: "center",
+        gap: "10px"
+    },
+    label: {
+        color: "#94a3b8",
+        fontWeight: "600",
+        fontSize: "0.9rem"
+    },
+    select: {
+        padding: "10px 15px",
+        borderRadius: "12px",
+        background: "rgba(30, 41, 59, 0.8)",
+        color: "#fff",
+        border: "1px solid rgba(255,255,255,0.1)",
         cursor: "pointer",
-        fontWeight: "700",
-        boxShadow: "0 4px 15px rgba(33, 150, 243, 0.3)"
+        outline: "none",
+        fontSize: "0.9rem",
+        minWidth: "150px"
     },
     card: { 
         background: "rgba(30, 41, 59, 0.4)", 
         borderRadius: "24px", 
         padding: "10px", 
         border: "1px solid rgba(255,255,255,0.1)",
-        overflow: "hidden"
+        overflowX: "auto"
     },
-    table: { width: "100%", borderCollapse: "collapse" },
+    table: { width: "100%", borderCollapse: "collapse", minWidth: "600px" },
     theadRow: { borderBottom: "1px solid rgba(255,255,255,0.1)" },
-    th: { padding: "20px", color: "#94a3b8", fontWeight: "600", textAlign: "left", fontSize: "0.9rem" },
+    th: { padding: "20px", color: "#94a3b8", fontWeight: "600", textAlign: "left", fontSize: "0.85rem" },
     tr: { transition: "background 0.2s" },
-    td: { padding: "20px", color: "#fff", fontSize: "1rem" },
+    td: { padding: "20px", color: "#fff", fontSize: "0.95rem" },
     noData: { padding: "40px", color: "#94a3b8", textAlign: "center" }
 };

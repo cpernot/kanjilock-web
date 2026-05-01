@@ -6,6 +6,7 @@ import { initEngine, isInitialized } from "@/lib/quizengine";
 import { checkPeriodReset, calculateProgress, updateBaselines, fetchBoxCounts } from "@/lib/targets";
 import CircularProgress from "@/components/CircularProgress";
 import LoadingOverlay from "@/components/LoadingOverlay";
+import { getDashboardCache, setDashboardCache } from "@/lib/dashboardCache";
 import config from "@/lib/config";
 
 export default function Home() {
@@ -16,12 +17,23 @@ export default function Home() {
   const [period, setPeriod] = useState("week");
 
   useEffect(() => {
-    loadHomeData();
+    // Check cache first for instant load
+    const cached = getDashboardCache();
+    if (cached) {
+      setPlayer(cached.player);
+      setProgressData(cached.progressData);
+      setTargetType(cached.targetType);
+      setPeriod(cached.period);
+      setLoading(false);
+      // We still run loadHomeData in background to ensure it's fresh
+      loadHomeData(true);
+    } else {
+      loadHomeData();
+    }
   }, []);
 
-  async function loadHomeData() {
+  async function loadHomeData(isBackground = false) {
     const p = getPlayer_setting();
-    console.log("👤 Current Player ID:", p);
     if (!p) {
       setLoading(false);
       return;
@@ -61,7 +73,7 @@ export default function Home() {
       }
 
       console.log("📊 currentCounts fetched:", currentCounts);
-      
+
       // 4. Check Period Reset
       if (checkPeriodReset(settings)) {
         console.log("🕒 Period reset detected, updating baselines...");
@@ -73,7 +85,7 @@ export default function Home() {
       const totalProg = {};
       const levels = [1, 2, 3, 4];
       console.log("⚙️ settings.targets:", settings.targets);
-      
+
       levels.forEach(lvl => {
         const target = (settings.targets?.levels && (settings.targets.levels[lvl] || settings.targets.levels[String(lvl)])) || 10;
         const current = currentCounts[lvl] || currentCounts[String(lvl)] || 0;
@@ -86,10 +98,18 @@ export default function Home() {
       });
       setProgressData(totalProg);
 
+      // Save to cache
+      setDashboardCache({
+        player: p,
+        progressData: totalProg,
+        targetType: type,
+        period: freq
+      });
+
     } catch (e) {
       console.error("Home load error", e);
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   }
 
@@ -105,15 +125,7 @@ export default function Home() {
     );
   }
 
-  if (!player) {
-    return (
-      <div style={styles.loginCard}>
-        <h1>🔒 KanjiLock</h1>
-        <p>Please log in to track your mastery journey.</p>
-        <Link href="/login" style={styles.startBtn}>Login to Continue</Link>
-      </div>
-    )
-  }
+
 
   const levelColors = {
     1: "#3b82f6", // Blue
@@ -128,31 +140,37 @@ export default function Home() {
         <h1 style={styles.title}>Welcome, {player}</h1>
         <div style={styles.subtitle}>
           <span style={styles.periodBadge}>{period.toUpperCase()}</span>
-          <span style={styles.progLabel}>Your {targetType === "kanji" ? "Kanji" : "Box"} Progression</span>
+          <span style={styles.progLabel}> {targetType === "kanji" ? "Kanji" : "Box"} Progression</span>
         </div>
       </header>
 
 
 
-        <div style={styles.progressGrid}>
-          {[1, 2, 3, 4].map(lvl => (
-            <CircularProgress
-              key={lvl}
-              percentage={progressData[lvl]?.percent || 0}
-              label={`L${lvl}`}
-              subtitle={`${progressData[lvl]?.current || 0}/${progressData[lvl]?.target || 0}`}
-              color={levelColors[lvl]}
-              size={80}
-            />
-          ))}
-        </div>
+      <div style={styles.progressGrid}>
+        {[1, 2, 3, 4].map(lvl => (
+          <CircularProgress
+            key={lvl}
+            percentage={progressData[lvl]?.percent || 0}
+            label={`L${lvl}`}
+            subtitle={`${progressData[lvl]?.current || 0}/${progressData[lvl]?.target || 0}`}
+            color={levelColors[lvl]}
+            size={80}
+          />
+        ))}
+      </div>
 
       <div style={styles.menuGrid}>
         <Link href="/ranking" style={styles.menuBtn}>
-          Ranking
+          <div style={styles.menuBtnContent}>
+            <img src="/icons/ranking1.png" alt="Ranking" style={styles.menuIcon} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ffffff/podium.png"} />
+            <span>Ranking</span>
+          </div>
         </Link>
         <Link href="/stats" style={styles.menuBtn}>
-          Stats
+          <div style={styles.menuBtnContent}>
+            <img src="/icons/graph1.png" alt="Stats" style={styles.menuIcon} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ffffff/bar-chart.png"} />
+            <span>Stats</span>
+          </div>
         </Link>
       </div>
 
@@ -183,6 +201,8 @@ const styles = {
   },
   menuGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "20px" },
   menuBtn: { textDecoration: "none", background: "#1e293b", padding: "18px", borderRadius: "16px", color: "#fff", fontWeight: "bold", fontSize: "1rem", border: "1px solid rgba(255,255,255,0.05)", transition: "all 0.2s" },
+  menuBtnContent: { display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" },
+  menuIcon: { width: "24px", height: "24px", objectFit: "contain", filter: "brightness(0) invert(1)" },
   settingsBtn: {
     textDecoration: "none",
     background: "rgba(255,255,255,0.05)",

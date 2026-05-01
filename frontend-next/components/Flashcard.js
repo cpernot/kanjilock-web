@@ -50,6 +50,11 @@ const Flashcard = ({ card, onEvaluate }) => {
                             {card.mot}
                         </div>
                     </div>
+                    {card.masteryCode && (
+                        <div style={styles.masteryCode} title="Mastery across all modes (qa-qh)">
+                            {card.masteryCode}
+                        </div>
+                    )}
                     <div style={styles.hint}>Click to flip</div>
                 </div>
 
@@ -166,6 +171,18 @@ const styles = {
         fontSize: "1.3rem",
         color: "#cbd5e1",
         letterSpacing: "2px"
+    },
+    masteryCode: {
+        position: "absolute",
+        bottom: "15px",
+        left: "20px",
+        fontSize: "0.65rem",
+        color: "rgba(255,255,255,0.4)",
+        fontFamily: "monospace",
+        letterSpacing: "1px",
+        background: "rgba(255,255,255,0.05)",
+        padding: "2px 6px",
+        borderRadius: "4px"
     },
     hint: {
         position: "absolute",

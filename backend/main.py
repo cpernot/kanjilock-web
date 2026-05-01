@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Request
+from backend.core.auth import get_current_user
+from fastapi import FastAPI, Request, Depends
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -12,27 +13,31 @@ import os
 ENABLE_CHAT = os.getenv("ENABLE_CHAT", "false").lower() == "true"
 
 async def initialize_cache(app: FastAPI):
-    print("🚀 STARTUP: Initialisation du cache kanji...")
+    print("🚀 STARTUP: Initializing kanji cache...")
     try:
-        # 1. Récupérer TOUS les kanjis (pagination)
+        # 1. Fetch ALL kanji (with pagination)
         all_data = []
         chunk_size = 1000
         start = 0
         while True:
+            # Try sorting by 'kanji' if 'id' doesn't exist
             res = supabase.table('kanji').select("*").order('id').range(start, start + chunk_size - 1).execute()
             all_data.extend(res.data)
             if len(res.data) < chunk_size: break
             start += chunk_size
 
-        # 2. Récupérer la table de composition
+        if not all_data:
+            print("⚠️ WARNING: No kanji found in 'kanji' table!")
+
+        # 2. Fetch composition table
         response_comp = supabase.table("kanji_mot").select("*").execute()
         comp_map = {item['kanji']: item['liste_de_mots'] for item in response_comp.data}
 
-        # 3. Construction du cache final
+        # 3. Build final cache
         final_cache = {}
         for row in all_data:
             k_char = row['kanji']
-            k_infos = row['data']
+            k_infos = row.get('data', {})
             if k_char in comp_map:
                 k_infos['comp_words'] = comp_map[k_char]
             elif 'custom_keywords' in k_infos:
@@ -41,15 +46,16 @@ async def initialize_cache(app: FastAPI):
 
         app.state.kanji_cache = final_cache
         
-        # 4. Construction du cache des boîtes
-        seen_boxes_list = []
+        # 4. Build box cache
+        seen_boxes = set()
         for k_infos in final_cache.values():
             box_val = k_infos.get('boite')
             if box_val is not None:
-                box_str = str(box_val)
-                if box_str not in seen_boxes_list:
-                    seen_boxes_list.append(box_str)
-        app.state.available_boxes = seen_boxes_list
+                seen_boxes.add(str(box_val))
+        
+        # Master sorting for boxes using official sequence
+        from backend.box_metadata import get_box_sort_index
+        app.state.available_boxes = sorted(list(seen_boxes), key=get_box_sort_index)
 
         if ENABLE_CHAT:
             from backend.api import chat
@@ -58,7 +64,7 @@ async def initialize_cache(app: FastAPI):
             print("🤖 Chat mode enabled (Vector store building in background...)")
         
         app.state.is_ready = True
-        print(f"✅ Cache prêt: {len(app.state.kanji_cache)} kanjis.")
+        print(f"✅ Cache ready: {len(app.state.kanji_cache)} kanjis loaded.")
 
     except Exception as e:
         print(f"❌ Erreur chargement cache kanji: {e}")
@@ -123,10 +129,20 @@ app.include_router(ranking_router, prefix="/api")
 if ENABLE_CHAT:
     app.include_router(chat.router, prefix="/api/chat")
 
-# 5. API STATUS
 @app.get("/health")
 def health_check():
     return {"status": "ok", "version": "2.0"}
+
+@app.get("/api/auth/test")
+def auth_test(user = Depends(get_current_user)):
+    """
+    Test endpoint to verify JWT token.
+    """
+    return {
+        "status": "authenticated",
+        "user_id": user.id,
+        "email": user.email
+    }
 
 @app.get("/api/ready")
 def ready_check():

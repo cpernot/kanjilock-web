@@ -7,10 +7,11 @@ import { reinjectKanji, currentBoxFilter, getReinjectionQueueSize } from "./quiz
 
 let session = null;
 
-export function startSession(customSize = null) {
+export function startSession(customSize = null, boxId = null) {
     const settings = getSettings();
 
     session = {
+        boxId: boxId,
         size: customSize || settings.sessionSize,
         current: 0,
         correct: 0,
@@ -89,13 +90,51 @@ export function isSessionFinished() {
 export function getSessionSummary() {
     if (!session) return null;
 
+    const avgTime = session.current > 0 ? (session.totalTime / session.current) : 0;
+    
+    // Speed Score Formula: 
+    // 100 at 2s (2000ms), 0 at 10s (10000ms)
+    // Decreases by 1 point for every 80ms over 2s.
+    let speedScore100 = 100;
+    if (avgTime > 2000) {
+        speedScore100 = Math.max(0, 100 - (avgTime - 2000) * (100 / 8000));
+    }
+
+    // Deduplicate history for UI display and backend SRS update
+    const settings = getSettings();
+    const isAllGood = settings.allGood && currentBoxFilter !== null;
+    const historyMap = new Map();
+
+    session.history.forEach(h => {
+        const kanji = h.kanji;
+        if (!historyMap.has(kanji)) {
+            historyMap.set(kanji, { ...h });
+        } else {
+            const existing = historyMap.get(kanji);
+            // In All-Good mode, if it was EVER wrong, we flag it as incorrect for the SRS update
+            // to ensure the -1 penalty is applied and NO promotion (+1) occurs.
+            if (isAllGood) {
+                if (!h.isActuallyCorrect || !existing.isActuallyCorrect) {
+                    existing.correct = false;
+                    existing.isActuallyCorrect = false;
+                }
+                // Always keep the latest level reached
+                existing.newLevel = h.newLevel;
+            } else {
+                // Normal mode: just keep the latest attempt info
+                historyMap.set(kanji, { ...h });
+            }
+        }
+    });
+
+    const deduplicatedHistory = Array.from(historyMap.values());
+
     return {
         ...session,
+        history: deduplicatedHistory,
         scoreOn10: Math.round((session.correct / session.size) * 10),
-        scoreOn100: Math.min(
-            100,
-            Math.round((session.speedScore / (session.size * 10)) * 100)
-        )
+        scoreOn100: Math.round(speedScore100),
+        avgTimeMs: Math.round(avgTime)
     };
 }
 

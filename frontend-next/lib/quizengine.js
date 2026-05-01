@@ -4,7 +4,7 @@
    ============================================================================ */
 
 import config from "./config";
-import { getPlayer_setting, getSettings } from "./settings"; 
+import { getPlayer_setting, getSettings } from "./settings";
 import { getSession } from "./quizSession";
 import { MODES } from "./quizModes";
 
@@ -14,20 +14,23 @@ import { prepareQuestionObject } from "./quiz/questions";
 import { checkLocalAnswer as quizCheckAnswer, updateEngineStateAfterAnswer } from "./quiz/answer";
 
 // --- STATE VARIABLES ---
-let staticData = {};       
-let userProgress = {};     
-let boxProgress = {};      
+let staticData = {};
+let userProgress = {};
+let boxProgress = {};
 let sessionHistory = new Set();
-let penaltyQueue = new Map(); 
-let reinjectionQueue = new Set(); 
+let penaltyQueue = new Map();
+let reinjectionQueue = new Set();
+let sessionFailures = new Set();
 
-export let currentBoxFilter = null; 
+export let currentBoxFilter = null;
 export let isInitialized = false;
 
 // --- CONFIGURATION ---
-const COOLDOWN_ERROR = 20; 
+const COOLDOWN_ERROR = 20;
 
 let orderedBoxes = [];
+
+let lastInitializedPlayer = null;
 
 /* ============================
    1. INITIALIZATION
@@ -36,31 +39,57 @@ export async function initEngine(playerOverride = null) {
     const player = playerOverride || getPlayer_setting();
     if (!player) return;
 
+    if (isInitialized && lastInitializedPlayer === player) {
+        console.log(`📡 Engine: Already initialized for player "${player}". Skipping...`);
+        return;
+    }
+
     try {
+        console.log(`📡 Engine: Initializing for player "${player}"...`);
+        lastInitializedPlayer = player;
         // Wait for backend cache
         let isReady = false;
         let readyAttempts = 0;
-        while (!isReady && readyAttempts < 60) {
+        const maxAttempts = 20; // Reduced from 60 to be more responsive, total ~20-30s
+
+        while (!isReady && readyAttempts < maxAttempts) {
             try {
-                const rRes = await fetch(`${config.apiBaseUrl}/ready`);
+                console.log(`📡 Engine: Checking backend readiness (Attempt ${readyAttempts + 1}/${maxAttempts})...`);
+                const rRes = await fetch(`${config.apiBaseUrl}/ready`, { cache: 'no-store' });
+                if (!rRes.ok) throw new Error("Backend not responding correctly");
+                
                 const rData = await rRes.json();
-                if (rData.ready) isReady = true;
-                else {
-                    await new Promise(r => setTimeout(r, 1500));
+                console.log("📡 Engine: Ready check data:", rData);
+                
+                if (rData.ready && rData.count > 0) {
+                    isReady = true;
+                } else {
+                    await new Promise(r => setTimeout(r, 1000));
                     readyAttempts++;
                 }
             } catch (e) {
-                await new Promise(r => setTimeout(r, 2000));
-                readyAttempts += 2;
+                console.warn("📡 Engine: Readiness check error:", e.message);
+                await new Promise(r => setTimeout(r, 1500));
+                readyAttempts++;
             }
         }
 
-        const res = await fetch(`${config.apiBaseUrl}/quiz/init?player=${encodeURIComponent(player)}`);
+        if (!isReady) {
+            console.error("❌ Engine: Backend failed to become ready in time.");
+            // We'll still try to fetch, but this likely means empty data
+        }
+
+        const res = await fetch(`${config.apiBaseUrl}/quiz/init?player=${encodeURIComponent(player)}&t=${Date.now()}`, {
+            cache: 'no-store'
+        });
         const data = await res.json();
 
-        staticData = data.static_data;
-        userProgress = data.user_progress;
+        staticData = data.static_data || {};
+        userProgress = data.user_progress || {};
         boxProgress = {};
+
+        console.log(`📡 Engine: Received ${Object.keys(staticData).length} kanji. (Status: ${res.status})`);
+        window.DEBUG_STATIC_DATA = staticData; // Allow manual inspection
 
         // Fetch Remote Box Levels
         try {
@@ -82,6 +111,7 @@ export async function initEngine(playerOverride = null) {
             const boxesRes = await fetch(`${config.apiBaseUrl}/available-boxes`);
             if (boxesRes.ok) {
                 orderedBoxes = (await boxesRes.json()).map(String);
+                console.log(`📡 Engine: Loaded ${orderedBoxes.length} ordered boxes.`);
             }
         } catch (e) {
             console.warn("⚠️ Available boxes fetch failed.");
@@ -102,13 +132,14 @@ export async function initEngine(playerOverride = null) {
                         }
                     });
                 });
-            } catch (e) {}
+            } catch (e) { }
         }
 
         isInitialized = true;
         console.log("✅ Engine Ready");
     } catch (e) {
         console.error("❌ Engine Load Error:", e);
+        alert("Fatal: Quiz Engine failed to load. Check console for details.");
     }
 }
 
@@ -121,13 +152,18 @@ export const getBoxProgress = () => boxProgress;
 
 export function getAvailableBoxes() {
     if (orderedBoxes.length > 0) return orderedBoxes;
-    
-    // Fallback if API failed
+
+    // Fallback if API failed - Try to sort numerically at least
     const boxes = new Set();
     Object.values(staticData).forEach(k => {
         if (k.boite !== undefined && k.boite !== null) boxes.add(String(k.boite));
     });
-    return Array.from(boxes);
+    // Fallback sort: basic numeric/alphabetic
+    return Array.from(boxes).sort((a, b) => {
+        const na = parseInt(a), nb = parseInt(b);
+        if (!isNaN(na) && !isNaN(nb)) return na - nb;
+        return a.localeCompare(b);
+    });
 }
 
 
@@ -140,6 +176,15 @@ export function getBoxLevel(boxId, mode = "qa") {
     return 0;
 }
 
+export function getNextBoxId(currentBoxId) {
+    if (!currentBoxId || orderedBoxes.length === 0) return null;
+    const idx = orderedBoxes.indexOf(String(currentBoxId));
+    if (idx !== -1 && idx < orderedBoxes.length - 1) {
+        return orderedBoxes[idx + 1];
+    }
+    return null;
+}
+
 export function getVisibleBoxes(progressiveMode = false, mode = "qa") {
     const allBoxesAvailable = getAvailableBoxes();
     if (!progressiveMode) return allBoxesAvailable;
@@ -149,14 +194,18 @@ export function getVisibleBoxes(progressiveMode = false, mode = "qa") {
 
     visible.push(allBoxesAvailable[0]);
     for (let i = 0; i < allBoxesAvailable.length - 1; i++) {
-        if (getBoxLevel(allBoxesAvailable[i], mode) > 0) {
+        const lvl = getBoxLevel(allBoxesAvailable[i], mode);
+        if (lvl > 0) {
             visible.push(allBoxesAvailable[i + 1]);
-        } else break;
+        } else {
+            console.log(`🔒 Progressive Mode: Stopping at ${allBoxesAvailable[i]} (Level: ${lvl}) for mode ${mode}`);
+            break;
+        }
     }
     return visible;
 }
 
-export const getBoxKanjiCount = (boxId) => 
+export const getBoxKanjiCount = (boxId) =>
     boxId ? Object.values(staticData).filter(k => String(k.boite) === String(boxId)).length : 0;
 
 /* ============================
@@ -184,6 +233,7 @@ export function getReinjectionQueueSize() {
 export function resetEngineSession() {
     sessionHistory.clear();
     reinjectionQueue.clear();
+    sessionFailures.clear();
 }
 
 /* ============================
@@ -246,7 +296,10 @@ export function getNextQuestion(mode, progressiveMode = false, sequentialOrder =
     else if (currentBoxFilter) selectedKanji = availablePool[Math.floor(Math.random() * availablePool.length)];
     else selectedKanji = chooseWeightedKanji(srs, staticData, availablePool);
 
-    if (!selectedKanji) return { done: true, message: "No available kanji." };
+    if (!selectedKanji) {
+        const count = Object.keys(staticData).length;
+        return { done: true, message: `No available kanji (Loaded: ${count}, Box: ${currentBoxFilter || 'All'})` };
+    }
 
     if (fromReinjection) reinjectionQueue.delete(selectedKanji);
     else sessionHistory.add(selectedKanji);
@@ -263,7 +316,9 @@ export function checkLocalAnswer(questionObj, userChoice, rt_ms) {
 }
 
 export function updateEngineAfterAnswer(kanji, isCorrect, mode) {
-    return updateEngineStateAfterAnswer(kanji, isCorrect, mode, userProgress, penaltyQueue, COOLDOWN_ERROR);
+    if (!isCorrect) sessionFailures.add(kanji);
+    const hasFailedBefore = sessionFailures.has(kanji);
+    return updateEngineStateAfterAnswer(kanji, isCorrect, mode, userProgress, penaltyQueue, COOLDOWN_ERROR, hasFailedBefore);
 }
 
 export async function updateBoxRanking(boxId, sessionStats, mode) {
