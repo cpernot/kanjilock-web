@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 export default function Navbar() {
   const [player, setPlayerState] = useState(null);
   const pathname = usePathname();
+  const normalizedPath = (pathname.length > 1 && pathname.endsWith("/")) ? pathname.slice(0, -1) : pathname;
 
   useEffect(() => {
     const checkPlayer = () => setPlayerState(getPlayer());
@@ -30,21 +31,32 @@ export default function Navbar() {
         </Link>
         <div style={{ display: "flex", gap: "10px" }}>
           <Link href="/pricing" style={styles.settingsBtn} title="Pricing">
-            <span style={styles.icon}>💎</span>
+            <span style={styles.icon}>＄</span>
           </Link>
-          <Link href="/settings" style={styles.settingsBtn} title="Settings">
+          <button
+            onClick={() => window.dispatchEvent(new Event("toggleSensei"))}
+            style={styles.settingsBtn}
+            title="Help & Tips"
+          >
+            <span style={styles.icon}>❓</span>
+          </button>
+          <Link
+            href={normalizedPath === "/quiz" || normalizedPath === "/flashcards" ? `/settings?from=${normalizedPath.substring(1)}` : "/settings"}
+            style={styles.settingsBtn}
+            title="Settings"
+          >
             <span style={styles.icon}>⚙️</span>
           </Link>
-          <button 
+          <button
             onClick={() => {
-                localStorage.removeItem("kanjilock_player");
-                window.dispatchEvent(new Event("playerLogin"));
-                window.location.href = "/login";
-            }} 
-            style={styles.logoutBtn} 
+              localStorage.removeItem("kanjilock_player");
+              window.dispatchEvent(new Event("playerLogin"));
+              window.location.href = "/login";
+            }}
+            style={styles.logoutBtn}
             title="Logout"
           >
-            <span style={styles.icon}>🚪</span>
+            <img src="/icons/logout1.png" alt="Logout" style={styles.navIconImg} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ef4444/exit.png"} />
           </button>
         </div>
       </header>
@@ -53,22 +65,22 @@ export default function Navbar() {
       <nav style={styles.bottomNav}>
         <div style={styles.navContainer}>
           <Link href="/" style={{ ...styles.navItem, ...(pathname === "/" ? styles.active : {}) }}>
-            <span style={styles.navIcon}>🏠</span>
+            <img src="/icons/home1.png" alt="Home" style={styles.navIconImg} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ffffff/home.png"} />
             <span style={styles.navLabel}>Home</span>
           </Link>
-          
+
           <Link href="/quiz" style={{ ...styles.navItem, ...(pathname === "/quiz" ? styles.active : {}) }}>
-            <span style={styles.navIcon}>🎯</span>
+            <img src="/icons/quiz1.png" alt="Quiz" style={styles.navIconImg} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ffffff/target.png"} />
             <span style={styles.navLabel}>Quiz</span>
           </Link>
 
           <Link href="/flashcards" style={{ ...styles.navItem, ...(pathname === "/flashcards" ? styles.active : {}) }}>
-            <span style={styles.navIcon}>📇</span>
+            <img src="/icons/card1.png" alt="Cards" style={styles.navIconImg} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ffffff/bookmark.png"} />
             <span style={styles.navLabel}>Cards</span>
           </Link>
 
           <Link href="/targets" style={{ ...styles.navItem, ...(pathname === "/targets" ? styles.active : {}) }}>
-            <span style={styles.navIcon}>🏁</span>
+            <img src="/icons/target1.png" alt="Targets" style={styles.navIconImg} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ffffff/flag.png"} />
             <span style={styles.navLabel}>Targets</span>
           </Link>
         </div>
@@ -176,8 +188,11 @@ const styles = {
     background: "rgba(59, 130, 246, 0.15)",
     color: "#3b82f6"
   },
-  navIcon: {
-    fontSize: "1.4rem"
+  navIconImg: {
+    width: "24px",
+    height: "24px",
+    objectFit: "contain",
+    filter: "brightness(0) invert(1)" // Force icons to be white initially
   },
   navLabel: {
     fontSize: "0.65rem",

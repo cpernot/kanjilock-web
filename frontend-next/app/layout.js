@@ -1,6 +1,6 @@
 import "./globals.css";
 import Navbar from "@/components/Navbar";
-import SenseiChat from "@/components/SenseiChat";
+import SenseiHelp from "@/components/SenseiHelp";
 
 export const metadata = {
   title: "KanjiLock",
@@ -22,6 +22,7 @@ export const viewport = {
 };
 
 import PageTransition from "@/components/PageTransition";
+import AuthGuard from "@/components/AuthGuard";
 
 export default function RootLayout({ children }) {
   return (
@@ -29,11 +30,15 @@ export default function RootLayout({ children }) {
       <body>
         <Navbar />
         <main style={{ padding: "80px 20px 120px 20px" }}>
-          <PageTransition>
-            {children}
-          </PageTransition>
+          <AuthGuard>
+            <PageTransition>
+              {children}
+            </PageTransition>
+          </AuthGuard>
         </main>
-        <SenseiChat />
+        <AuthGuard>
+          <SenseiHelp />
+        </AuthGuard>
       </body>
     </html>
   );

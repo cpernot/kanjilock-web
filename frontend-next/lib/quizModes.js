@@ -31,7 +31,7 @@ export const MODES = {
     },
 
     "qc": {
-        label: "Mot → Lecture",
+        label: "Mot → Sens",
         q: (k) => k.mot,
         a: (k) => k.signification_mot,
         extras: (k) => ({
@@ -44,7 +44,7 @@ export const MODES = {
     },
 
     "qd": {
-        label: "Mot → Sens",
+        label: "Mot → Lecture",
         q: (k) => k.mot,
         a: (k) => k.lecture_mot,
         extras: (k) => ({
