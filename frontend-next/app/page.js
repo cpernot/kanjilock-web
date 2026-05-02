@@ -136,7 +136,7 @@ export default function Home() {
           <span style={styles.periodBadge}>{t(`targets.${period}`)}</span>
           <span style={styles.progLabel}> {targetType === "kanji" ? t('home.kanjiMastery') : t('home.boxMastery')}</span>
         </div>
-        
+
         {/* Period Advancement Bar */}
         <div style={styles.advancementWrapper}>
           <div style={styles.advancementBar}>
@@ -167,7 +167,7 @@ export default function Home() {
         <Link href="/ranking" style={styles.menuBtn}>
           <div style={styles.menuBtnContent}>
             <img src="/icons/ranking1.png" alt="Ranking" style={styles.menuIcon} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ffffff/podium.png"} />
-            <span>Ranking</span>
+            <span>{t('home.ranking')}</span>
           </div>
         </Link>
         <Link href="/stats" style={styles.menuBtn}>
@@ -182,8 +182,6 @@ export default function Home() {
         "L'affaire est toute simple, tout le secret tient en deux mots : <b>constance et continuité</b>"
       </p>
     </div>
-  );
-}iv>
   );
 }
 

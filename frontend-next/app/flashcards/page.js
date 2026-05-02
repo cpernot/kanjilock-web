@@ -208,7 +208,7 @@ export default function FlashcardsPage() {
             )}
 
             <div style={styles.progressHeader}>
-                Card {currentIndex + 1} of {deck.length}
+                {t('flashcards.cardCount').replace('{current}', currentIndex + 1).replace('{total}', deck.length)}
                 <div style={styles.progressBar}>
                     <div style={{ ...styles.progressFill, width: `${((currentIndex + 1) / deck.length) * 100}%` }} />
                 </div>

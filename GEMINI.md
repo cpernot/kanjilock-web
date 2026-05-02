@@ -138,6 +138,13 @@ When doing a code review, return EXACTLY this structure:
 - **AI Engine Resilience:** The RAG vector build process (backend/api/chat.py) must explicitly skip the `_settings_` metadata row during indexing to avoid Pydantic validation errors (missing 'signification' field).
 - **Graceful Failures:** The `KanjiInfo` model uses `Optional` fields to ensure that the AI indexing service remains operational even if some database entries have incomplete JSONB data.
 
+### 🌐 Multi-Language (i18n) Support
+- **Architecture:** Uses a custom `LanguageContext` (React Context) wrapping the `RootLayout` to provide a global `t()` translation helper and `changeLanguage` function.
+- **Storage:** The user's language preference is persisted in `localStorage` (`kanjilock_lang`) to ensure consistency across sessions.
+- **Dictionary:** All UI strings are centralized in `lib/translations.js`. Each page (Home, Quiz, Stats, etc.) has its own namespace within the dictionary for maintainability.
+- **Static Content:** Learning content (Kanji significations, examples) remains in French as per primary educational objectives, while the entire application interface is localized for English, French, and Japanese.
+- **Components:** Functional components must use the `useLanguage()` hook to access localized strings, replacing all hardcoded text with `t('namespace.key')` calls.
+
 ## Expertise
 - Vector databases (Chroma)
 - LLM orchestration (LangChain)

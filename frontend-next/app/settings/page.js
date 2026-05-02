@@ -4,10 +4,12 @@ import Link from "next/link";
 import { getSettings, saveSettings, fetchRemoteSettings, saveRemoteSettings } from "@/lib/settings";
 import { useRouter, useSearchParams } from "next/navigation";
 import { invalidateDashboardCache } from "@/lib/dashboardCache";
+import { useLanguage } from "@/lib/LanguageContext";
 
 import ToggleSwitch from "@/components/ToggleSwitch";
 
 export default function SettingsPage() {
+    const { t } = useLanguage();
     const [settings, setSettings] = useState(null);
     const [player, setPlayer] = useState("");
     const router = useRouter();
@@ -40,29 +42,29 @@ export default function SettingsPage() {
         else router.push("/");
     }
 
-    if (!settings) return <div style={styles.loading}>Loading...</div>;
+    if (!settings) return <div style={styles.loading}>{t('common.loading')}...</div>;
 
     return (
         <div style={styles.container}>
 
 
-            <h1 style={styles.title}>⚙️ Settings</h1>
+            <h1 style={styles.title}>⚙️ {t('settings.title')}</h1>
 
             <div style={styles.card}>
                 <div style={styles.formGroup}>
-                    <label style={styles.label}>Player Name</label>
+                    <label style={styles.label}>{t('settings.playerName')}</label>
                     <input
                         type="text"
                         value={player}
                         onChange={e => setPlayer(e.target.value)}
                         style={{ ...styles.input, maxWidth: "200px" }}
-                        placeholder="Enter player name"
+                        placeholder={t('settings.playerNamePlaceholder')}
                     />
                 </div>
 
                 <div style={styles.row}>
                     <div style={{ ...styles.formGroup, flex: 1 }}>
-                        <label style={styles.label}>Session Size</label>
+                        <label style={styles.label}>{t('settings.sessionSize')}</label>
                         <input
                             type="number"
                             value={settings.sessionSize}
@@ -72,7 +74,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div style={{ ...styles.formGroup, flex: 1 }}>
-                        <label style={styles.label}>Max Time (ms)</label>
+                        <label style={styles.label}>{t('settings.maxTime')}</label>
                         <input
                             type="number"
                             value={settings.maxTimeMs}
@@ -84,7 +86,7 @@ export default function SettingsPage() {
 
                 <div style={styles.toggleGroup}>
                     <div style={styles.toggleItem}>
-                        <span style={styles.toggleDesc}>Auto Dismiss Answer</span>
+                        <span style={styles.toggleDesc}>{t('settings.autoDismiss')}</span>
                         <ToggleSwitch
                             checked={settings.autoDismissAnswer}
                             onChange={val => setSettings({ ...settings, autoDismissAnswer: val })}
@@ -92,7 +94,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div style={styles.toggleItem}>
-                        <span style={styles.toggleDesc}>Progressive Mode</span>
+                        <span style={styles.toggleDesc}>{t('quiz.progressive')}</span>
                         <ToggleSwitch
                             checked={settings.progressiveMode}
                             onChange={val => setSettings({ ...settings, progressiveMode: val })}
@@ -100,7 +102,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div style={styles.toggleItem}>
-                        <span style={styles.toggleDesc}>Enable Sounds</span>
+                        <span style={styles.toggleDesc}>{t('settings.sound')}</span>
                         <ToggleSwitch
                             checked={settings.soundEnabled}
                             onChange={val => setSettings({ ...settings, soundEnabled: val })}
@@ -108,7 +110,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div style={styles.toggleItem}>
-                        <span style={styles.toggleDesc}>Show Progress Bar</span>
+                        <span style={styles.toggleDesc}>{t('settings.showProgress')}</span>
                         <ToggleSwitch
                             checked={settings.showProgressBar}
                             onChange={val => setSettings({ ...settings, showProgressBar: val })}
@@ -116,7 +118,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div style={styles.toggleItem}>
-                        <span style={styles.toggleDesc}>Sequential Order (No Random)</span>
+                        <span style={styles.toggleDesc}>{t('settings.sequential')}</span>
                         <ToggleSwitch
                             checked={settings.sequentialOrder}
                             onChange={val => setSettings({ ...settings, sequentialOrder: val })}
@@ -124,7 +126,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div style={styles.toggleItem}>
-                        <span style={styles.toggleDesc}>"All-Good" Mode (Reinstate fails)</span>
+                        <span style={styles.toggleDesc}>{t('quiz.allGood')}</span>
                         <ToggleSwitch
                             checked={settings.allGood}
                             onChange={val => setSettings({ ...settings, allGood: val })}
@@ -132,14 +134,14 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                <button onClick={handleSaveAndClose} style={styles.btn}>Save & Close</button>
+                <button onClick={handleSaveAndClose} style={styles.btn}>{t('common.save')}</button>
 
                 <div style={{ marginTop: "20px", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "20px" }}>
                     <button
                         onClick={handleDiscardAndClose}
                         style={styles.discardBtn}
                     >
-                        ✖ Discard & Close
+                        ✖ {t('settings.discard')}
                     </button>
                 </div>
             </div>

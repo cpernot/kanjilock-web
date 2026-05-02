@@ -22,10 +22,12 @@ export const translations = {
             login: "Login",
             username: "Username",
             start: "Start",
-            confirm: "Confirm"
+            confirm: "Confirm",
+            prev: "Previous",
+            next: "Next"
         },
         home: {
-            welcome: "Welcome back, {player}!",
+            welcome: "Welcome, {player}!",
             periodProgress: "Period Progress",
             boxMastery: "Box Mastery",
             kanjiMastery: "Kanji Mastery",
@@ -34,7 +36,8 @@ export const translations = {
             startSession: "Start Session",
             flashcards: "Flashcards",
             targets: "Set Targets",
-            timeElapsed: "Time Elapsed"
+            timeElapsed: "Time Elapsed",
+            ranking: "Ranking"
         },
         quiz: {
             settings: "Quiz Settings",
@@ -67,6 +70,7 @@ export const translations = {
         },
         flashcards: {
             title: "Practice Decks",
+            cardCount: "Card {current} of {total}",
             start: "Start Deck",
             empty: "No cards at this level.",
             level: "Level",
@@ -127,6 +131,18 @@ export const translations = {
             week: "Week",
             month: "Month",
             year: "Year"
+        },
+        settings: {
+            title: "Settings",
+            playerName: "Player Name",
+            playerNamePlaceholder: "Enter player name",
+            sessionSize: "Session Size",
+            maxTime: "Max Time (ms)",
+            autoDismiss: "Auto Dismiss Answer",
+            sound: "Enable Sounds",
+            showProgress: "Show Progress Bar",
+            sequential: "Sequential Order (No Random)",
+            discard: "Discard & Close"
         }
     },
     fr: {
@@ -152,10 +168,12 @@ export const translations = {
             login: "Connexion",
             username: "Nom d'utilisateur",
             start: "Démarrer",
-            confirm: "Confirmer"
+            confirm: "Confirmer",
+            prev: "Précédent",
+            next: "Suivant"
         },
         home: {
-            welcome: "Bon retour, {player} !",
+            welcome: "Bienvenue, {player} !",
             periodProgress: "Progression période",
             boxMastery: "Maîtrise Boîtes",
             kanjiMastery: "Maîtrise Kanji",
@@ -164,7 +182,8 @@ export const translations = {
             startSession: "Démarrer session",
             flashcards: "Flashcards",
             targets: "Objectifs",
-            timeElapsed: "Temps écoulé"
+            timeElapsed: "Temps écoulé",
+            ranking: "Classement"
         },
         quiz: {
             settings: "Réglages Quiz",
@@ -197,6 +216,7 @@ export const translations = {
         },
         flashcards: {
             title: "Decks d'entraînement",
+            cardCount: "Carte {current} sur {total}",
             start: "Lancer le deck",
             empty: "Aucune carte à ce niveau.",
             level: "Niveau",
@@ -257,6 +277,18 @@ export const translations = {
             week: "Semaine",
             month: "Mois",
             year: "Année"
+        },
+        settings: {
+            title: "Réglages",
+            playerName: "Nom du joueur",
+            playerNamePlaceholder: "Entrez le nom du joueur",
+            sessionSize: "Taille de session",
+            maxTime: "Temps Max (ms)",
+            autoDismiss: "Passer auto la réponse",
+            sound: "Activer les sons",
+            showProgress: "Barre de progression",
+            sequential: "Ordre séquentiel (pas d'aléatoire)",
+            discard: "Abandonner & Fermer"
         }
     },
     jp: {
@@ -282,10 +314,12 @@ export const translations = {
             login: "ログイン",
             username: "ユーザー名",
             start: "開始",
-            confirm: "確認"
+            confirm: "確認",
+            prev: "前へ",
+            next: "次へ"
         },
         home: {
-            welcome: "おかえりなさい、{player}さん！",
+            welcome: "ようこそ、{player}さん！",
             periodProgress: "期間の進捗",
             boxMastery: "ボックス習得度",
             kanjiMastery: "漢字習得度",
@@ -294,7 +328,8 @@ export const translations = {
             startSession: "セッション開始",
             flashcards: "フラッシュカード",
             targets: "目標設定",
-            timeElapsed: "経過時間"
+            timeElapsed: "経過時間",
+            ranking: "ランキング"
         },
         quiz: {
             settings: "クイズ設定",
@@ -327,6 +362,7 @@ export const translations = {
         },
         flashcards: {
             title: "練習デッキ",
+            cardCount: "カード {current} / {total}",
             start: "デッキを開始",
             empty: "このレベルのカードはありません。",
             level: "レベル",
@@ -387,6 +423,18 @@ export const translations = {
             week: "週",
             month: "月",
             year: "年"
+        },
+        settings: {
+            title: "設定",
+            playerName: "プレイヤー名",
+            playerNamePlaceholder: "名前を入力",
+            sessionSize: "セッションサイズ",
+            maxTime: "最大時間 (ms)",
+            autoDismiss: "回答の自動消去",
+            sound: "サウンド有効",
+            showProgress: "プログレスバー表示",
+            sequential: "順番通り（ランダムなし）",
+            discard: "破棄して閉じる"
         }
     }
 };
