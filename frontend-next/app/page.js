@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getPlayer_setting, getSettings, fetchRemoteSettings } from "@/lib/settings";
 import { initEngine, isInitialized } from "@/lib/quizengine";
-import { checkPeriodReset, calculateProgress, updateBaselines, fetchBoxCounts } from "@/lib/targets";
+import { checkPeriodReset, calculateProgress, updateBaselines, fetchBoxCounts, calculatePeriodAdvancement } from "@/lib/targets";
 import CircularProgress from "@/components/CircularProgress";
 import LoadingOverlay from "@/components/LoadingOverlay";
 import { getDashboardCache, setDashboardCache } from "@/lib/dashboardCache";
@@ -15,6 +15,7 @@ export default function Home() {
   const [progressData, setProgressData] = useState({});
   const [targetType, setTargetType] = useState("kanji");
   const [period, setPeriod] = useState("week");
+  const [periodAdvancement, setPeriodAdvancement] = useState(0);
 
   useEffect(() => {
     // Check cache first for instant load
@@ -24,6 +25,7 @@ export default function Home() {
       setProgressData(cached.progressData);
       setTargetType(cached.targetType);
       setPeriod(cached.period);
+      setPeriodAdvancement(cached.periodAdvancement || 0);
       setLoading(false);
       // We still run loadHomeData in background to ensure it's fresh
       loadHomeData(true);
@@ -86,12 +88,16 @@ export default function Home() {
       console.log("📈 Progress calculated:", progress);
       setProgressData(progress);
 
+      const advancement = calculatePeriodAdvancement(settings);
+      setPeriodAdvancement(advancement);
+
       // Save to cache
       setDashboardCache({
         player: p,
         progressData: progress,
         targetType: type,
-        period: freq
+        period: freq,
+        periodAdvancement: advancement
       });
 
     } catch (e) {
@@ -129,6 +135,16 @@ export default function Home() {
         <div style={styles.subtitle}>
           <span style={styles.periodBadge}>{period.toUpperCase()}</span>
           <span style={styles.progLabel}> {targetType === "kanji" ? "Kanji" : "Box"} Progression</span>
+        </div>
+        
+        {/* Period Advancement Bar */}
+        <div style={styles.advancementWrapper}>
+          <div style={styles.advancementBar}>
+            <div style={{ ...styles.advancementFill, width: `${periodAdvancement}%` }}></div>
+          </div>
+          <div style={styles.advancementText}>
+            Time elapsed: {Math.round(periodAdvancement)}%
+          </div>
         </div>
       </header>
 
@@ -178,6 +194,10 @@ const styles = {
   subtitle: { display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginTop: "5px" },
   progLabel: { color: "#94a3b8", fontSize: "0.9rem", fontWeight: "600" },
   periodBadge: { padding: "4px 10px", background: "#2196F3", borderRadius: "8px", fontSize: "0.65rem", fontWeight: "900", color: "#fff" },
+  advancementWrapper: { maxWidth: "300px", margin: "15px auto 0 auto" },
+  advancementBar: { height: "6px", background: "rgba(255,255,255,0.1)", borderRadius: "3px", overflow: "hidden" },
+  advancementFill: { height: "100%", background: "#2196F3", transition: "width 0.5s ease-out" },
+  advancementText: { fontSize: "0.7rem", color: "#64748b", marginTop: "5px", fontWeight: "600" },
   dashboardSection: { background: "rgba(30, 41, 59, 0.3)", borderRadius: "24px", padding: "10px", border: "1px solid rgba(255,255,255,0.05)", marginBottom: "20px" },
   progressGrid: {
     display: "grid",

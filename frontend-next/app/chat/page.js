@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 function ChatContent() {
     const searchParams = useSearchParams();
     const [messages, setMessages] = useState([
-        { role: "assistant", content: "Bonjour ! Je suis Sensei. Comment puis-je vous aider dans votre apprentissage du japonais aujourd'hui ?" }
+        { role: "assistant", content: "Bonjour ! Une question ? (English or Japanese also accepted)" }
     ]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
@@ -18,7 +18,7 @@ function ChatContent() {
     useEffect(() => {
         const p = localStorage.getItem("kanjilock_player");
         setPlayer(p);
-        
+
         // Handle auto-query from URL
         const query = searchParams.get("q");
         if (query && !hasAutoSent.current) {

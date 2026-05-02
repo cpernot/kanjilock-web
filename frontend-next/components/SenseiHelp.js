@@ -53,7 +53,7 @@ export default function SenseiHelp() {
     const [activeSection, setActiveSection] = useState(null); // 'quickStart' or 'tips'
     const [tips, setTips] = useState(TIPS);
     const [messages, setMessages] = useState([
-        { role: "sensei", text: "Bonjour ! Je suis UnLock. Pose-moi une question sur le jeu ou tes progrès !" }
+        { role: "sensei", text: "Bonjour ! une question sur ce jeu? " }
     ]);
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);

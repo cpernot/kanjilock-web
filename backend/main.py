@@ -37,6 +37,8 @@ async def initialize_cache(app: FastAPI):
         final_cache = {}
         for row in all_data:
             k_char = row['kanji']
+            if k_char == "_settings_":
+                continue
             k_infos = row.get('data', {})
             if k_char in comp_map:
                 k_infos['comp_words'] = comp_map[k_char]

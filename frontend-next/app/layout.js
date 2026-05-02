@@ -1,6 +1,7 @@
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import SenseiHelp from "@/components/SenseiHelp";
+import SplashScreen from "@/components/SplashScreen";
 
 export const metadata = {
   title: "KanjiLock",
@@ -28,6 +29,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
+        <SplashScreen />
         <Navbar />
         <main style={{ padding: "80px 20px 120px 20px" }}>
           <AuthGuard>

@@ -127,3 +127,30 @@ export function calculateProgress(settings, currentCounts) {
 
     return progress;
 }
+
+/**
+ * Calculates the percentage of time passed in the current period.
+ */
+export function calculatePeriodAdvancement(settings) {
+    if (!settings.targets?.lastBaselineUpdate) return 0;
+
+    const now = new Date();
+    const start = new Date(settings.targets.lastBaselineUpdate);
+    const period = settings.targets.period || "week";
+
+    let duration;
+    if (period === "day") {
+        duration = 24 * 60 * 60 * 1000;
+    } else if (period === "week") {
+        duration = 7 * 24 * 60 * 60 * 1000;
+    } else if (period === "month") {
+        const daysInMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
+        duration = daysInMonth * 24 * 60 * 60 * 1000;
+    } else {
+        return 0;
+    }
+
+    const elapsed = now - start;
+    return Math.min(100, Math.max(0, (elapsed / duration) * 100));
+}
+

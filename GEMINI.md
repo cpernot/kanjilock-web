@@ -121,6 +121,17 @@ When doing a code review, return EXACTLY this structure:
 - **Baseline Storage:** The `settings.targets` object contains `baselines` (for Box counts) and `kanji_baselines` (for Kanji counts). These are updated simultaneously during a reset.
 - **Centralized Logic:** `lib/targets.js` is the source of truth for progress calculation. The `calculateProgress` function must be used across all dashboard components to ensure the "Reset Period" functionality works globally.
 - **Auto-Reset Logic:** `checkPeriodReset` (called on Home load) compares the current date with `lastBaselineUpdate`. If the period (Day/Week/Month) has changed, it automatically invokes `updateBaselines` to start a fresh progress cycle.
+- **Advancement Bar:** The Home page displays a "Time Elapsed" bar calculated by `calculatePeriodAdvancement`. It represents the ratio of time passed between the `lastBaselineUpdate` and the end of the current period (Day: 24h, Week: 7d, Month: Days in month).
+
+### ☁️ Cloud Deployment & Performance
+- **Startup Optimization:** `deploy-cloud.bat` uses `--cpu-boost` and `--cpu 1` to reduce cold start latency. 
+- **Environment Automation:** The deployment script automatically parses the local `.env` file to set Cloud Run environment variables, avoiding manual placeholder updates.
+- **Perceived Performance:** A CSS-only `SplashScreen` is integrated into the root layout. It renders instantly in the HTML to eliminate the "blank screen" effect while the React application hydrates or during container startup delays.
+
+### 🗄️ Settings Metadata & FK Constraints
+- **Constraint Satisfaction:** The `progress` table uses `kanji = '_settings_'` to store user-specific configuration. To satisfy database-level foreign key constraints, a placeholder row with `kanji = '_settings_'` must exist in the master `kanji` table.
+- **AI Engine Resilience:** The RAG vector build process (backend/api/chat.py) must explicitly skip the `_settings_` metadata row during indexing to avoid Pydantic validation errors (missing 'signification' field).
+- **Graceful Failures:** The `KanjiInfo` model uses `Optional` fields to ensure that the AI indexing service remains operational even if some database entries have incomplete JSONB data.
 
 ## Expertise
 - Vector databases (Chroma)

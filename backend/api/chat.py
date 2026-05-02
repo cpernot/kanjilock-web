@@ -35,7 +35,7 @@ class ChatInput(BaseModel):
     player: str = "Anonymous"
 
 class KanjiInfo(BaseModel):
-    signification: str
+    signification: Optional[str] = "N/A"
     romaji: Optional[str] = None
     boite: Optional[Union[int, str]] = None
     mot: Optional[str] = None
