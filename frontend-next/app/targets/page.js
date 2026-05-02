@@ -1,13 +1,8 @@
-"use client";
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { getSettings, fetchRemoteSettings, saveRemoteSettings } from "@/lib/settings";
-import { fetchStatsCounts, updateBaselines } from "@/lib/targets";
-import { invalidateDashboardCache } from "@/lib/dashboardCache";
+import { useLanguage } from "@/lib/LanguageContext";
 
 export default function TargetsPage() {
     const router = useRouter();
+    const { t } = useLanguage();
     const [settings, setSettings] = useState(null);
     const [fullStats, setFullStats] = useState({ boxes: { 1: 0, 2: 0, 3: 0, 4: 0 }, kanji: { 1: 0, 2: 0, 3: 0, 4: 0 } });
     const [player, setPlayer] = useState("");
@@ -38,20 +33,18 @@ export default function TargetsPage() {
         alert("Baselines updated!");
     }
 
-    if (!settings || !settings.targets) return <div style={styles.loading}>Loading...</div>;
+    if (!settings || !settings.targets) return <div style={styles.loading}>{t('common.loading')}</div>;
 
     const tType = settings.targets.type || "kanji";
 
     return (
         <div style={styles.container}>
-
-
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "15px", marginBottom: "30px" }}>
-                <h1 style={{ ...styles.title, margin: 0 }}>Set Targets</h1>
+                <h1 style={{ ...styles.title, margin: 0 }}>{t('targets.title')}</h1>
             </div>
             <div style={styles.card}>
                 <div style={styles.section}>
-                    <label style={styles.label}>Target Type</label>
+                    <label style={styles.label}>{t('targets.type')}</label>
                     <div style={styles.toggleRow}>
                         <button
                             onClick={() => {
@@ -63,7 +56,7 @@ export default function TargetsPage() {
                             }}
                             style={{ ...styles.toggleBtn, background: tType === "kanji" ? "#2196F3" : "#1e293b", opacity: tType === "kanji" ? 1 : 0.6 }}
                         >
-                            Kanjis Learned
+                            {t('targets.kanjiLearned')}
                         </button>
                         <button
                             onClick={() => {
@@ -75,28 +68,28 @@ export default function TargetsPage() {
                             }}
                             style={{ ...styles.toggleBtn, background: tType === "box" ? "#2196F3" : "#1e293b", opacity: tType === "box" ? 1 : 0.6 }}
                         >
-                            Boxes Mastered
+                            {t('targets.boxesMastered')}
                         </button>
                     </div>
                 </div>
 
                 <div style={styles.section}>
-                    <label style={styles.label}>Frequency</label>
+                    <label style={styles.label}>{t('targets.frequency')}</label>
                     <select
                         value={settings.targets.period}
                         onChange={e => setSettings({ ...settings, targets: { ...settings.targets, period: e.target.value } })}
                         style={styles.select}
                     >
-                        <option value="day">Daily</option>
-                        <option value="week">Weekly</option>
-                        <option value="month">Monthly</option>
+                        <option value="day">{t('targets.daily')}</option>
+                        <option value="week">{t('targets.weekly')}</option>
+                        <option value="month">{t('targets.monthly')}</option>
                     </select>
                 </div>
 
                 <div style={styles.grid}>
                     {[1, 2, 3, 4].map(lvl => (
                         <div key={lvl} style={styles.goalItem}>
-                            <label style={styles.goalLabel}>Level {lvl}</label>
+                            <label style={styles.goalLabel}>{t('targets.level')} {lvl}</label>
                             <input
                                 type="number"
                                 value={settings.targets.levels[lvl]}
@@ -111,9 +104,9 @@ export default function TargetsPage() {
                 </div>
 
                 <div style={{ marginTop: "30px", display: "flex", gap: "10px" }}>
-                    <button onClick={save} style={{ ...styles.btn, flex: 2 }}>Save & Close</button>
-                    <button onClick={setBaselines} style={{ ...styles.btn, flex: 1, background: "var(--accent-gray)" }}>Reset Period</button>
-                    <button onClick={() => router.back()} style={{ ...styles.btn, flex: 1, background: "var(--accent-red)" }}>Cancel</button>
+                    <button onClick={save} style={{ ...styles.btn, flex: 2 }}>{t('targets.saveClose')}</button>
+                    <button onClick={setBaselines} style={{ ...styles.btn, flex: 1, background: "var(--accent-gray)" }}>{t('targets.resetPeriod')}</button>
+                    <button onClick={() => router.back()} style={{ ...styles.btn, flex: 1, background: "var(--accent-red)" }}>{t('common.cancel')}</button>
                 </div>
             </div>
         </div>

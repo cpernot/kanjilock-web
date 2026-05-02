@@ -24,21 +24,24 @@ export const viewport = {
 
 import PageTransition from "@/components/PageTransition";
 import AuthGuard from "@/components/AuthGuard";
+import { LanguageProvider } from "@/lib/LanguageContext";
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
         <SplashScreen />
-        <AuthGuard>
-          <Navbar />
-          <main style={{ padding: "80px 20px 120px 20px" }}>
-            <PageTransition>
-              {children}
-            </PageTransition>
-          </main>
-          <SenseiHelp />
-        </AuthGuard>
+        <LanguageProvider>
+          <AuthGuard>
+            <Navbar />
+            <main style={{ padding: "80px 20px 120px 20px" }}>
+              <PageTransition>
+                {children}
+              </PageTransition>
+            </main>
+            <SenseiHelp />
+          </AuthGuard>
+        </LanguageProvider>
       </body>
     </html>
   );

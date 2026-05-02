@@ -1,12 +1,9 @@
-"use client";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { getPlayer } from "@/lib/player";
-import { useEffect, useState } from "react";
+import { useLanguage } from "@/lib/LanguageContext";
 
 export default function Navbar() {
   const [player, setPlayerState] = useState(null);
   const pathname = usePathname();
+  const { lang, changeLanguage, t } = useLanguage();
   const normalizedPath = (pathname.length > 1 && pathname.endsWith("/")) ? pathname.slice(0, -1) : pathname;
 
   useEffect(() => {
@@ -22,6 +19,11 @@ export default function Navbar() {
 
   if (!player) return null;
 
+  const cycleLanguage = () => {
+    const next = lang === 'en' ? 'fr' : (lang === 'fr' ? 'jp' : 'en');
+    changeLanguage(next);
+  };
+
   return (
     <>
       {/* Top Header */}
@@ -29,21 +31,30 @@ export default function Navbar() {
         <Link href="/" style={styles.logo}>
           <span style={styles.logoLock}>Kanji</span>Lock
         </Link>
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          {/* Language Switcher */}
+          <button 
+            onClick={cycleLanguage}
+            style={styles.langBtn}
+            title="Change Language"
+          >
+            {lang.toUpperCase()}
+          </button>
+
           <Link href="/pricing" style={styles.settingsBtn} title="Pricing">
             <span style={styles.icon}>＄</span>
           </Link>
           <button
             onClick={() => window.dispatchEvent(new Event("toggleSensei"))}
             style={styles.settingsBtn}
-            title="Help & Tips"
+            title={t('nav.help')}
           >
             <span style={styles.icon}>❓</span>
           </button>
           <Link
             href={normalizedPath === "/quiz" || normalizedPath === "/flashcards" ? `/settings?from=${normalizedPath.substring(1)}` : "/settings"}
             style={styles.settingsBtn}
-            title="Settings"
+            title={t('nav.settings')}
           >
             <span style={styles.icon}>⚙️</span>
           </Link>
@@ -54,7 +65,7 @@ export default function Navbar() {
               window.location.href = "/login";
             }}
             style={styles.logoutBtn}
-            title="Logout"
+            title={t('nav.logout')}
           >
             <img src="/icons/logout1.png" alt="Logout" style={styles.navIconImg} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ef4444/exit.png"} />
           </button>
@@ -66,22 +77,22 @@ export default function Navbar() {
         <div style={styles.navContainer}>
           <Link href="/" style={{ ...styles.navItem, ...(pathname === "/" ? styles.active : {}) }}>
             <img src="/icons/home1.png" alt="Home" style={styles.navIconImg} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ffffff/home.png"} />
-            <span style={styles.navLabel}>Home</span>
+            <span style={styles.navLabel}>{t('nav.home')}</span>
           </Link>
 
           <Link href="/quiz" style={{ ...styles.navItem, ...(pathname === "/quiz" ? styles.active : {}) }}>
             <img src="/icons/quiz1.png" alt="Quiz" style={styles.navIconImg} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ffffff/target.png"} />
-            <span style={styles.navLabel}>Quiz</span>
+            <span style={styles.navLabel}>{t('nav.quiz')}</span>
           </Link>
 
           <Link href="/flashcards" style={{ ...styles.navItem, ...(pathname === "/flashcards" ? styles.active : {}) }}>
             <img src="/icons/card1.png" alt="Cards" style={styles.navIconImg} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ffffff/bookmark.png"} />
-            <span style={styles.navLabel}>Cards</span>
+            <span style={styles.navLabel}>{t('nav.flashcards')}</span>
           </Link>
 
           <Link href="/targets" style={{ ...styles.navItem, ...(pathname === "/targets" ? styles.active : {}) }}>
             <img src="/icons/target1.png" alt="Targets" style={styles.navIconImg} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ffffff/flag.png"} />
-            <span style={styles.navLabel}>Targets</span>
+            <span style={styles.navLabel}>{t('nav.stats')}</span>
           </Link>
         </div>
       </nav>
@@ -130,6 +141,21 @@ const styles = {
     border: "none",
     cursor: "pointer",
     color: "#fff"
+  },
+  langBtn: {
+    padding: "0 10px",
+    height: "40px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: "12px",
+    background: "rgba(59, 130, 246, 0.15)",
+    border: "1px solid rgba(59, 130, 246, 0.2)",
+    color: "#3b82f6",
+    fontSize: "0.8rem",
+    fontWeight: "bold",
+    cursor: "pointer",
+    transition: "all 0.2s"
   },
   logoutBtn: {
     width: "40px",
