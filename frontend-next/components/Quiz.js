@@ -469,7 +469,7 @@ export default function Quiz({ forcedMode = null }) {
                     <select value={selectedMode} onChange={handleModeChange} style={styles.select}>
                         {MODES_OPTS.map(m => (
                             <option key={m} value={m}>
-                                {MODES[m]?.label || m}
+                                {t(`quiz.modes.${m}`)}
                             </option>
                         ))}
                     </select>

@@ -59,6 +59,18 @@ export const translations = {
             replay: "Replay",
             next: "Next",
             paused: "Paused",
+            modes: {
+                qa: "Kanji → Meaning",
+                qb: "Meaning → Kanji",
+                qc: "Word → Meaning",
+                qe: "Meaning → Word",
+                qd: "Word → Reading",
+                qj: "Reading → Word",
+                qf: "Kanji → Romaji",
+                qi: "Romaji → Kanji",
+                qg: "Kanji → Box",
+                qh: "Kanji → Composition"
+            },
             labels: {
                 sens: "Meaning",
                 romaji: "Romaji",
@@ -205,6 +217,18 @@ export const translations = {
             replay: "Rejouer",
             next: "Suivant",
             paused: "En pause",
+            modes: {
+                qa: "Kanji → Sens",
+                qb: "Sens → Kanji",
+                qc: "Mot → Sens",
+                qe: "Sens → Mot",
+                qd: "Mot → Lecture",
+                qj: "Lecture → Mot",
+                qf: "Kanji → Romaji",
+                qi: "Romaji → Kanji",
+                qg: "Kanji → Boîte",
+                qh: "Kanji → Composition"
+            },
             labels: {
                 sens: "Sens",
                 romaji: "Romaji",
@@ -351,6 +375,18 @@ export const translations = {
             replay: "もう一度",
             next: "次へ",
             paused: "一時停止中",
+            modes: {
+                qa: "漢字 → 意味",
+                qb: "意味 → 漢字",
+                qc: "単語 → 意味",
+                qe: "意味 → 単語",
+                qd: "単語 → 読み",
+                qj: "読み → 単語",
+                qf: "漢字 → ローマ字",
+                qi: "ローマ字 → 漢字",
+                qg: "漢字 → ボックス",
+                qh: "漢字 → 構成"
+            },
             labels: {
                 sens: "意味",
                 romaji: "ローマ字",
