@@ -20,7 +20,7 @@ export default function Navbar() {
     };
   }, []);
 
-  if (!player && pathname === "/login") return null;
+  if (!player) return null;
 
   return (
     <>

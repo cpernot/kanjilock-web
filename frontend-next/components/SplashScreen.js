@@ -21,7 +21,7 @@ export default function SplashScreen() {
             <div className="splash-logo">KanjiLock</div>
             <div className="spinner-loader"></div>
             <p style={{ marginTop: '20px', color: '#94a3b8', fontSize: '0.9rem', fontWeight: '500' }}>
-                Initializing Sensei...
+                Initializing KanjiLock ...
             </p>
         </div>
     );

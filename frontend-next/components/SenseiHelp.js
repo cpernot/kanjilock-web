@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { getPlayer_setting } from "../lib/settings";
 import config from "../lib/config";
 
 const TIPS = [
@@ -50,6 +51,7 @@ const QUICK_START_STEPS = [
 export default function SenseiHelp() {
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
+    const [player, setPlayer] = useState(null);
     const [activeSection, setActiveSection] = useState(null); // 'quickStart' or 'tips'
     const [tips, setTips] = useState(TIPS);
     const [messages, setMessages] = useState([
@@ -58,6 +60,10 @@ export default function SenseiHelp() {
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
     const scrollRef = useRef(null);
+
+    useEffect(() => {
+        setPlayer(getPlayer_setting());
+    }, []);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -121,6 +127,8 @@ export default function SenseiHelp() {
         setIsPanelOpen(false);
         setIsChatOpen(true);
     };
+
+    if (!player) return null;
 
     return (
         <>

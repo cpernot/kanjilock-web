@@ -30,15 +30,13 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <SplashScreen />
-        <Navbar />
-        <main style={{ padding: "80px 20px 120px 20px" }}>
-          <AuthGuard>
+        <AuthGuard>
+          <Navbar />
+          <main style={{ padding: "80px 20px 120px 20px" }}>
             <PageTransition>
               {children}
             </PageTransition>
-          </AuthGuard>
-        </main>
-        <AuthGuard>
+          </main>
           <SenseiHelp />
         </AuthGuard>
       </body>
