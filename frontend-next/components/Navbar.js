@@ -1,3 +1,8 @@
+"use client";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { getPlayer } from "@/lib/player";
+import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 
 export default function Navbar() {
