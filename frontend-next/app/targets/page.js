@@ -47,8 +47,7 @@ export default function TargetsPage() {
 
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "15px", marginBottom: "30px" }}>
-                <img src="/icons/target2.png" alt="Target" style={{ width: "40px", height: "40px" }} />
-                <h1 style={{ ...styles.title, margin: 0 }}>Set Learning Targets</h1>
+                <h1 style={{ ...styles.title, margin: 0 }}>Set Targets</h1>
             </div>
             <div style={styles.card}>
                 <div style={styles.section}>

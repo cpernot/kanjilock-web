@@ -32,7 +32,7 @@ export function prepareDeck(allKanjis, filters, srsProgress, boxProgressMap, seq
     let deck = Object.entries(allKanjis).map(([kanji, data]) => {
         // Find max SRS level across all modes (qa, qb, qc, etc.)
         let maxSrsLevel = 0;
-        const modes = ["qa", "qb", "qc", "qd", "qe", "qf", "qg", "qh"];
+        const modes = ["qa", "qb", "qc", "qe", "qd", "qj", "qf", "qi", "qg", "qh"];
         
         const masteryLevels = modes.map(m => {
             // Log once per deck to check structure

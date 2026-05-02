@@ -107,5 +107,31 @@ export const MODES = {
             signification_mot: k.signification_mot,
             boite: k.boite
         })
+    },
+
+    "qi": {
+        label: "Romaji → Kanji",
+        q: (k) => k.romaji,
+        a: (k) => k.kanji,
+        extras: (k) => ({
+            signification: k.signification,
+            lecture_mot: k.lecture_mot,
+            signification_mot: k.signification_mot,
+            boite: k.boite,
+            mot: k.mot
+        })
+    },
+
+    "qj": {
+        label: "Lecture → Mot",
+        q: (k) => k.lecture_mot,
+        a: (k) => k.mot,
+        extras: (k) => ({
+            signification_mot: k.signification_mot,
+            kanji: k.kanji,
+            romaji: k.romaji,
+            boite: k.boite,
+            signification: k.signification
+        })
     }
 };

@@ -429,8 +429,8 @@ export default function Quiz({ forcedMode = null }) {
         router.push("/session-end");
     }
 
-    // MODES_OPTS moved to centralized quizModes.js labels
-    const MODES_OPTS = Object.keys(MODES);
+    // MODES_OPTS defined with explicit order requested by user
+    const MODES_OPTS = ["qa", "qb", "qc", "qe", "qd", "qj", "qf", "qi", "qg", "qh"];
 
     if (isLoading) {
         if (!isInitialized) {
