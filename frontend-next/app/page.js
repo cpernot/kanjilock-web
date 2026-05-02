@@ -8,8 +8,10 @@ import CircularProgress from "@/components/CircularProgress";
 import LoadingOverlay from "@/components/LoadingOverlay";
 import { getDashboardCache, setDashboardCache } from "@/lib/dashboardCache";
 import config from "@/lib/config";
+import { useLanguage } from "@/lib/LanguageContext";
 
 export default function Home() {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [player, setPlayer] = useState(null);
   const [progressData, setProgressData] = useState({});
@@ -114,12 +116,10 @@ export default function Home() {
     return (
       <div style={styles.loading}>
         <div style={{ ...styles.spinner, marginRight: '10px' }}>⏳</div>
-        Updating Dashboard...
+        {t('common.loading')}
       </div>
     );
   }
-
-
 
   const levelColors = {
     1: "#3b82f6", // Blue
@@ -131,10 +131,10 @@ export default function Home() {
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <h1 style={styles.title}>Welcome, {player}</h1>
+        <h1 style={styles.title}>{t('home.welcome').replace('{player}', player)}</h1>
         <div style={styles.subtitle}>
-          <span style={styles.periodBadge}>{period.toUpperCase()}</span>
-          <span style={styles.progLabel}> {targetType === "kanji" ? "Kanji" : "Box"} Progression</span>
+          <span style={styles.periodBadge}>{t(`targets.${period}`)}</span>
+          <span style={styles.progLabel}> {targetType === "kanji" ? t('home.kanjiMastery') : t('home.boxMastery')}</span>
         </div>
         
         {/* Period Advancement Bar */}
@@ -143,7 +143,7 @@ export default function Home() {
             <div style={{ ...styles.advancementFill, width: `${periodAdvancement}%` }}></div>
           </div>
           <div style={styles.advancementText}>
-            Time elapsed: {Math.round(periodAdvancement)}%
+            {t('home.timeElapsed')}: {Math.round(periodAdvancement)}%
           </div>
         </div>
       </header>
@@ -173,7 +173,7 @@ export default function Home() {
         <Link href="/stats" style={styles.menuBtn}>
           <div style={styles.menuBtnContent}>
             <img src="/icons/graph1.png" alt="Stats" style={styles.menuIcon} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ffffff/bar-chart.png"} />
-            <span>Stats</span>
+            <span>{t('nav.stats')}</span>
           </div>
         </Link>
       </div>
@@ -182,6 +182,8 @@ export default function Home() {
         "L'affaire est toute simple, tout le secret tient en deux mots : <b>constance et continuité</b>"
       </p>
     </div>
+  );
+}iv>
   );
 }
 

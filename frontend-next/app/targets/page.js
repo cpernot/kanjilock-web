@@ -1,3 +1,9 @@
+"use client";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { fetchRemoteSettings, saveRemoteSettings } from "@/lib/settings";
+import { fetchStatsCounts, updateBaselines } from "@/lib/targets";
+import { invalidateDashboardCache } from "@/lib/dashboardCache";
 import { useLanguage } from "@/lib/LanguageContext";
 
 export default function TargetsPage() {

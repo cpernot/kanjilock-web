@@ -9,8 +9,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { MODES } from "../lib/quizModes";
 import LoadingOverlay from "./LoadingOverlay";
 import { invalidateDashboardCache } from "../lib/dashboardCache";
+import { useLanguage } from "@/lib/LanguageContext";
 
 export default function Quiz({ forcedMode = null }) {
+    const { t } = useLanguage();
     const [question, setQuestion] = useState(null);
     const [result, setResult] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -436,16 +438,15 @@ export default function Quiz({ forcedMode = null }) {
         if (!isInitialized) {
             return <LoadingOverlay message="Synchronizing Kanji Database..." />;
         }
-        // Subtle loading for already-initialized engine
         return (
             <div style={{ ...styles.container, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <div style={styles.spinner}>⏳</div>
-                <p style={{ marginLeft: '10px', color: '#94a3b8' }}>Preparing Quiz...</p>
+                <p style={{ marginLeft: '10px', color: '#94a3b8' }}>{t('common.loading')}</p>
             </div>
         );
     }
 
-    if (!question && isPlaying) return <div style={styles.container}>Loading question...</div>;
+    if (!question && isPlaying) return <div style={styles.container}>{t('common.loading')}</div>;
 
     // Initial Screen or Paused Screen if no question shown?
     // If not isPlaying and !question -> Initial State
@@ -457,8 +458,8 @@ export default function Quiz({ forcedMode = null }) {
             {isCompiling && (
                 <div style={styles.compilingOverlay}>
                     <div style={styles.spinner}>⏳</div>
-                    <h3 style={{ color: '#fff' }}>Compiling results...</h3>
-                    <p style={{ color: '#94a3b8' }}>Please wait a moment</p>
+                    <h3 style={{ color: '#fff' }}>{t('quiz.summary')}...</h3>
+                    <p style={{ color: '#94a3b8' }}>{t('common.loading')}</p>
                 </div>
             )}
 
@@ -483,7 +484,7 @@ export default function Quiz({ forcedMode = null }) {
                             const lastSelection = typeof window !== 'undefined' ? localStorage.getItem("kanjilock_last_box_selection") : "";
                             const sortedBoxes = [...boxes].reverse();
                             const allBoxesOption = (
-                                <option key="all-boxes" value="">All Boxes (Global)</option>
+                                <option key="all-boxes" value="">{t('quiz.allBoxes')}</option>
                             );
 
                             if (lastSelection === "") {
@@ -497,7 +498,7 @@ export default function Quiz({ forcedMode = null }) {
                                 // Specific box was last selected -> Put All Boxes at bottom
                                 return [...sortedBoxes.map(b => (
                                     <option key={b} value={b}>
-                                        {getBoxLevel(b, selectedMode) === 4 ? "⭐ " : ""}Box {b} (Niv. {getBoxLevel(b, selectedMode)})
+                                        {getBoxLevel(b, selectedMode) === 4 ? "⭐ " : ""}{t('quiz.box')} {b} (Niv. {getBoxLevel(b, selectedMode)})
                                     </option>
                                 )), allBoxesOption];
                             }
@@ -509,7 +510,7 @@ export default function Quiz({ forcedMode = null }) {
             {/* Start/Pause Control */}
             <div style={{ marginBottom: "20px" }}>
                 <button onClick={togglePause} style={isPlaying ? styles.pauseBtn : styles.startBtn}>
-                    {isPlaying ? "⏸ Pause" : (question ? "▶️ Resume" : "▶️ Start")}
+                    {isPlaying ? "⏸ Pause" : (question ? `▶️ ${t('common.start')}` : `▶️ ${t('common.start')}`)}
                 </button>
             </div>
 
@@ -521,7 +522,7 @@ export default function Quiz({ forcedMode = null }) {
 
             {(!isPlaying && question) && (
                 <div style={{ padding: "50px", background: "#eee", borderRadius: "8px" }}>
-                    <h3>Paused</h3>
+                    <h3>{t('quiz.paused')}</h3>
                 </div>
             )}
 
@@ -596,7 +597,7 @@ export default function Quiz({ forcedMode = null }) {
                                 style={styles.submitBtn}
                                 disabled={isProcessing || selectedComposeChoices.length === 0}
                             >
-                                Valider
+                                {t('quiz.validate')}
                             </button>
                         </div>
                     )}
@@ -636,12 +637,12 @@ export default function Quiz({ forcedMode = null }) {
                             {Object.entries(result.extras).map(([key, value]) => {
                                 if (!value || key === "boite") return null;
                                 const labels = {
-                                    signification: "Sens",
-                                    romaji: "Romaji",
-                                    mot: "Exemple",
-                                    signification_mot: "Sens (Ex)",
-                                    lecture_mot: "Lecture",
-                                    kanji: "Kanji"
+                                    signification: t('quiz.labels.sens'),
+                                    romaji: t('quiz.labels.romaji'),
+                                    mot: t('quiz.labels.example'),
+                                    signification_mot: t('quiz.labels.exSens'),
+                                    lecture_mot: t('quiz.labels.reading'),
+                                    kanji: t('quiz.labels.kanji')
                                 };
                                 return (
                                     <div key={key} style={{ marginBottom: "4px" }}>

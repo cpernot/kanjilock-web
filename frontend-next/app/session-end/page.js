@@ -4,8 +4,10 @@ import Link from "next/link";
 import { setBoxContext, getNextBoxId, initEngine, isInitialized } from "@/lib/quizengine";
 import { useRouter } from "next/navigation";
 import { getSessionSummary } from "@/lib/quizSession";
+import { useLanguage } from "@/lib/LanguageContext";
 
 export default function SessionEndPage() {
+    const { t } = useLanguage();
     const [summary, setSummary] = useState(null);
     const router = useRouter();
 
@@ -43,23 +45,23 @@ export default function SessionEndPage() {
         router.push("/quiz?replay=true");
     };
 
-    if (!summary) return <div>No session data found. <Link href="/">Return Home</Link></div>;
+    if (!summary) return <div>{t('common.loading')}... <Link href="/">{t('nav.home')}</Link></div>;
 
     const boxMsg = summary.boxRanking ? summary.boxRanking.message : "";
 
     return (
         <div style={styles.container}>
-            <h2>🎉 Session terminée</h2>
+            <h2>🎉 {t('quiz.summary')}</h2>
             <div style={styles.stat}>
-                <span style={styles.label}>Score:</span>
+                <span style={styles.label}>{t('quiz.score')}:</span>
                 <span style={styles.value}>✔️ {summary.correct} / {summary.size}</span>
             </div>
             <div style={styles.stat}>
-                <span style={styles.label}>Time:</span>
+                <span style={styles.label}>{t('quiz.time')}:</span>
                 <span style={styles.value}>⏱ {(summary.totalTime / 1000).toFixed(1)} s</span>
             </div>
             <div style={styles.stat}>
-                <span style={styles.label}>Speed Score:</span>
+                <span style={styles.label}>{t('quiz.speed')}:</span>
                 <span style={styles.value}>⚡ {summary.scoreOn100} / 100</span>
             </div>
 
@@ -76,19 +78,19 @@ export default function SessionEndPage() {
             )}
 
             <div style={styles.actions}>
-                <button onClick={handleContinue} style={{ ...styles.btn, border: 'none', cursor: 'pointer' }}>➡️ Continue</button>
+                <button onClick={handleContinue} style={{ ...styles.btn, border: 'none', cursor: 'pointer' }}>➡️ {t('quiz.continue')}</button>
                 <button onClick={handleReplay} style={{ ...styles.btn, background: "#8b5cf6", border: 'none', cursor: 'pointer' }}>
-                    🔁 Replay
+                    🔁 {t('quiz.replay')}
                 </button>
                 <Link href="/" style={{ ...styles.btn, background: "#475569" }}>
                     <img src="/icons/home1.png" alt="Home" style={styles.navIconImg} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ffffff/home.png"} />
-                    <span style={styles.navLabel}>Home</span>
+                    <span style={styles.navLabel}>{t('nav.home')}</span>
                 </Link>
             </div>
 
             {/* Detailed Kanji History */}
             <div style={styles.historyList}>
-                <h4 style={{ color: "#94a3b8", margin: "30px 0 15px 0" }}>Détails par Kanji</h4>
+                <h4 style={{ color: "#94a3b8", margin: "30px 0 15px 0" }}>{t('quiz.details')}</h4>
                 <div style={styles.grid}>
                     {summary.history.map((h, i) => (
                         <div key={i}
@@ -104,7 +106,7 @@ export default function SessionEndPage() {
                         >
                             <span style={styles.kanjiChar}>{h.kanji}</span>
                             <span style={styles.kanjiLevel}>
-                                {h.newLevel ? `Niv. ${h.newLevel}` : "---"}
+                                {h.newLevel ? `${t('flashcards.level')} ${h.newLevel}` : "---"}
                                 {h.newLevel === 3 && " ⭐"}
                                 {h.newLevel === 4 && " ⭐⭐⭐"}
                             </span>

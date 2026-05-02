@@ -5,8 +5,10 @@ import { initEngine, getStaticData, getBoxProgress, getUserProgress, currentBoxF
 import { getPlayer_setting, getSettings } from "@/lib/settings";
 import { loadFlashcardProgress, saveFlashcardEvaluation, prepareDeck } from "@/lib/flashcards";
 import Flashcard from "@/components/Flashcard";
+import { useLanguage } from "@/lib/LanguageContext";
 
 export default function FlashcardsPage() {
+    const { t } = useLanguage();
     const [deck, setDeck] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -75,7 +77,7 @@ export default function FlashcardsPage() {
                 setCurrentIndex(currentIndex + 1);
             } else {
                 // End of deck, maybe reshuffle?
-                alert("End of deck! Reshuffling...");
+                alert(t('flashcards.noMatch'));
                 refreshDeck();
             }
         }, 500);
@@ -98,7 +100,7 @@ export default function FlashcardsPage() {
         }
         return (
             <div style={styles.container}>
-                <div style={styles.loader}>Shuffling Cards...</div>
+                <div style={styles.loader}>{t('common.loading')}...</div>
             </div>
         );
     }
@@ -110,14 +112,14 @@ export default function FlashcardsPage() {
             <div style={styles.navBar}>
                 <div />
                 <button onClick={() => setShowFilters(!showFilters)} style={styles.filterBtn}>
-                    {showFilters ? "Close Filters" : "Filters ⚙️"}
+                    {showFilters ? t('flashcards.closeFilters') : `${t('flashcards.filters')} ⚙️`}
                 </button>
             </div>
 
             {showFilters && (
                 <div style={styles.filterPanel}>
                     <div style={styles.filterGroup}>
-                        <div style={styles.filterTitle}>Flashcard Levels</div>
+                        <div style={styles.filterTitle}>{t('flashcards.level')}</div>
                         <div style={styles.checkboxRow}>
                             {[1, 2, 3, 4].map(lvl => (
                                 <label key={lvl} style={styles.checkboxLabel}>
@@ -126,7 +128,7 @@ export default function FlashcardsPage() {
                                         checked={filters.selectedLevels.includes(lvl)}
                                         onChange={() => toggleLevel(lvl)}
                                     />
-                                    Level {lvl}
+                                    {t('flashcards.level')} {lvl}
                                 </label>
                             ))}
                         </div>
@@ -134,36 +136,36 @@ export default function FlashcardsPage() {
 
                     <div style={styles.filterGrid}>
                         <div style={styles.filterGroup}>
-                            <div style={styles.filterTitle}>Box Filter</div>
+                            <div style={styles.filterTitle}>{t('flashcards.boxFilter')}</div>
                             <select 
                                 value={filters.boxId} 
                                 onChange={(e) => setFilters({...filters, boxId: e.target.value})}
                                 style={styles.select}
                             >
-                                <option value="all">All Boxes</option>
-                                {availableBoxes.map(b => <option key={b} value={b}>Box {b}</option>)}
+                                <option value="all">{t('quiz.allBoxes')}</option>
+                                {availableBoxes.map(b => <option key={b} value={b}>{t('quiz.box')} {b}</option>)}
                             </select>
                         </div>
 
                         <div style={styles.filterGroup}>
-                            <div style={styles.filterTitle}>SRS Filter</div>
+                            <div style={styles.filterTitle}>{t('flashcards.srsFilter')}</div>
                             <select 
                                 value={filters.srsLevel} 
                                 onChange={(e) => setFilters({...filters, srsLevel: e.target.value})}
                                 style={styles.select}
                             >
-                                <option value="all">Any SRS Status</option>
-                                <option value="0">New / Unseen</option>
-                                <option value="1">Apprentice</option>
-                                <option value="2">Guru</option>
-                                <option value="3">Master</option>
-                                <option value="4">Enlightened</option>
+                                <option value="all">{t('flashcards.srs.all')}</option>
+                                <option value="0">{t('flashcards.srs.unseen')}</option>
+                                <option value="1">{t('flashcards.srs.apprentice')}</option>
+                                <option value="2">{t('flashcards.srs.guru')}</option>
+                                <option value="3">{t('flashcards.srs.master')}</option>
+                                <option value="4">{t('flashcards.srs.enlightened')}</option>
                             </select>
                         </div>
                     </div>
 
                     <button onClick={() => { refreshDeck(); setShowFilters(false); }} style={styles.applyBtn}>
-                        Apply & Start Session
+                        {t('flashcards.applyStart')}
                     </button>
                 </div>
             )}
@@ -179,9 +181,9 @@ export default function FlashcardsPage() {
                     />
                 ) : (
                     <div style={styles.emptyMsg}>
-                        <h3>No cards match your filters!</h3>
-                        <p>Try selecting more levels or a different box.</p>
-                        <button onClick={() => setShowFilters(true)} style={styles.applyBtn}>Adjust Filters</button>
+                        <h3>{t('flashcards.noMatch')}</h3>
+                        <p>{t('flashcards.tryDifferent')}</p>
+                        <button onClick={() => setShowFilters(true)} style={styles.applyBtn}>{t('flashcards.adjust')}</button>
                     </div>
                 )}
             </div>
@@ -193,14 +195,14 @@ export default function FlashcardsPage() {
                         disabled={currentIndex === 0}
                         style={styles.navBtn}
                     >
-                        Previous
+                        {t('common.prev')}
                     </button>
                     <button 
                         onClick={() => setCurrentIndex(Math.min(deck.length - 1, currentIndex + 1))} 
                         disabled={currentIndex === deck.length - 1}
                         style={styles.navBtn}
                     >
-                        Next
+                        {t('common.next')}
                     </button>
                 </div>
             )}

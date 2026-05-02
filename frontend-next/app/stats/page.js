@@ -8,8 +8,10 @@ import { MODES } from "@/lib/quizModes";
 import { fetchBoxCounts } from "@/lib/targets";
 import { loadFlashcardProgress } from "@/lib/flashcards";
 import ContributionGraph from "@/components/ContributionGraph";
+import { useLanguage } from "@/lib/LanguageContext";
 
 export default function StatsPage() {
+    const { t } = useLanguage();
     const [stats, setStats] = useState(null);
     const [boxStats, setBoxStats] = useState({ 1: 0, 2: 0, 3: 0, 4: 0 });
     const [flashStats, setFlashStats] = useState({ 1: 0, 2: 0, 3: 0, 4: 0 });
@@ -87,7 +89,7 @@ export default function StatsPage() {
 
     if (!selectedMode || loading) return (
         <div style={{ ...styles.container, display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh" }}>
-            <div style={{ color: "#fff", fontSize: "1.2rem" }}>Loading Statistics...</div>
+            <div style={{ color: "#fff", fontSize: "1.2rem" }}>{t('common.loading')}...</div>
         </div>
     );
 
@@ -99,7 +101,7 @@ export default function StatsPage() {
     return (
         <div style={styles.container}>
             <div style={styles.header}>
-                <h1 style={styles.title}>Statistics</h1>
+                <h1 style={styles.title}>{t('stats.title')}</h1>
             </div>
 
             <div style={styles.filterSection}>
@@ -131,10 +133,10 @@ export default function StatsPage() {
 
                     <div style={styles.viewToggle}>
                         {[
-                            { id: "today", label: "Day" },
-                            { id: "week", label: "Week" },
-                            { id: "month", label: "Month" },
-                            { id: "all", label: "Year" }
+                            { id: "today", label: t('stats.day') },
+                            { id: "week", label: t('stats.week') },
+                            { id: "month", label: t('stats.month') },
+                            { id: "all", label: t('stats.year') }
                         ].map(btn => (
                             <button
                                 key={btn.id}
@@ -149,7 +151,7 @@ export default function StatsPage() {
             {/* Mastery History Graph - NOW ON TOP */}
             <div style={styles.fullWidthSection}>
                 <div style={styles.glassCard}>
-                    <h3 style={styles.cardTitle}>Mastery Trend</h3>
+                    <h3 style={styles.cardTitle}>{t('stats.trend')}</h3>
                     <div style={styles.historyChartContainer} ref={historyScrollRef}>
                         <div style={styles.historyBars}>
                             {(() => {
@@ -251,15 +253,15 @@ export default function StatsPage() {
             <div style={styles.summaryRow}>
                 <div style={styles.summaryCard}>
                     <div style={styles.summaryValue}>{totalSummary.total_answers || 0}</div>
-                    <div style={styles.summaryLabel}>Answers</div>
+                    <div style={styles.summaryLabel}>{t('stats.answers')}</div>
                 </div>
                 <div style={styles.summaryCard}>
                     <div style={styles.summaryValue}>{totalSummary.total_sessions || 0}</div>
-                    <div style={styles.summaryLabel}>Sessions</div>
+                    <div style={styles.summaryLabel}>{t('stats.sessions')}</div>
                 </div>
                 <div style={styles.summaryCard}>
                     <div style={styles.summaryValue}>{totalSummary.days_active || 0}</div>
-                    <div style={styles.summaryLabel}>Days</div>
+                    <div style={styles.summaryLabel}>{t('stats.days')}</div>
                 </div>
             </div>
 
@@ -351,7 +353,7 @@ export default function StatsPage() {
                                                         {count > 0 && <span style={styles.barValue}>{count}</span>}
                                                     </div>
                                                 </div>
-                                                <div style={styles.barLabel}>Lvl {level}</div>
+                                                <div style={styles.barLabel}>{t('targets.level')} {level}</div>
                                             </div>
                                         );
                                     })}
@@ -401,12 +403,12 @@ export default function StatsPage() {
 
             <div style={styles.fullWidthSection}>
                 <div style={styles.glassCard}>
-                    <h3 style={styles.cardTitle}>Activity Heatmap</h3>
+                    <h3 style={styles.cardTitle}>{t('stats.heatmap')}</h3>
                     <div style={{ display: "flex", justifyContent: "center", marginTop: "10px" }}>
                         <ContributionGraph data={dailyData} />
                     </div>
                     {Object.keys(dailyData).length === 0 && (
-                        <p style={{ color: "#64748b", marginTop: "20px" }}>No activity recorded yet.</p>
+                        <p style={{ color: "#64748b", marginTop: "20px" }}>{t('stats.noActivity')}</p>
                     )}
                 </div>
             </div>

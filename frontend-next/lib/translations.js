@@ -20,7 +20,87 @@ export const translations = {
             back: "Back",
             loginToContinue: "Login to Continue",
             login: "Login",
-            username: "Username"
+            username: "Username",
+            start: "Start",
+            confirm: "Confirm"
+        },
+        home: {
+            welcome: "Welcome back, {player}!",
+            periodProgress: "Period Progress",
+            boxMastery: "Box Mastery",
+            kanjiMastery: "Kanji Mastery",
+            mastered: "Mastered",
+            learned: "Learned",
+            startSession: "Start Session",
+            flashcards: "Flashcards",
+            targets: "Set Targets",
+            timeElapsed: "Time Elapsed"
+        },
+        quiz: {
+            settings: "Quiz Settings",
+            box: "Box",
+            progressive: "Progressive Mode",
+            allBoxes: "All Boxes",
+            allGood: "All-Good Mode",
+            question: "Question {current} / {total}",
+            validate: "Validate",
+            finalScore: "Final Score",
+            summary: "Session Summary",
+            details: "Details per Kanji",
+            accuracy: "Accuracy",
+            speed: "Avg Speed",
+            points: "Points",
+            score: "Score",
+            time: "Time",
+            continue: "Continue",
+            replay: "Replay",
+            next: "Next",
+            paused: "Paused",
+            labels: {
+                sens: "Meaning",
+                romaji: "Romaji",
+                example: "Example",
+                exSens: "Example Meaning",
+                reading: "Reading",
+                kanji: "Kanji"
+            }
+        },
+        flashcards: {
+            title: "Practice Decks",
+            start: "Start Deck",
+            empty: "No cards at this level.",
+            level: "Level",
+            filters: "Filters",
+            closeFilters: "Close Filters",
+            applyStart: "Apply & Start Session",
+            boxFilter: "Box Filter",
+            srsFilter: "SRS Filter",
+            adjust: "Adjust Filters",
+            noMatch: "No cards match your filters!",
+            tryDifferent: "Try selecting more levels or a different box.",
+            srs: {
+                all: "Any SRS Status",
+                unseen: "New / Unseen",
+                apprentice: "Apprentice",
+                guru: "Guru",
+                master: "Master",
+                enlightened: "Enlightened"
+            }
+        },
+        ranking: {
+            title: "Leaderboard",
+            period: "Period",
+            rank: "Rank",
+            player: "Player",
+            totalScore: "Total Score",
+            speedScore: "Speed (Score)",
+            date: "Date (DD/MM/YY)",
+            you: "You",
+            noData: "No Data Available",
+            allTime: "All Time",
+            month: "This Month",
+            week: "This Week",
+            today: "Today"
         },
         targets: {
             title: "Set Targets",
@@ -34,6 +114,19 @@ export const translations = {
             saveClose: "Save & Close",
             resetPeriod: "Reset Period",
             level: "Level"
+        },
+        stats: {
+            title: "Statistics",
+            answers: "Answers",
+            sessions: "Sessions",
+            days: "Days",
+            trend: "Mastery Trend",
+            heatmap: "Activity Heatmap",
+            noActivity: "No activity recorded yet.",
+            day: "Day",
+            week: "Week",
+            month: "Month",
+            year: "Year"
         }
     },
     fr: {
@@ -57,7 +150,87 @@ export const translations = {
             back: "Retour",
             loginToContinue: "Connectez-vous pour continuer",
             login: "Connexion",
-            username: "Nom d'utilisateur"
+            username: "Nom d'utilisateur",
+            start: "Démarrer",
+            confirm: "Confirmer"
+        },
+        home: {
+            welcome: "Bon retour, {player} !",
+            periodProgress: "Progression période",
+            boxMastery: "Maîtrise Boîtes",
+            kanjiMastery: "Maîtrise Kanji",
+            mastered: "Maîtrisés",
+            learned: "Appris",
+            startSession: "Démarrer session",
+            flashcards: "Flashcards",
+            targets: "Objectifs",
+            timeElapsed: "Temps écoulé"
+        },
+        quiz: {
+            settings: "Réglages Quiz",
+            box: "Boîte",
+            progressive: "Mode Progressif",
+            allBoxes: "Toutes les boîtes",
+            allGood: "Mode All-Good",
+            question: "Question {current} / {total}",
+            validate: "Valider",
+            finalScore: "Score Final",
+            summary: "Résumé de session",
+            details: "Détails par Kanji",
+            accuracy: "Précision",
+            speed: "Vitesse moy.",
+            points: "Points",
+            score: "Score",
+            time: "Temps",
+            continue: "Continuer",
+            replay: "Rejouer",
+            next: "Suivant",
+            paused: "En pause",
+            labels: {
+                sens: "Sens",
+                romaji: "Romaji",
+                example: "Exemple",
+                exSens: "Sens (Ex)",
+                reading: "Lecture",
+                kanji: "Kanji"
+            }
+        },
+        flashcards: {
+            title: "Decks d'entraînement",
+            start: "Lancer le deck",
+            empty: "Aucune carte à ce niveau.",
+            level: "Niveau",
+            filters: "Filtres",
+            closeFilters: "Fermer les filtres",
+            applyStart: "Appliquer & Démarrer",
+            boxFilter: "Filtre de Boîte",
+            srsFilter: "Filtre SRS",
+            adjust: "Ajuster les filtres",
+            noMatch: "Aucune carte ne correspond !",
+            tryDifferent: "Essayez de sélectionner plus de niveaux ou une autre boîte.",
+            srs: {
+                all: "Tous les statuts SRS",
+                unseen: "Nouveau / Non vu",
+                apprentice: "Apprenti",
+                guru: "Gourou",
+                master: "Maître",
+                enlightened: "Éclairé"
+            }
+        },
+        ranking: {
+            title: "Classement",
+            period: "Période",
+            rank: "Rang",
+            player: "Joueur",
+            totalScore: "Score Total",
+            speedScore: "Vitesse (Score)",
+            date: "Date (JJ/MM/AA)",
+            you: "Vous",
+            noData: "Aucune donnée disponible",
+            allTime: "Tout le temps",
+            month: "Ce mois",
+            week: "Cette semaine",
+            today: "Aujourd'hui"
         },
         targets: {
             title: "Objectifs d'apprentissage",
@@ -71,6 +244,19 @@ export const translations = {
             saveClose: "Enregistrer & Fermer",
             resetPeriod: "Réinitialiser la période",
             level: "Niveau"
+        },
+        stats: {
+            title: "Statistiques",
+            answers: "Réponses",
+            sessions: "Sessions",
+            days: "Jours",
+            trend: "Tendance de maîtrise",
+            heatmap: "Activité",
+            noActivity: "Aucune activité enregistrée.",
+            day: "Jour",
+            week: "Semaine",
+            month: "Mois",
+            year: "Année"
         }
     },
     jp: {
@@ -94,7 +280,87 @@ export const translations = {
             back: "戻る",
             loginToContinue: "ログインして続行",
             login: "ログイン",
-            username: "ユーザー名"
+            username: "ユーザー名",
+            start: "開始",
+            confirm: "確認"
+        },
+        home: {
+            welcome: "おかえりなさい、{player}さん！",
+            periodProgress: "期間の進捗",
+            boxMastery: "ボックス習得度",
+            kanjiMastery: "漢字習得度",
+            mastered: "習得済み",
+            learned: "学習済み",
+            startSession: "セッション開始",
+            flashcards: "フラッシュカード",
+            targets: "目標設定",
+            timeElapsed: "経過時間"
+        },
+        quiz: {
+            settings: "クイズ設定",
+            box: "ボックス",
+            progressive: "プログレッシブモード",
+            allBoxes: "全ボックス",
+            allGood: "オールグッドモード",
+            question: "問題 {current} / {total}",
+            validate: "確定",
+            finalScore: "最終スコア",
+            summary: "セッション概要",
+            details: "漢字別詳細",
+            accuracy: "正解率",
+            speed: "平均速度",
+            points: "ポイント",
+            score: "スコア",
+            time: "時間",
+            continue: "次へ",
+            replay: "もう一度",
+            next: "次へ",
+            paused: "一時停止中",
+            labels: {
+                sens: "意味",
+                romaji: "ローマ字",
+                example: "例",
+                exSens: "意味（例）",
+                reading: "読み",
+                kanji: "漢字"
+            }
+        },
+        flashcards: {
+            title: "練習デッキ",
+            start: "デッキを開始",
+            empty: "このレベルのカードはありません。",
+            level: "レベル",
+            filters: "フィルター",
+            closeFilters: "閉じる",
+            applyStart: "適用して開始",
+            boxFilter: "ボックスフィルター",
+            srsFilter: "SRSフィルター",
+            adjust: "フィルター調整",
+            noMatch: "一致するカードがありません！",
+            tryDifferent: "他のレベルやボックスを選択してください。",
+            srs: {
+                all: "すべてのSRS状態",
+                unseen: "未学習",
+                apprentice: "見習い",
+                guru: "達人",
+                master: "師範",
+                enlightened: "悟り"
+            }
+        },
+        ranking: {
+            title: "リーダーボード",
+            period: "期間",
+            rank: "順位",
+            player: "プレイヤー",
+            totalScore: "合計スコア",
+            speedScore: "速度（スコア）",
+            date: "日付 (日/月/年)",
+            you: "あなた",
+            noData: "データがありません",
+            allTime: "全期間",
+            month: "今月",
+            week: "今週",
+            today: "今日"
         },
         targets: {
             title: "学習目標設定",
@@ -108,6 +374,19 @@ export const translations = {
             saveClose: "保存して閉じる",
             resetPeriod: "期間リセット",
             level: "レベル"
+        },
+        stats: {
+            title: "統計",
+            answers: "回答数",
+            sessions: "セッション数",
+            days: "活動日数",
+            trend: "習得トレンド",
+            heatmap: "活動ヒートマップ",
+            noActivity: "活動データがありません。",
+            day: "日",
+            week: "週",
+            month: "月",
+            year: "年"
         }
     }
 };
