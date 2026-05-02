@@ -97,7 +97,7 @@ export default function Navbar() {
 
           <Link href="/targets" style={{ ...styles.navItem, ...(pathname === "/targets" ? styles.active : {}) }}>
             <img src="/icons/target1.png" alt="Targets" style={styles.navIconImg} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ffffff/flag.png"} />
-            <span style={styles.navLabel}>{t('nav.stats')}</span>
+            <span style={styles.navLabel}>{t('nav.targets')}</span>
           </Link>
         </div>
       </nav>

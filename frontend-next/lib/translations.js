@@ -4,6 +4,7 @@ export const translations = {
             home: "Home",
             quiz: "Quiz",
             stats: "Stats",
+            targets: "Targets",
             flashcards: "Cards",
             chat: "Sensei",
             settings: "Settings",
@@ -161,9 +162,10 @@ export const translations = {
         nav: {
             home: "Accueil",
             quiz: "Quiz",
-            stats: "Stats",
+            stats: "Statistiques",
+            targets: "Objectifs",
             flashcards: "Cartes",
-            chat: "Sensei",
+            chat: "Prof",
             settings: "Réglages",
             logout: "Déconnexion",
             help: "Aide"
@@ -187,8 +189,8 @@ export const translations = {
         home: {
             welcome: "Bienvenue, {player} !",
             periodProgress: "Progression période",
-            boxMastery: "Maîtrise Boîtes",
-            kanjiMastery: "Maîtrise Kanji",
+            boxMastery: "Maîtrise des Boîtes",
+            kanjiMastery: "Maîtrise des Kanji",
             mastered: "Maîtrisés",
             learned: "Appris",
             startSession: "Démarrer session",
@@ -220,8 +222,8 @@ export const translations = {
             modes: {
                 qa: "Kanji → Sens",
                 qb: "Sens → Kanji",
-                qc: "Mot → Sens",
-                qe: "Sens → Mot",
+                qc: "Mot → Signification",
+                qe: "Signification → Mot",
                 qd: "Mot → Lecture",
                 qj: "Lecture → Mot",
                 qf: "Kanji → Romaji",
@@ -277,7 +279,7 @@ export const translations = {
             today: "Aujourd'hui"
         },
         targets: {
-            title: "Objectifs d'apprentissage",
+            title: "Objectifs",
             type: "Type d'objectif",
             kanjiLearned: "Kanjis appris",
             boxesMastered: "Boîtes maîtrisées",
@@ -285,7 +287,7 @@ export const translations = {
             daily: "Quotidien",
             weekly: "Hebdomadaire",
             monthly: "Mensuel",
-            saveClose: "Enregistrer & Fermer",
+            saveClose: "Sauvegarder & Fermer",
             resetPeriod: "Réinitialiser la période",
             level: "Niveau"
         },
@@ -308,11 +310,11 @@ export const translations = {
             playerNamePlaceholder: "Entrez le nom du joueur",
             sessionSize: "Taille de session",
             maxTime: "Temps Max (ms)",
-            autoDismiss: "Passer auto la réponse",
+            autoDismiss: "réponse automatique",
             sound: "Activer les sons",
             showProgress: "Barre de progression",
             sequential: "Ordre séquentiel (pas d'aléatoire)",
-            discard: "Abandonner & Fermer"
+            discard: "Fermer sans sauvegarder"
         }
     },
     jp: {
@@ -320,6 +322,7 @@ export const translations = {
             home: "ホーム",
             quiz: "クイズ",
             stats: "統計",
+            targets: "目標",
             flashcards: "カード",
             chat: "先生",
             settings: "設定",
@@ -378,10 +381,10 @@ export const translations = {
             modes: {
                 qa: "漢字 → 意味",
                 qb: "意味 → 漢字",
-                qc: "単語 → 意味",
-                qe: "意味 → 単語",
-                qd: "単語 → 読み",
-                qj: "読み → 単語",
+                qc: "熟語 → 意味",
+                qe: "意味 → 熟語",
+                qd: "熟語 → ローマ字",
+                qj: "ローマ字 → 熟語",
                 qf: "漢字 → ローマ字",
                 qi: "ローマ字 → 漢字",
                 qg: "漢字 → ボックス",
@@ -390,9 +393,9 @@ export const translations = {
             labels: {
                 sens: "意味",
                 romaji: "ローマ字",
-                example: "例",
-                exSens: "意味（例）",
-                reading: "読み",
+                example: "熟語",
+                exSens: "意味（熟語）",
+                reading: "ローマ字（熟語）",
                 kanji: "漢字"
             }
         },
