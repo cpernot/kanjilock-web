@@ -93,11 +93,11 @@ export function getSessionSummary() {
     const avgTime = session.current > 0 ? (session.totalTime / session.current) : 0;
     
     // Speed Score Formula: 
-    // 100 at 2s (2000ms), 0 at 10s (10000ms)
-    // Decreases by 1 point for every 80ms over 2s.
+    // 100 at 1.8s (1800ms), 0 at 10s (10000ms)
+    // Decreases by 1 point for every ~82ms over 1.8s.
     let speedScore100 = 100;
-    if (avgTime > 2000) {
-        speedScore100 = Math.max(0, 100 - (avgTime - 2000) * (100 / 8000));
+    if (avgTime > 1800) {
+        speedScore100 = Math.max(0, 100 - (avgTime - 1800) * (100 / 8200));
     }
 
     // Deduplicate history for UI display and backend SRS update

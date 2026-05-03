@@ -9,9 +9,12 @@ export default function RankingPage() {
     const [ranking, setRanking] = useState([]);
     const [period, setPeriod] = useState("all");
     const [box, setBox] = useState("all");
+    const [quizMode, setQuizMode] = useState("all");
     const [availableBoxes, setAvailableBoxes] = useState([]);
     const [currentPlayer, setCurrentPlayer] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    const MODES_OPTS = ["qa", "qb", "qc", "qe", "qd", "qj", "qf", "qi", "qg", "qh"];
 
     useEffect(() => {
         const p = localStorage.getItem("kanjilock_player");
@@ -21,7 +24,7 @@ export default function RankingPage() {
 
     useEffect(() => {
         loadRanking();
-    }, [period, box]);
+    }, [period, box, quizMode]);
 
     async function fetchBoxes() {
         try {
@@ -37,7 +40,7 @@ export default function RankingPage() {
 
     async function loadRanking() {
         setLoading(true);
-        let url = `${config.apiBaseUrl}/ranking?period=${period}&box=${box}`;
+        let url = `${config.apiBaseUrl}/ranking?period=${period}&box=${box}&mode=${quizMode}`;
         
         try {
             const res = await fetch(url);
@@ -77,6 +80,20 @@ export default function RankingPage() {
                         <option value="month">{t('ranking.month')}</option>
                         <option value="week">{t('ranking.week')}</option>
                         <option value="today">{t('ranking.today')}</option>
+                    </select>
+                </div>
+
+                <div style={styles.filterGroup}>
+                    <label style={styles.label}>{t('quiz.mode')}:</label>
+                    <select 
+                        value={quizMode} 
+                        onChange={(e) => setQuizMode(e.target.value)}
+                        style={styles.select}
+                    >
+                        <option value="all">{t('common.all')}</option>
+                        {MODES_OPTS.map(m => (
+                            <option key={m} value={m}>{t(`quiz.modes.${m}`)}</option>
+                        ))}
                     </select>
                 </div>
 

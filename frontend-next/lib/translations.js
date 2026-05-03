@@ -25,7 +25,8 @@ export const translations = {
             start: "Start",
             confirm: "Confirm",
             prev: "Previous",
-            next: "Next"
+            next: "Next",
+            all: "All"
         },
         home: {
             welcome: "Welcome, {player}!",
@@ -43,6 +44,7 @@ export const translations = {
         quiz: {
             settings: "Quiz Settings",
             box: "Box",
+            mode: "Mode",
             progressive: "Progressive Mode",
             allBoxes: "All Boxes",
             allGood: "All-Good Mode",
@@ -184,7 +186,8 @@ export const translations = {
             start: "Démarrer",
             confirm: "Confirmer",
             prev: "Précédent",
-            next: "Suivant"
+            next: "Suivant",
+            all: "Tous"
         },
         home: {
             welcome: "Bienvenue, {player} !",
@@ -202,6 +205,7 @@ export const translations = {
         quiz: {
             settings: "Réglages Quiz",
             box: "Boîte",
+            mode: "Mode",
             progressive: "Mode Progressif",
             allBoxes: "Toutes les boîtes",
             allGood: "Mode All-Good",
@@ -343,7 +347,8 @@ export const translations = {
             start: "開始",
             confirm: "確認",
             prev: "前へ",
-            next: "次へ"
+            next: "次へ",
+            all: "すべて"
         },
         home: {
             welcome: "ようこそ、{player}さん！",
@@ -361,6 +366,7 @@ export const translations = {
         quiz: {
             settings: "クイズ設定",
             box: "ボックス",
+            mode: "モード",
             progressive: "プログレッシブモード",
             allBoxes: "全ボックス",
             allGood: "オールグッドモード",

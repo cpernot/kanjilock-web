@@ -5,10 +5,11 @@ from datetime import datetime, timedelta
 router = APIRouter()
 
 @router.get("/ranking")
-def get_ranking(period: str = "all", box: str = "all"):
+def get_ranking(period: str = "all", box: str = "all", mode: str = "all"):
     """
     period: 'all', 'month', 'week', 'today'
     box: 'all' or specific box ID (e.g. '1', '2A')
+    mode: 'all' or specific quiz mode (e.g. 'qa', 'qb')
     """
     # Fetch sessions
     query = supabase.table("sessions").select("*").order("session_date", desc=True).limit(3000)
@@ -26,6 +27,14 @@ def get_ranking(period: str = "all", box: str = "all"):
     
     response = query.execute()
     all_sessions = response.data
+
+    # Filter by mode if requested
+    if mode and mode != "all":
+        target_mode = str(mode).strip().lower()
+        all_sessions = [
+            s for s in all_sessions 
+            if str(s.get("details", {}).get("mode")).strip().lower() == target_mode
+        ]
 
     results = []
 
@@ -51,7 +60,7 @@ def get_ranking(period: str = "all", box: str = "all"):
                         pass
 
                 results.append({
-                    "player": details.get("player", "Inconnu"),
+                    "player": str(details.get("player", "Inconnu")).strip(),
                     "speed": details.get("score_global", 0),
                     "date": fmt_date,
                     "raw_date": raw_date # for sorting
@@ -63,20 +72,34 @@ def get_ranking(period: str = "all", box: str = "all"):
     else:
         # --- All Boxes Selected ---
         # One entry per player
-        # Score = sum of best score_speed for each box
+        # Score = sum of best score_global for each unique box
         players_data = {} # { player_name: { box_id: { max_score, date } } }
         
+        # Get master list of boxes for filtering
+        from backend.box_metadata import BOX_ORDER
+        valid_box_ids = [str(b).strip().lower() for b in BOX_ORDER]
+
         for s in all_sessions:
             details = s.get("details", {})
-            p_name = details.get("player", "Inconnu")
+            p_name = str(details.get("player", "Inconnu")).strip()
+            
+            # Normalize Box ID
             session_box_val = details.get("box") if "box" in details else details.get("boite")
-            session_box = str(session_box_val).strip().lower() if session_box_val is not None else "global"
+            if session_box_val is None:
+                session_box = "global"
+            else:
+                session_box = str(session_box_val).strip().lower()
+                # Handle potential ".0" suffix from numeric storage
+                if session_box.endswith(".0"):
+                    session_box = session_box[:-2]
+            
             score = details.get("score_global", 0)
             raw_date = s.get("session_date") or details.get("timestamp")
 
             if p_name not in players_data:
                 players_data[p_name] = {}
             
+            # Grouping by normalized session_box ensures we only keep the best score for THAT box
             if session_box not in players_data[p_name] or score > players_data[p_name][session_box]["score"]:
                 players_data[p_name][session_box] = {
                     "score": score,
@@ -84,9 +107,15 @@ def get_ranking(period: str = "all", box: str = "all"):
                 }
         
         for p_name, boxes in players_data.items():
-            total_score = sum(b["score"] for b in boxes.values())
-            # Date is the date where this score was overwrite (latest improvement across any box)
-            # Find the latest date among the best scores
+            # CRITICAL: Only sum scores for valid individual boxes.
+            # This excludes "global" or empty "" sessions (All Boxes mode) which would double count.
+            total_score = sum(
+                b_data["score"] 
+                for b_id, b_data in boxes.items() 
+                if b_id in valid_box_ids
+            )
+            
+            # Date is the latest improvement across any box
             latest_date_raw = None
             for b in boxes.values():
                 if not latest_date_raw or (b["date"] and b["date"] > latest_date_raw):

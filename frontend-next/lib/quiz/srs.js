@@ -43,29 +43,30 @@ export async function updateBoxRanking(boxId, sessionStats, mode, boxProgress) {
     // LEVEL CALCULATION RULES
     let newLevel = 1;
     let message = "Niveau 1 Validé !";
+    const speedScore = sessionStats.scoreOn100;
 
-    // Level 2: 100% Success
-    if (sessionStats.wrong === 0) {
+    // Level 2: Speed Score >= 80
+    if (speedScore >= 80) {
         newLevel = 2;
-        message = "Niveau 2 : Sans faute !";
+        message = "Niveau 2 : Score Rapide (80+) !";
+    }
 
-        // Level 3: 100% + Total Time < 40s
-        if (sessionStats.totalTime <= 40000) {
-            newLevel = 3;
-            message = "Niveau 3 : Éclair (40s) !";
+    // Level 3: Speed Score = 100
+    if (speedScore >= 100) {
+        newLevel = 3;
+        message = "Niveau 3 : Éclair (Score 100) !";
 
-            // Level 4: Confirmation (5 days later)
-            if (current.last_attempt) {
-                const lastDate = new Date(current.last_attempt);
-                const diffTime = Math.abs(now - lastDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        // Level 4: Confirmation (5 days later)
+        if (current.last_attempt) {
+            const lastDate = new Date(current.last_attempt);
+            const diffTime = Math.abs(now - lastDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                if (current.level >= 3 && diffDays >= 5) {
-                    newLevel = 4;
-                    message = "🏆 NIVEAU 4 : MAÎTRE DU SCEAU !";
-                } else if (current.level >= 3) {
-                    message = `Niveau 3 confirmé. Revenez dans ${5 - diffDays} jours.`;
-                }
+            if (current.level >= 3 && diffDays >= 5) {
+                newLevel = 4;
+                message = "🏆 NIVEAU 4 : MAÎTRE DU SCEAU !";
+            } else if (current.level >= 3) {
+                message = `Niveau 3 confirmé. Revenez dans ${5 - diffDays} jours pour le Niv. 4.`;
             }
         }
     }

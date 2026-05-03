@@ -38,7 +38,7 @@ export default function Navbar() {
         </Link>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           {/* Language Switcher */}
-          <button 
+          <button
             onClick={cycleLanguage}
             style={styles.langBtn}
             title="Change Language"
