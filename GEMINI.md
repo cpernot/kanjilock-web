@@ -75,8 +75,8 @@ When doing a code review, return EXACTLY this structure:
 
 ### ⚡ Speed Score Calculation
 - **Model:** Linear decay based on average response time per answer.
-- **Thresholds:** 100/100 for ≤ 2s avg; 0/100 for ≥ 10s avg.
-- **Normalization:** Decreases by 1 point for approximately every 80ms over the 2s mark.
+- **Thresholds:** 100/100 for ≤ 1.8s avg; 0/100 for ≥ 10s avg.
+- **Normalization:** Decreases by 1 point for approximately every 80ms over the 1.8s mark.
 - **Display:** "Avg Speed" (s/item) is displayed in the session-end summary to clarify the derivation of the final score.
 
 ### 📊 Flashcard Mastery Code

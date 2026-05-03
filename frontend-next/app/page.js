@@ -158,7 +158,7 @@ export default function Home() {
             label={`L${lvl}`}
             subtitle={`${progressData[lvl]?.current || 0}/${progressData[lvl]?.target || 0}`}
             color={levelColors[lvl]}
-            size={80}
+            size={100}
           />
         ))}
       </div>
@@ -179,14 +179,14 @@ export default function Home() {
       </div>
 
       <p style={styles.quote}>
-        "L'affaire est toute simple, tout le secret tient en deux mots : <b>constance et continuité</b>"
+        "L'affaire est toute simple, tout le secret tient en deux mots : <b>constance et continuité</b>", FÉDOR DOSTOÏEVSKI (L’Adolescent, 1875)
       </p>
     </div>
   );
 }
 
 const styles = {
-  container: { maxWidth: "700px", margin: "0 auto", padding: "10px 20px", textAlign: "center" },
+  container: { maxWidth: "700px", margin: "0 auto", padding: "5px 20px", textAlign: "center" },
   loading: { display: "flex", justifyContent: "center", alignItems: "center", height: "80vh", fontSize: "1.2rem", color: "#94a3b8" },
   loginCard: { marginTop: "100px", background: "rgba(30, 41, 59, 0.4)", padding: "40px", borderRadius: "24px", border: "1px solid rgba(255,255,255,0.1)" },
   header: { marginBottom: "15px" },
@@ -202,10 +202,12 @@ const styles = {
   progressGrid: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
-    gap: "30px",
-    maxWidth: "320px",
-    margin: "0 auto",
-    marginBottom: "40px"
+    gap: "10px",
+    maxWidth: "240px",
+    marginLeft: "auto",
+    marginRight: "auto",
+    marginTop: "10px",
+    marginBottom: "10px"
   },
   menuGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "20px" },
   menuBtn: { textDecoration: "none", background: "#1e293b", padding: "18px", borderRadius: "16px", color: "#fff", fontWeight: "bold", fontSize: "1rem", border: "1px solid rgba(255,255,255,0.05)", transition: "all 0.2s" },

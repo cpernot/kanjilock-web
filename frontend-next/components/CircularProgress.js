@@ -1,12 +1,12 @@
 "use client";
 
-export default function CircularProgress({ 
-    percentage, 
-    label, 
-    color = "#2196F3", 
-    size = 120, 
-    strokeWidth = 10,
-    subtitle = "" 
+export default function CircularProgress({
+    percentage,
+    label,
+    color = "#2196F3",
+    size = 120,
+    strokeWidth = 12,
+    subtitle = ""
 }) {
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
@@ -18,8 +18,7 @@ export default function CircularProgress({
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            width: size,
-            margin: "10px"
+            width: size
         }}>
             <div style={{ position: "relative", width: size, height: size }}>
                 <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
@@ -64,18 +63,18 @@ export default function CircularProgress({
                         {Math.round(percentage)}%
                     </span>
                     {subtitle && (
-                        <span style={{ fontSize: size * 0.08, color: "rgba(255,255,255,0.6)", marginTop: "2px" }}>
+                        <span style={{ fontSize: size * 0.12, color: "rgba(255,255,255,0.6)", marginTop: "2px" }}>
                             {subtitle}
                         </span>
                     )}
                 </div>
             </div>
             {label && (
-                <span style={{ 
-                    marginTop: "8px", 
-                    fontSize: "0.9rem", 
-                    fontWeight: "500", 
-                    color: "rgba(255,255,255,0.8)" 
+                <span style={{
+                    marginTop: "4px",
+                    fontSize: "0.9rem",
+                    fontWeight: "500",
+                    color: "rgba(255,255,255,0.8)"
                 }}>
                     {label}
                 </span>
