@@ -224,6 +224,24 @@ async def save_settings_api(player: str, settings: dict):
     success = save_player_settings(player, settings)
     return {"status": "success" if success else "error"}
 
+@app.post("/api/target-history/{player}")
+async def save_target_history_api(player: str, data: dict):
+    from backend.data.progress import save_target_history
+    success = save_target_history(player, data)
+    return {"status": "success" if success else "error"}
+
+@app.get("/api/target-history/{player}")
+async def get_target_history_api(player: str, limit: int = 50):
+    from backend.data.progress import get_target_history
+    history = get_target_history(player, limit)
+    return history
+
+@app.delete("/api/target-history/{player}/{history_id}")
+async def delete_target_history_api(player: str, history_id: str):
+    from backend.data.progress import delete_target_history
+    success = delete_target_history(player, history_id)
+    return {"status": "success" if success else "error"}
+
 @app.get("/api/available-boxes")
 async def get_available_boxes():
     """Returns the cached list of unique boxes (O(1) retrieval)"""

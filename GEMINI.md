@@ -128,6 +128,17 @@ When doing a code review, return EXACTLY this structure:
 - **Auto-Reset Logic:** `checkPeriodReset` (called on Home load) compares the current date with `lastBaselineUpdate`. If the period (Day/Week/Month) has changed, it automatically invokes `updateBaselines` to start a fresh progress cycle.
 - **Advancement Bar:** The Home page displays a "Time Elapsed" bar calculated by `calculatePeriodAdvancement`. It represents the ratio of time passed between the `lastBaselineUpdate` and the end of the current period (Day: 24h, Week: 7d, Month: Days in month).
 
+### ⭐ Target Achievements & Multi-Targets
+- **History Archiving:** When a period resets, a snapshot is saved to the `target_history` table in Supabase. This includes the configuration, achieved gains, and star count.
+- **Star Logic:** 1 star per level goal met (max 4). Calculated as `sum([1 if gained[lvl] >= config[lvl] else 0 for lvl in 1..4])`.
+- **Unified Stats Engine:** `lib/targets.js` provides `fetchStatsCounts`, a single pack containing both Kanji and Box metrics. Components must use this to avoid "zero-falsy" logic errors where Box mastery might accidentally fall back to Kanji counts.
+- **State Synchronization:** Dashboard and Target management use reactive `settings` state. When saving, the component must pass its current state to `updateBaselines` to ensure atomic persistence of new sub-targets and baseline snapshots.
+- **Target Deletion:** Sub-targets can be removed from the `definitions` map. The `main` target is protected to ensure system stability.
+- **Multi-Target Architecture:** Settings now support `targets.definitions` (a map of target IDs). Each target has its own independent frequency, type, and baselines.
+- **Active Target:** The dashboard displays the target identified by `targets.activeId`. Users can switch active targets via a dropdown on the Home page.
+- **Migration:** Legacy single-target settings are automatically migrated to `definitions.main` via the `getSettings()` helper in `lib/settings.js`.
+- **Visuals:** Reaching 100% on a gauge triggers a floating ⭐ icon in the `CircularProgress` component.
+
 ### ☁️ Cloud Deployment & Performance
 - **Startup Optimization:** `deploy-cloud.bat` uses `--cpu-boost` and `--cpu 1` to reduce cold start latency. 
 - **Environment Automation:** The deployment script automatically parses the local `.env` file to set Cloud Run environment variables, avoiding manual placeholder updates.

@@ -1,12 +1,12 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getPlayer_setting, getSettings, fetchRemoteSettings } from "@/lib/settings";
+import { getPlayer_setting, getSettings, fetchRemoteSettings, saveRemoteSettings } from "@/lib/settings";
 import { initEngine, isInitialized } from "@/lib/quizengine";
-import { checkPeriodReset, calculateProgress, updateBaselines, fetchBoxCounts, calculatePeriodAdvancement } from "@/lib/targets";
+import { checkPeriodReset, calculateProgress, updateBaselines, fetchStatsCounts, calculatePeriodAdvancement, fetchTargetHistory } from "@/lib/targets";
 import CircularProgress from "@/components/CircularProgress";
 import LoadingOverlay from "@/components/LoadingOverlay";
-import { getDashboardCache, setDashboardCache } from "@/lib/dashboardCache";
+import { getDashboardCache, setDashboardCache, invalidateDashboardCache } from "@/lib/dashboardCache";
 import config from "@/lib/config";
 import { useLanguage } from "@/lib/LanguageContext";
 
@@ -18,6 +18,7 @@ export default function Home() {
   const [targetType, setTargetType] = useState("kanji");
   const [period, setPeriod] = useState("week");
   const [periodAdvancement, setPeriodAdvancement] = useState(0);
+  const [settings, setSettings] = useState(null);
 
   useEffect(() => {
     // Check cache first for instant load
@@ -49,49 +50,41 @@ export default function Home() {
       await initEngine(p);
 
       // 2. Load Settings
-      let settings = await fetchRemoteSettings(p);
-      if (!settings) settings = getSettings(p);
+      let currentSettings = await fetchRemoteSettings(p);
+      if (!currentSettings) currentSettings = getSettings(p);
+      setSettings(currentSettings);
 
-      const type = settings.targets?.type || "kanji";
-      const freq = settings.targets?.period || "week";
+      const activeId = currentSettings.targets?.activeId || "main";
+      const target = currentSettings.targets?.definitions?.[activeId];
+      if (!target) return;
+
+      const type = target.type || "kanji";
+      const freq = target.period || "week";
       setTargetType(type);
       setPeriod(freq);
 
       // 3. Fetch Current Counts
-      let currentCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
-      if (type === "kanji") {
-        const res = await fetch(`${config.apiBaseUrl}/stats?player=${encodeURIComponent(p)}`);
-        if (res.ok) {
-          const stats = await res.json();
-          // Fix: Ensure keys are numbers and access srs_levels
-          const normalized = { 1: 0, 2: 0, 3: 0, 4: 0 };
-          if (stats.srs_levels) {
-            Object.keys(stats.srs_levels).forEach(k => {
-              normalized[parseInt(k)] = stats.srs_levels[k];
-            });
-          }
-          currentCounts = normalized;
-        }
-      } else {
-        currentCounts = await fetchBoxCounts(p);
-      }
-
+      const currentCounts = await fetchStatsCounts(p);
       console.log("📊 currentCounts fetched:", currentCounts);
 
       // 4. Check Period Reset
-      if (checkPeriodReset(settings)) {
-        console.log("🕒 Period reset detected, updating baselines...");
-        await updateBaselines(p, currentCounts);
-        settings = await fetchRemoteSettings(p);
+      if (checkPeriodReset(currentSettings, activeId)) {
+        console.log(`🕒 Period reset detected for ${activeId}, updating baselines...`);
+        await updateBaselines(p, currentCounts, activeId, currentSettings);
+        currentSettings = await fetchRemoteSettings(p);
+        setSettings(currentSettings);
       }
 
-      // 5. Calculate Progress - Show GAINS relative to baseline (resets to 0 on period start)
-      const progress = calculateProgress(settings, currentCounts);
+      // 5. Calculate Progress
+      const progress = calculateProgress(currentSettings, currentCounts, activeId);
       console.log("📈 Progress calculated:", progress);
       setProgressData(progress);
 
-      const advancement = calculatePeriodAdvancement(settings);
+      const advancement = calculatePeriodAdvancement(currentSettings, activeId);
       setPeriodAdvancement(advancement);
+
+      // 6. Fetch Recent History
+      const history = await fetchTargetHistory(p, 7);
 
       // Save to cache
       setDashboardCache({
@@ -99,7 +92,8 @@ export default function Home() {
         progressData: progress,
         targetType: type,
         period: freq,
-        periodAdvancement: advancement
+        periodAdvancement: advancement,
+        history: history
       });
 
     } catch (e) {
@@ -107,6 +101,17 @@ export default function Home() {
     } finally {
       if (!isBackground) setLoading(false);
     }
+  }
+
+  async function changeTarget(id) {
+    const p = getPlayer_setting();
+    const settings = getSettings(p);
+    if (!settings.targets?.definitions[id]) return;
+    
+    settings.targets.activeId = id;
+    await saveRemoteSettings(p, settings);
+    invalidateDashboardCache();
+    loadHomeData();
   }
 
   if (loading) {
@@ -132,9 +137,39 @@ export default function Home() {
     <div style={styles.container}>
       <header style={styles.header}>
         <h1 style={styles.title}>{t('home.welcome').replace('{player}', player)}</h1>
+        
+        {/* Target Switcher */}
+        <div style={styles.targetSwitcher}>
+          <select 
+            value={settings?.targets?.activeId || "main"}
+            onChange={(e) => changeTarget(e.target.value)}
+            style={styles.targetSelect}
+          >
+            {Object.keys(settings?.targets?.definitions || {}).map(id => (
+              <option key={id} value={id}>{id.charAt(0).toUpperCase() + id.slice(1)} Goal</option>
+            ))}
+          </select>
+        </div>
+
         <div style={styles.subtitle}>
           <span style={styles.periodBadge}>{t(`targets.${period}`)}</span>
           <span style={styles.progLabel}> {targetType === "kanji" ? t('home.kanjiMastery') : t('home.boxMastery')}</span>
+        </div>
+
+        {/* Achievement Stars */}
+        <div style={styles.starsRow}>
+           {[1, 2, 3, 4].map(i => {
+             const isAchieved = progressData[i]?.percent >= 100;
+             return (
+               <span key={i} style={{ 
+                 opacity: isAchieved ? 1 : 0.2, 
+                 fontSize: "1.5rem", 
+                 filter: isAchieved ? "drop-shadow(0 0 5px #eab308)" : "none",
+                 transition: "all 0.5s ease",
+                 margin: "0 2px"
+               }}>⭐</span>
+             );
+           })}
         </div>
 
         {/* Period Advancement Bar */}
@@ -163,6 +198,24 @@ export default function Home() {
         ))}
       </div>
 
+      {/* History Dots Row */}
+      {getDashboardCache()?.history?.length > 0 && (
+        <div style={styles.historySection}>
+          <div style={styles.historyLabel}>{t('settings.history')}</div>
+          <div style={styles.historyDots}>
+            {getDashboardCache().history.map((h, i) => (
+              <div key={i} title={`${h.period_type}: ${h.stars} stars`} style={{
+                width: "12px",
+                height: "12px",
+                borderRadius: "50%",
+                background: h.stars >= 4 ? "#eab308" : h.stars > 0 ? "#3b82f6" : "rgba(255,255,255,0.1)",
+                boxShadow: h.stars >= 4 ? "0 0 8px #eab308" : "none"
+              }} />
+            ))}
+          </div>
+        </div>
+      )}
+
       <div style={styles.menuGrid}>
         <Link href="/ranking" style={styles.menuBtn}>
           <div style={styles.menuBtnContent}>
@@ -175,6 +228,11 @@ export default function Home() {
             <img src="/icons/graph1.png" alt="Stats" style={styles.menuIcon} onError={(e) => e.target.src = "https://img.icons8.com/ios-filled/50/ffffff/bar-chart.png"} />
             <span>{t('nav.stats')}</span>
           </div>
+        </Link>
+        <Link href="/achievements" style={styles.menuBtnWide}>
+           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
+             <span>🏆 {t('settings.achievements')}</span>
+           </div>
         </Link>
       </div>
 
@@ -211,8 +269,25 @@ const styles = {
   },
   menuGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "20px" },
   menuBtn: { textDecoration: "none", background: "#1e293b", padding: "18px", borderRadius: "16px", color: "#fff", fontWeight: "bold", fontSize: "1rem", border: "1px solid rgba(255,255,255,0.05)", transition: "all 0.2s" },
+  menuBtnWide: { gridColumn: "span 2", textDecoration: "none", background: "linear-gradient(135deg, #3b82f6, #2563eb)", padding: "15px", borderRadius: "16px", color: "#fff", fontWeight: "bold", fontSize: "1rem", border: "1px solid rgba(255,255,255,0.1)", transition: "all 0.2s", boxShadow: "0 4px 15px rgba(37, 99, 235, 0.3)" },
   menuBtnContent: { display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" },
   menuIcon: { width: "24px", height: "24px", objectFit: "contain", filter: "brightness(0) invert(1)" },
+  starsRow: { display: "flex", justifyContent: "center", gap: "5px", margin: "10px 0" },
+  targetSwitcher: { margin: "10px 0" },
+  targetSelect: { 
+    background: "rgba(30, 41, 59, 0.5)", 
+    color: "#fff", 
+    border: "1px solid rgba(255,255,255,0.1)", 
+    padding: "5px 15px", 
+    borderRadius: "20px",
+    fontSize: "0.85rem",
+    fontWeight: "600",
+    outline: "none",
+    cursor: "pointer"
+  },
+  historySection: { marginBottom: "20px", background: "rgba(30, 41, 59, 0.2)", padding: "12px", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.03)" },
+  historyLabel: { fontSize: "0.7rem", color: "#64748b", fontWeight: "bold", textTransform: "uppercase", marginBottom: "8px" },
+  historyDots: { display: "flex", justifyContent: "center", gap: "8px" },
   settingsBtn: {
     textDecoration: "none",
     background: "rgba(255,255,255,0.05)",

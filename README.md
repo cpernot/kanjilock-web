@@ -20,6 +20,7 @@
 - **Flashcard Mastery Code:** Integrated 8-digit progress string on each flashcard, providing a real-time summary of your knowledge across all 8 quiz modes.
 - **Icon Asset Pipeline:** Standardized premium icon set with transparent backgrounds and dark-mode optimization.
 - **Speed Score Mastery:** New linear decay scoring (100 pts for ≤2s, 0 pts for ≥10s) with real-time average speed tracking in the session summary.
+- **Target Achievements & Multi-Goals:** Set independent Daily, Weekly, or Monthly targets for both Kanji and Box Mastery. Manage sub-targets with easy add/delete controls, earn ⭐ stars for reaching goals, and view your long-term progress in a dedicated History Dashboard.
 - **Cross-Platform:** Full PWA support for mobile and desktop mastery on the go.
 
 ## 🚀 Quick Start (Local Development)
@@ -129,6 +130,7 @@ If you need to perform a factory reset or clean up your logs in Supabase, unders
 ### 1. Resetting History (Safe)
 This will clear your activity logs but keep your mastered Kanjis and Box levels.
 *   **Table: `sessions`**: Deleting this will reset your **Activity Heatmap** and **Statistics Summary** (Total Answers, Days Active) to zero.
+*   **Table: `target_history`**: Deleting this will clear your **Hall of Fame** and achievement stars, but won't affect current progress.
 *   **Table: `logs`**: Safe to clear; contains internal event tracking.
 
 ### 2. Factory Reset (Deletes Everything)

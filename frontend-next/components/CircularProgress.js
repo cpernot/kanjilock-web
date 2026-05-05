@@ -68,6 +68,27 @@ export default function CircularProgress({
                         </span>
                     )}
                 </div>
+
+                {/* Star Achievement Indicator */}
+                {percentage >= 100 && (
+                    <div style={{
+                        position: "absolute",
+                        top: "-5px",
+                        right: "-5px",
+                        fontSize: "1.2rem",
+                        filter: "drop-shadow(0 0 5px #eab308)",
+                        animation: "float 2s ease-in-out infinite"
+                    }}>
+                        ⭐
+                        <style jsx>{`
+                            @keyframes float {
+                                0% { transform: translateY(0px); }
+                                50% { transform: translateY(-5px); }
+                                100% { transform: translateY(0px); }
+                            }
+                        `}</style>
+                    </div>
+                )}
             </div>
             {label && (
                 <span style={{

@@ -97,3 +97,60 @@ def save_player_settings(user_id: str, settings: dict):
         print(f"❌ Error save_player_settings: {e}")
         return False
 
+def save_target_history(user_id: str, data: dict):
+    """
+    Saves a snapshot of a completed target period.
+    data: { target_id, period_start, period_end, target_type, period_type, config, achieved }
+    """
+    try:
+        # Calculate stars based on achieved vs config
+        achieved = data.get("achieved", {})
+        config = data.get("config", {})
+        stars = 0
+        for lvl in ["1", "2", "3", "4"]:
+            target_val = config.get(lvl, config.get(int(lvl), 0))
+            achieved_val = achieved.get(lvl, achieved.get(int(lvl), 0))
+            if target_val > 0 and achieved_val >= target_val:
+                stars += 1
+        
+        row = {
+            "user_id": user_id,
+            "target_id": data.get("target_id", "default"),
+            "period_start": data.get("period_start"),
+            "period_end": data.get("period_end"),
+            "target_type": data.get("target_type"),
+            "period_type": data.get("period_type"),
+            "config": config,
+            "achieved": achieved,
+            "stars": stars
+        }
+        supabase.table("target_history").insert(row).execute()
+        return True
+    except Exception as e:
+        print(f"❌ Error save_target_history: {e}")
+        return False
+
+def get_target_history(player: str, limit: int = 50):
+    try:
+        res = supabase.table("target_history")\
+            .select("*")\
+            .eq("user_id", player)\
+            .order("period_end", desc=True)\
+            .limit(limit)\
+            .execute()
+        return res.data
+    except Exception as e:
+        print(f"Error getting target history: {e}")
+        return []
+
+def delete_target_history(player: str, history_id: str):
+    try:
+        supabase.table("target_history")\
+            .delete()\
+            .eq("user_id", player)\
+            .eq("id", history_id)\
+            .execute()
+        return True
+    except Exception as e:
+        print(f"Error deleting target history: {e}")
+        return False

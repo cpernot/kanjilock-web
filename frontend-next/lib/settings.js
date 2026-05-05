@@ -30,12 +30,18 @@ export const DEFAULT_SETTINGS = {
   sequentialOrder: true,
   allGood: true,
   targets: {
-    period: "week", // day, week, month
-    type: "box",  // kanji, box
-    levels: { 1: 5, 2: 3, 3: 2, 4: 1 },
-    lastBaselineUpdate: null,
-    baselines: { 1: 0, 2: 0, 3: 0, 4: 0 },
-    kanji_baselines: { 1: 0, 2: 0, 3: 0, 4: 0 }
+    activeId: "main",
+    definitions: {
+      "main": {
+        id: "main",
+        period: "week", // day, week, month
+        type: "box",  // kanji, box
+        levels: { 1: 5, 2: 3, 3: 2, 4: 1 },
+        lastBaselineUpdate: null,
+        baselines: { 1: 0, 2: 0, 3: 0, 4: 0 },
+        kanji_baselines: { 1: 0, 2: 0, 3: 0, 4: 0 }
+      }
+    }
   }
 };
 
@@ -46,9 +52,26 @@ export function getSettings(playerOverride = null) {
   const player = playerOverride || getPlayer_setting();
   const key = player ? `kanjilock_settings_${player}` : "kanjilock_settings";
   const stored = localStorage.getItem(key);
-  return stored
-    ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) }
-    : { ...DEFAULT_SETTINGS };
+  
+  if (!stored) return { ...DEFAULT_SETTINGS };
+  
+  let settings = JSON.parse(stored);
+  
+  // Migration: If targets is in old format, move it to definitions.main
+  if (settings.targets && !settings.targets.definitions) {
+    const oldTargets = settings.targets;
+    settings.targets = {
+      activeId: "main",
+      definitions: {
+        "main": {
+          id: "main",
+          ...oldTargets
+        }
+      }
+    };
+  }
+
+  return { ...DEFAULT_SETTINGS, ...settings };
 }
 
 export function saveSettings(settings, playerOverride = null) {
@@ -68,7 +91,8 @@ export async function fetchRemoteSettings(player) {
       const data = await res.json();
       if (data && Object.keys(data).length > 0) {
         saveSettings(data, player);
-        return data;
+        // Important: Return via getSettings to apply migration logic
+        return getSettings(player);
       }
     }
   } catch (e) {

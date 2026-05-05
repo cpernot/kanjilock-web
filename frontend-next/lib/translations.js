@@ -19,6 +19,7 @@ export const translations = {
             delete: "Delete",
             update: "Update",
             back: "Back",
+            confirmDelete: "Are you sure you want to delete this achievement record?",
             loginToContinue: "Login to Continue",
             login: "Login",
             username: "Username",
@@ -157,7 +158,14 @@ export const translations = {
             sound: "Enable Sounds",
             showProgress: "Show Progress Bar",
             sequential: "Sequential Order (No Random)",
-            discard: "Discard & Close"
+            discard: "Discard & Close",
+            achievements: "Achievements",
+            history: "History",
+            starsEarned: "Stars Earned",
+            targetAchieved: "Target Achieved!",
+            targetFailed: "Target Failed",
+            viewCalendar: "View Calendar",
+            noHistory: "No target history yet. (If you want to set a new target, go to the Targets Page)"
         }
     },
     fr: {
@@ -180,6 +188,7 @@ export const translations = {
             delete: "Supprimer",
             update: "Mettre à jour",
             back: "Retour",
+            confirmDelete: "Voulez-vous vraiment supprimer ce record de réussite ?",
             loginToContinue: "Connectez-vous pour continuer",
             login: "Connexion",
             username: "Nom d'utilisateur",
@@ -200,7 +209,8 @@ export const translations = {
             flashcards: "Flashcards",
             targets: "Objectifs",
             timeElapsed: "Temps écoulé",
-            ranking: "Classement"
+            ranking: "Classement",
+            stars: "Étoiles"
         },
         quiz: {
             settings: "Réglages Quiz",
@@ -293,7 +303,9 @@ export const translations = {
             monthly: "Mensuel",
             saveClose: "Sauvegarder & Fermer",
             resetPeriod: "Réinitialiser la période",
-            level: "Niveau"
+            level: "Niveau",
+            mainTarget: "Objectif Principal",
+            subTargets: "Objectifs Secondaires"
         },
         stats: {
             title: "Statistiques",
@@ -311,14 +323,21 @@ export const translations = {
         settings: {
             title: "Réglages",
             playerName: "Nom du joueur",
-            playerNamePlaceholder: "Entrez le nom du joueur",
+            playerNamePlaceholder: "Nom du joueur",
             sessionSize: "Taille de session",
             maxTime: "Temps Max (ms)",
-            autoDismiss: "réponse automatique",
-            sound: "Activer les sons",
+            autoDismiss: "Réponse automatique",
+            sound: "Sons activés",
             showProgress: "Barre de progression",
-            sequential: "Ordre séquentiel (pas d'aléatoire)",
-            discard: "Fermer sans sauvegarder"
+            sequential: "Ordre séquentiel",
+            discard: "Fermer sans sauvegarder",
+            achievements: "Succès",
+            history: "Historique",
+            starsEarned: "Étoiles obtenues",
+            targetAchieved: "Objectif Atteint !",
+            targetFailed: "Objectif Échoué",
+            viewCalendar: "Voir Calendrier",
+            noHistory: "Pas encore d'historique d'objectifs. (Si vous souhaitez définir un nouvel objectif, allez sur la page Objectifs)"
         }
     },
     jp: {
@@ -341,6 +360,7 @@ export const translations = {
             delete: "削除",
             update: "更新",
             back: "戻る",
+            confirmDelete: "この達成記録を削除してもよろしいですか？",
             loginToContinue: "ログインして続行",
             login: "ログイン",
             username: "ユーザー名",
@@ -361,7 +381,8 @@ export const translations = {
             flashcards: "フラッシュカード",
             targets: "目標設定",
             timeElapsed: "経過時間",
-            ranking: "ランキング"
+            ranking: "ランキング",
+            stars: "獲得スター"
         },
         quiz: {
             settings: "クイズ設定",
@@ -454,7 +475,9 @@ export const translations = {
             monthly: "毎月",
             saveClose: "保存して閉じる",
             resetPeriod: "期間リセット",
-            level: "レベル"
+            level: "レベル",
+            mainTarget: "主要目標",
+            subTargets: "サブ目標"
         },
         stats: {
             title: "統計",
@@ -478,8 +501,15 @@ export const translations = {
             autoDismiss: "回答の自動消去",
             sound: "サウンド有効",
             showProgress: "プログレスバー表示",
-            sequential: "順番通り（ランダムなし）",
-            discard: "破棄して閉じる"
+            sequential: "順番通り",
+            discard: "破棄して閉じる",
+            achievements: "実績",
+            history: "履歴",
+            starsEarned: "獲得スター数",
+            targetAchieved: "目標達成！",
+            targetFailed: "目標未達",
+            viewCalendar: "カレンダーを表示",
+            noHistory: "目標履歴はまだありません。（新しい目標を設定する場合は、目標設定ページに移動してください）"
         }
     }
 };
