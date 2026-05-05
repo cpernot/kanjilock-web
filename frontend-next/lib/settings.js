@@ -61,7 +61,9 @@ export function saveSettings(settings, playerOverride = null) {
 export async function fetchRemoteSettings(player) {
   if (!player) return null;
   try {
-    const res = await fetch(`${config.apiBaseUrl}/settings/${encodeURIComponent(player)}`);
+    const res = await fetch(`${config.apiBaseUrl}/settings/${encodeURIComponent(player)}`, {
+      cache: 'no-store' // Force fresh fetch
+    });
     if (res.ok) {
       const data = await res.json();
       if (data && Object.keys(data).length > 0) {

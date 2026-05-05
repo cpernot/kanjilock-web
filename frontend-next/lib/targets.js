@@ -39,8 +39,8 @@ export async function fetchStatsCounts(player, mode = null) {
     if (!player) return { boxes: { 1: 0, 2: 0, 3: 0, 4: 0 }, kanji: { 1: 0, 2: 0, 3: 0, 4: 0 } };
     try {
         const [boxRes, statsRes] = await Promise.all([
-            fetch(`${config.apiBaseUrl}/box-progress/${encodeURIComponent(player)}`),
-            fetch(`${config.apiBaseUrl}/stats?player=${encodeURIComponent(player)}${mode ? `&mode=${mode}` : ''}`)
+            fetch(`${config.apiBaseUrl}/box-progress/${encodeURIComponent(player)}`, { cache: 'no-store' }),
+            fetch(`${config.apiBaseUrl}/stats?player=${encodeURIComponent(player)}${mode ? `&mode=${mode}` : ''}`, { cache: 'no-store' })
         ]);
 
         const boxCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
