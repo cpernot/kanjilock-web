@@ -67,7 +67,7 @@ call gcloud run deploy %SERVICE_NAME% ^
   --cpu 1 ^
   --cpu-boost ^
   --quiet ^
-  --set-env-vars "SUPABASE_URL=%SUPABASE_URL%,SUPABASE_KEY=%SUPABASE_KEY%,GROQ_API_KEY=%GROQ_API_KEY%,ENABLE_CHAT=true,LLM_PROVIDER=groq" > deploy_log.txt 2>&1
+  --set-env-vars "SUPABASE_URL=%SUPABASE_URL%,SUPABASE_KEY=%SUPABASE_KEY%,SUPABASE_SERVICE_ROLE_KEY=%SUPABASE_SERVICE_ROLE_KEY%,GROQ_API_KEY=%GROQ_API_KEY%,ENABLE_CHAT=true,LLM_PROVIDER=groq" > deploy_log.txt 2>&1
 
 if %ERRORLEVEL% NEQ 0 (
     echo.

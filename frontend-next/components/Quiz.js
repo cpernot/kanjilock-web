@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { getNextQuestion, checkLocalAnswer, updateEngineAfterAnswer, updateBoxRanking, currentBoxFilter, setBoxContext, getAvailableBoxes, getVisibleBoxes, getBoxKanjiCount, getBoxLevel, resetEngineSession, isInitialized } from "../lib/quizengine";
+import { getNextQuestion, checkLocalAnswer, updateEngineAfterAnswer, updateBoxRanking, currentBoxFilter, setBoxContext, getAvailableBoxes, getVisibleBoxes, getBoxKanjiCount, getBoxLevel, getRecommendedBox, resetEngineSession, isInitialized, initEngine } from "../lib/quizengine";
 import { startSession, recordAnswer, getSessionSummary, isSessionFinished, updateSessionSummary, getSession } from "../lib/quizSession";
 import { getMode, setMode as saveMode } from "../lib/modeManager";
 import { getPlayer_setting } from "../lib/settings";
@@ -93,11 +93,13 @@ export default function Quiz({ forcedMode = null }) {
             // If in progressive mode and current box is not in visible list, or just switching modes,
             // we might want to default to the highest unlocked box.
             // EXCEPTION: qg mode ALWAYS uses All Boxes.
-            if (appSettings.progressiveMode && selectedMode !== "qg" && !visible.includes(selectedBox) && visible.length > 0) {
-                const defaultBox = visible[visible.length - 1];
-                console.log(`🎯 Auto-selecting highest unlocked: ${defaultBox}`);
-                setSelectedBox(defaultBox);
-                setBoxContext(defaultBox);
+            if (appSettings.progressiveMode && selectedMode !== "qg" && visible.length > 0) {
+                const recommended = getRecommendedBox(true, selectedMode);
+                if (recommended && recommended !== selectedBox) {
+                    console.log(`🚀 Progressive Mode: Switch recommended to: ${recommended}`);
+                    setSelectedBox(recommended);
+                    setBoxContext(recommended);
+                }
             }
         }
     }, [selectedMode, appSettings?.progressiveMode]);
@@ -112,15 +114,14 @@ export default function Quiz({ forcedMode = null }) {
 
         if (player) {
             // Loading library
-            const mod = await import("../lib/quizengine");
-            await mod.initEngine(player);
+            await initEngine(player);
 
             // Set settings (cached)
             const { getSettings, fetchRemoteSettings } = await import("../lib/settings");
             const settings = getSettings();
             setAppSettings(settings);
 
-            const visible = mod.getVisibleBoxes(settings.progressiveMode, initialMode);
+            const visible = getVisibleBoxes(settings.progressiveMode, initialMode);
             setBoxes(visible);
 
             console.log("⚙️ Quiz Init Settings:", settings);
@@ -128,35 +129,35 @@ export default function Quiz({ forcedMode = null }) {
 
             // Restore last selection
             const lastBox = localStorage.getItem("kanjilock_last_box_selection");
-            
+
             // PRIORITY LOGIC:
             // 1. If Progressive Mode is ON, always default to the HIGHEST unlocked box (visible.at(-1))
             // 2. Otherwise, use lastBox if valid
             // 3. Fallback to empty (All Boxes)
             let boxToSelect = "";
             if (settings.progressiveMode && initialMode !== "qg" && visible.length > 0) {
-                boxToSelect = visible[visible.length - 1];
-                console.log(`🚀 Progressive Mode: Auto-advancing to newest box: ${boxToSelect}`);
+                boxToSelect = getRecommendedBox(true, initialMode);
+                console.log(`🚀 Progressive Mode: Recommendation system chose: ${boxToSelect}`);
             } else if (lastBox !== null && (lastBox === "" || visible.includes(lastBox))) {
                 boxToSelect = lastBox;
             }
 
             setSelectedBox(boxToSelect);
-            mod.setBoxContext(boxToSelect === "" ? null : boxToSelect);
+            setBoxContext(boxToSelect === "" ? null : boxToSelect);
 
             // REPLAY LOGIC: If we are replaying, we want to stick to the box we just finished
             const isReplay = searchParams.get("replay") === "true";
-            
+
             // Sync from remote (async)
             fetchRemoteSettings(player).then(remoteSettings => {
                 if (remoteSettings) {
                     setAppSettings(remoteSettings);
-                    const updatedVisible = mod.getVisibleBoxes(remoteSettings.progressiveMode, initialMode);
+                    const updatedVisible = getVisibleBoxes(remoteSettings.progressiveMode, initialMode);
                     setBoxes(updatedVisible);
                     // Update box selection after remote sync
                     const lastBox = localStorage.getItem("kanjilock_last_box_selection");
                     let db = "";
-                    
+
                     // Priority: 
                     // 1. Replay mode -> use lastBox
                     // 2. Progressive mode -> use highest unlocked
@@ -165,14 +166,14 @@ export default function Quiz({ forcedMode = null }) {
                         db = lastBox;
                         console.log(`🔁 Replay Mode: Sticking to box: ${db}`);
                     } else if (remoteSettings.progressiveMode && initialMode !== "qg" && updatedVisible.length > 0) {
-                        db = updatedVisible[updatedVisible.length - 1];
+                        db = getRecommendedBox(true, initialMode);
                     } else if (lastBox !== null && (lastBox === "" || updatedVisible.includes(lastBox))) {
                         db = lastBox;
                     }
 
                     if (db !== selectedBox) {
                         setSelectedBox(db);
-                        mod.setBoxContext(db === "" ? null : db);
+                        setBoxContext(db === "" ? null : db);
                     }
                 }
             });
@@ -185,7 +186,7 @@ export default function Quiz({ forcedMode = null }) {
         if (selectedBox && selectedBox !== "") {
             size = getBoxKanjiCount(selectedBox);
         }
-        
+
         resetEngineSession();
         startSession(size, selectedBox);
         setQuestion(null);
@@ -203,13 +204,13 @@ export default function Quiz({ forcedMode = null }) {
         const newMode = e.target.value;
         setSelectedMode(newMode);
         saveMode(newMode);
-        
+
         // Force Global Box for Box Selection Mode (qg)
         if (newMode === "qg") {
             setSelectedBox("");
             setBoxContext(null);
         }
-        
+
         setIsPlaying(false);
     }
 
@@ -365,10 +366,10 @@ export default function Quiz({ forcedMode = null }) {
 
         if (finished) {
             // If session is finished, don't allow loading another question
-            setIsPlaying(false); 
+            setIsPlaying(false);
             // Give the user time to see the last answer before showing compilation overlay
             setTimeout(async () => {
-                setIsCompiling(true); 
+                setIsCompiling(true);
                 await finishSession(mode);
             }, 2500);
         } else {
@@ -384,7 +385,7 @@ export default function Quiz({ forcedMode = null }) {
     async function finishSession(mode) {
         if (finishingRef.current) return;
         finishingRef.current = true;
-        
+
         setIsCompiling(true);
         invalidateDashboardCache();
         const summary = getSessionSummary();
@@ -392,7 +393,7 @@ export default function Quiz({ forcedMode = null }) {
 
         // Evaluate Box Mastery only for core modes (not qh/qg)
         const isCoreMode = (mode !== "qh" && mode !== "qg");
-        
+
         if (selectedBox && isCoreMode) {
             const oldLevel = getBoxLevel(selectedBox, mode);
             const ranking = await updateBoxRanking(selectedBox, summary, mode);
@@ -474,9 +475,9 @@ export default function Quiz({ forcedMode = null }) {
                         ))}
                     </select>
 
-                    <select 
-                        value={selectedBox} 
-                        onChange={handleBoxChange} 
+                    <select
+                        value={selectedBox}
+                        onChange={handleBoxChange}
                         style={styles.select}
                         disabled={selectedMode === "qg"}
                     >
@@ -531,7 +532,7 @@ export default function Quiz({ forcedMode = null }) {
                     {/* Session Progress Bar */}
                     {appSettings?.showProgressBar !== false && (
                         <div style={styles.sessionProgressContainer}>
-                            <div 
+                            <div
                                 style={{
                                     ...styles.sessionProgressFill,
                                     width: `${((getSession()?.current || 0) / (getSession()?.size || 1)) * 100}%`
@@ -610,10 +611,10 @@ export default function Quiz({ forcedMode = null }) {
                     onClick={() => {
                         // Only load next if NOT finished
                         if (isSessionFinished()) {
-                           // Option to force transition or just wait for timer
-                           finishSession(forcedMode || selectedMode);
+                            // Option to force transition or just wait for timer
+                            finishSession(forcedMode || selectedMode);
                         } else {
-                           loadQuestion();
+                            loadQuestion();
                         }
                     }}
                     style={{
@@ -623,15 +624,15 @@ export default function Quiz({ forcedMode = null }) {
                     }}
                 >
                     <div style={styles.resultQuestion}>{question?.question}</div>
-                    
+
                     {/* Correct Answer Prominent */}
                     <div style={{ fontSize: question?.mode === "qh" ? "1.5rem" : "2rem", margin: "10px 0", color: "#fff", fontWeight: "bold" }}>
-                        {question?.mode === "qh" && <span style={{fontSize: "0.9rem", opacity: 0.8, display: "block"}}>Composition :</span>}
+                        {question?.mode === "qh" && <span style={{ fontSize: "0.9rem", opacity: 0.8, display: "block" }}>Composition :</span>}
                         {Array.isArray(result.bonne) ? result.bonne.join(" + ") : result.bonne}
                     </div>
 
                     <h3 style={{ margin: "10px 0" }}>{result.correct ? "✓ Correct" : "✗ Wrong"}</h3>
-                    
+
                     {result.extras && (
                         <div style={styles.extras}>
                             {Object.entries(result.extras).map(([key, value]) => {

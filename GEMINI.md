@@ -62,7 +62,9 @@ When doing a code review, return EXACTLY this structure:
 ### 🔄 Box Order & Progression
 - **Source of Truth:** `backend/box_metadata.py` is the definitive master list for box sequencing.
 - **Sorting:** The backend sorts boxes using `get_box_sort_index` based on this master list.
-- **Progressive Selection:** On initial load, the quiz engine ALWAYS defaults to the **highest unlocked box** (last item in the visible list) if Progressive Mode is enabled, ensuring users always see their latest achievement.
+- **Progressive Selection:** On initial load, the quiz engine identifies the "ideal" box based on current progress.
+    - **Growth Phase:** While boxes remain locked, it defaults to the **highest unlocked box** (last item in the visible list) to encourage progression.
+    - **Mastery Phase:** Once all boxes are unlocked, it identifies boxes with the **lowest mastery level** and selects the one with the lowest index, ensuring the user cycles back to improve "weaker" areas.
 - **Frontend Display:** In the quiz dropdown, the box list is reversed (`.reverse()`) so newest achievements appear at the top.
 
 ### ✅ "All-Good" Mode Logic

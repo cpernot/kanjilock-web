@@ -27,9 +27,21 @@ export default function SessionEndPage() {
         }
     }, []);
 
-    const handleContinue = () => {
+    const handleContinue = async () => {
         if (summary?.boxId) {
-            const nextBox = getNextBoxId(summary.boxId);
+            const { getSettings } = await import("@/lib/settings");
+            const { getRecommendedBox } = await import("@/lib/quizengine");
+            const settings = getSettings();
+            
+            let nextBox = null;
+            if (settings.progressiveMode) {
+                // Use the new Rule: lowest box of lower level (if all unlocked) 
+                // or highest unlocked (if not all unlocked)
+                nextBox = getRecommendedBox(true, "qa");
+            } else {
+                nextBox = getNextBoxId(summary.boxId);
+            }
+
             if (nextBox) {
                 setBoxContext(nextBox);
                 localStorage.setItem("kanjilock_last_box_selection", nextBox);

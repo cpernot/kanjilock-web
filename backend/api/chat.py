@@ -168,6 +168,16 @@ async def build_vector_store_api(input_data: BuildVectorStoreInput):
         if not vs:
             raise HTTPException(status_code=500, detail="Could not initialize vector store")
 
+        # --- PREVENTION OF DUPLICATES ---
+        # Check if we already have data to avoid bloat (187k rows found!)
+        try:
+            res = supabase.table("knowledge_base").select("id", count="exact").limit(1).execute()
+            if res.count and res.count > 0:
+                logger.info(f"ℹ️ Vector store already contains {res.count} rows. Skipping build to save space.")
+                return {"status": "skipped", "message": f"Store already has {res.count} items."}
+        except Exception as e:
+            logger.warning(f"Could not check existing count: {e}")
+
         docs = []
         for k, v in input_data.kanji_cache.items():
             content = f"Kanji {k}: {v.signification}"

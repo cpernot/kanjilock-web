@@ -30,8 +30,12 @@ async def initialize_cache(app: FastAPI):
             print("⚠️ WARNING: No kanji found in 'kanji' table!")
 
         # 2. Fetch composition table
-        response_comp = supabase.table("kanji_mot").select("*").execute()
-        comp_map = {item['kanji']: item['liste_de_mots'] for item in response_comp.data}
+        try:
+            response_comp = supabase.table("kanji_mot").select("*").execute()
+            comp_map = {item['kanji']: item['liste_de_mots'] for item in response_comp.data}
+        except Exception as e:
+            print(f"⚠️ Warning: Could not fetch 'kanji_mot' table from Supabase: {e}")
+            comp_map = {}
 
         # 3. Build final cache
         final_cache = {}
@@ -108,7 +112,12 @@ app = FastAPI(lifespan=lifespan)
 # 3. MIDDLEWARE
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

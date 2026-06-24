@@ -205,6 +205,46 @@ export function getVisibleBoxes(progressiveMode = false, mode = "qa") {
     return visible;
 }
 
+/**
+ * Returns the recommended box based on the current progression.
+ * Rule: If all boxes are unlocked, pick the lowest index box among those with the minimum mastery level.
+ * Otherwise, pick the highest unlocked box.
+ */
+export function getRecommendedBox(progressiveMode = false, mode = "qa") {
+    const allBoxes = getAvailableBoxes();
+    if (allBoxes.length === 0) return "";
+    
+    if (!progressiveMode) return allBoxes[0];
+
+    const visible = getVisibleBoxes(true, mode);
+    
+    // Case 1: Not all boxes unlocked yet
+    if (visible.length < allBoxes.length) {
+        const highest = visible[visible.length - 1];
+        console.log(`📈 Progressive: Not all boxes unlocked (${visible.length}/${allBoxes.length}). Picking highest: ${highest}`);
+        return highest;
+    }
+
+    // Case 2: ALL boxes unlocked
+    console.log(`✅ Progressive: All boxes unlocked. Searching for lowest mastery level...`);
+    let minLevel = 5;
+    let candidates = [];
+
+    for (const bId of allBoxes) {
+        const lvl = getBoxLevel(bId, mode);
+        if (lvl < minLevel) {
+            minLevel = lvl;
+            candidates = [bId];
+        } else if (lvl === minLevel) {
+            candidates.push(bId);
+        }
+    }
+
+    const recommended = candidates[0] || allBoxes[0];
+    console.log(`🎯 Progressive: Found lowest level ${minLevel}. Recommended: ${recommended} (among ${candidates.length} candidates)`);
+    return recommended;
+}
+
 export const getBoxKanjiCount = (boxId) =>
     boxId ? Object.values(staticData).filter(k => String(k.boite) === String(boxId)).length : 0;
 
