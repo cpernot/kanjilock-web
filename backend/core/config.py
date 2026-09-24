@@ -28,7 +28,7 @@ SESSION_FILE = DATA_DIR / "sessions.jsonl"
 # --- AI CONFIG ---
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini").lower()
 GEMINI_MODEL = "gemma-3-27b-it"
-GROQ_MODEL = "qwen/qwen3-32b"
+GROQ_MODEL = "qwen/qwen3.8-27b"
 
 # --- PROMPTS ---
 SENSEI_SYSTEM_RULES = (
