@@ -16,7 +16,6 @@ try:
     from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain_groq import ChatGroq
     from langchain_community.vectorstores import SupabaseVectorStore
-    from langchain_huggingface import HuggingFaceEmbeddings
     from langchain_core.documents import Document
     from backend.core.config import supabase
     CHAT_AVAILABLE = True
@@ -48,14 +47,17 @@ class BuildVectorStoreInput(BaseModel):
 
 @lru_cache(maxsize=1)
 def get_embeddings():
-    """Caches the embeddings model to avoid reloading on every build."""
-    if not CHAT_AVAILABLE:
+    """Lazily loads local embeddings model if installed."""
+    try:
+        from langchain_huggingface import HuggingFaceEmbeddings
+        logger.info("🧠 Loading Embeddings model...")
+        return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    except ImportError:
+        logger.info("ℹ️ Local HuggingFace embeddings not installed; running in lightweight mode.")
         return None
-    logger.info("🧠 Loading Embeddings model...")
-    return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 def get_vector_store():
-    """Returns the Supabase vector store instance."""
+    """Returns the Supabase vector store instance if embeddings are available."""
     global vector_store
     if vector_store:
         return vector_store
@@ -65,6 +67,8 @@ def get_vector_store():
 
     try:
         embeddings = get_embeddings()
+        if not embeddings:
+            return None
         vector_store = SupabaseVectorStore(
             client=supabase,
             embedding=embeddings,
@@ -73,7 +77,7 @@ def get_vector_store():
         )
         return vector_store
     except Exception as e:
-        logger.error(f"❌ Failed to initialize SupabaseVectorStore: {e}")
+        logger.warning(f"⚠️ Vector store not available: {e}")
         return None
 
 
@@ -164,9 +168,11 @@ async def build_vector_store_api(input_data: BuildVectorStoreInput):
         
     try:
         embeddings = get_embeddings()
+        if not embeddings:
+            return {"status": "skipped", "message": "Local embeddings disabled in lightweight mode"}
         vs = get_vector_store()
         if not vs:
-            raise HTTPException(status_code=500, detail="Could not initialize vector store")
+            return {"status": "skipped", "message": "Could not initialize vector store"}
 
         # --- PREVENTION OF DUPLICATES ---
         # Check if we already have data to avoid bloat (187k rows found!)

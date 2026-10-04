@@ -34,8 +34,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY backend/requirements.txt ./backend/
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
-# Pre-download the HuggingFace embedding model (commented out to save memory/build size)
-# RUN python -c "from langchain_huggingface import HuggingFaceEmbeddings; HuggingFaceEmbeddings(model_name='all-MiniLM-L6-v2')"
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONIOENCODING=utf-8
 
 # Copy the rest of the backend and data files
 COPY backend ./backend

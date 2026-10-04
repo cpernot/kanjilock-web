@@ -2,15 +2,7 @@ fastapi
 supabase
 python-dotenv
 uvicorn
-fastapi
-supabase
-python-dotenv
-uvicorn
 langchain
 langchain-community
 langchain-groq
-langchain-huggingface
-sentence-transformers
-faiss-cpu
-langchain-google-genai  
- 
+langchain-google-genai

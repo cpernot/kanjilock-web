@@ -64,10 +64,14 @@ async def initialize_cache(app: FastAPI):
         app.state.available_boxes = sorted(list(seen_boxes), key=get_box_sort_index)
 
         if ENABLE_CHAT:
-            from backend.api import chat
-            import asyncio
-            asyncio.create_task(chat.build_vector_store(final_cache))
-            print("🤖 Chat mode enabled (Vector store building in background...)")
+            try:
+                from backend.api import chat
+                if getattr(chat, "CHAT_AVAILABLE", False):
+                    import asyncio
+                    asyncio.create_task(chat.build_vector_store(final_cache))
+                    print("🤖 Chat mode enabled (Vector store building in background...)")
+            except Exception as e:
+                print(f"⚠️ Chat initialization skipped: {e}")
         
         app.state.is_ready = True
         print(f"✅ Cache ready: {len(app.state.kanji_cache)} kanjis loaded.")
@@ -137,8 +141,12 @@ app.include_router(session_router, prefix="/api")
 app.include_router(ranking_router, prefix="/api")
 
 if ENABLE_CHAT:
-    from backend.api import chat
-    app.include_router(chat.router, prefix="/api/chat")
+    try:
+        from backend.api import chat
+        if getattr(chat, "CHAT_AVAILABLE", False):
+            app.include_router(chat.router, prefix="/api/chat")
+    except Exception as e:
+        print(f"⚠️ Chat router skipped: {e}")
 
 @app.get("/health")
 def health_check():
@@ -259,7 +267,7 @@ async def get_available_boxes():
 # 6. SERVE FRONTEND (Next.js Static Export)
 # This MUST be after all /api routes
 if FRONTEND_DIR.exists():
-    print(f"📂 Serving frontend from: {FRONTEND_DIR}")
+    print(f"[FRONTEND] Serving frontend from: {FRONTEND_DIR}")
     app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
     
     # Catch-all route for SPA (Next.js) navigation
@@ -271,5 +279,5 @@ if FRONTEND_DIR.exists():
                 return FileResponse(index_path)
         return {"detail": "Not Found"}
 else:
-    print(f"⚠️ Warning: FRONTEND_DIR not found at {FRONTEND_DIR}. Frontend will not be served.")
+    print(f"[FRONTEND] Warning: FRONTEND_DIR not found at {FRONTEND_DIR}. Frontend will not be served.")
 
