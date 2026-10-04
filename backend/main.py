@@ -129,7 +129,6 @@ from backend.api.stats import router as stats_router
 from backend.api.quiz_compose import router as compose_router
 from backend.api.session import router as session_router
 from backend.api.ranking import router as ranking_router
-from backend.api import chat 
 
 app.include_router(quiz_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")
@@ -138,6 +137,7 @@ app.include_router(session_router, prefix="/api")
 app.include_router(ranking_router, prefix="/api")
 
 if ENABLE_CHAT:
+    from backend.api import chat
     app.include_router(chat.router, prefix="/api/chat")
 
 @app.get("/health")
