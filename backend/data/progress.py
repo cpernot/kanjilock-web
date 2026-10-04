@@ -2,35 +2,20 @@ import os
 import json
 from backend.core.config import supabase
 
-def load_data(user_id: str):
+def load_data(user_id: str, mode: str = None):
     """
     Récupère la progression et reconstruit la structure dictionnaire
     pour que le reste du code ne soit pas perturbé.
+    Si mode est fourni, filtre sur ce mode pour optimiser la mémoire.
     """
     try:
-        # # 1. On récupère toutes les lignes de cet utilisateur
-        # response = supabase.table("progress").select("*").eq("user_id", user_id).execute()
-        # rows = response.data
-
-        # # 2. On reconstruit le format { "srs": { "qd": { "物": {...} } } }
-        # # pour correspondre à ton ancien format de fichier
-        # nested_data = {"srs": {}}
-        
-        # for row in rows:
-        #     mode = row["mode"]
-        #     kanji = row["kanji"]
-        #     stats = row["stats"]
-            
-        #     if mode not in nested_data["srs"]:
-        #         nested_data["srs"][mode] = {}
-            
-        #     nested_data["srs"][mode][kanji] = stats
-            
-        # return nested_data
-        res = supabase.table("progress").select("*").eq("user_id", user_id).execute()        
+        query = supabase.table("progress").select("mode, kanji, stats").eq("user_id", user_id)
+        if mode:
+            query = query.eq("mode", mode)
+        res = query.execute()        
         structured_data = {"srs": {}, "daily_stats": {}}
         for row in res.data:
-            mode = row["mode"]
+            m = row["mode"]
             kanji = row["kanji"]
             stats = row["stats"]
             
@@ -38,11 +23,10 @@ def load_data(user_id: str):
                 continue
 
             # On reconstruit le dictionnaire attendu par stats.py
-            if mode not in structured_data["srs"]:
-                structured_data["srs"][mode] = {}
-            structured_data["srs"][mode][kanji] = stats
+            if m not in structured_data["srs"]:
+                structured_data["srs"][m] = {}
+            structured_data["srs"][m][kanji] = stats
 
-        # Note: Si tu as une table séparée pour daily_stats, il faudra un autre select ici
         return structured_data
 
     except Exception as e:

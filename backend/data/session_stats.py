@@ -5,7 +5,7 @@ from backend.core.config import SESSION_FILE
 from backend.core.config import supabase
 
 def load_sessions(player_id=None):
-    query = supabase.table('sessions').select("*")
+    query = supabase.table('sessions').select("session_date, details")
     if player_id:
         # Filter by player ID inside the JSONB 'details' column
         query = query.eq("details->>player", player_id)

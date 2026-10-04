@@ -89,8 +89,34 @@ export async function fetchStatsCounts(player, mode = null) {
     }
 }
 
-// Keep the old name for compatibility if needed, but alias it
-export const fetchBoxCounts = async (player, mode) => (await fetchStatsCounts(player, mode)).boxes;
+// Optimize fetchBoxCounts to fetch only box progress (avoids duplicate /stats calls)
+export async function fetchBoxCounts(player, mode = null) {
+    if (!player) return { 1: 0, 2: 0, 3: 0, 4: 0 };
+    const boxUrl = `${config.apiBaseUrl}/box-progress/${encodeURIComponent(player)}`;
+    try {
+        const boxRes = await fetch(boxUrl, { cache: 'no-store' });
+        const boxCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        if (boxRes.ok) {
+            const data = await boxRes.json();
+            Object.values(data).forEach(modes => {
+                let level = 0;
+                if (mode) {
+                    level = modes[mode] || 0;
+                } else {
+                    const coreModes = Object.entries(modes)
+                        .filter(([m]) => m !== "qh" && m !== "qg")
+                        .map(([, l]) => l);
+                    if (coreModes.length > 0) level = Math.max(...coreModes);
+                }
+                if (level >= 1 && level <= 4) boxCounts[level]++;
+            });
+        }
+        return boxCounts;
+    } catch (e) {
+        console.error("fetchBoxCounts error", e);
+        return { 1: 0, 2: 0, 3: 0, 4: 0 };
+    }
+}
 
 /**
  * Updates the current baselines for a specific target.

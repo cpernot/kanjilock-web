@@ -9,8 +9,8 @@ load_dotenv(dotenv_path=PROJECT_ROOT / ".env", override=True)
 # --- SUPABASE CONFIG ---
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY") 
-print(f"🔒 DB URL: {url}")
-print(f"🔒 DB KEY: {key[:15]}...{key[-15:] if key else ''} (Len: {len(key) if key else 0})")
+print(f"[DB] URL: {url}")
+print(f"[DB] KEY: {key[:15]}...{key[-15:] if key else ''} (Len: {len(key) if key else 0})")
 supabase: Client = create_client(url, key)
 
 # --- PATHS ---

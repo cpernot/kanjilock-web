@@ -34,9 +34,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY backend/requirements.txt ./backend/
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
-# Pre-download the HuggingFace embedding model
-# If this fails, you can comment it out; the app will just download it on the first cold start
-RUN python -c "from langchain_huggingface import HuggingFaceEmbeddings; HuggingFaceEmbeddings(model_name='all-MiniLM-L6-v2')"
+# Pre-download the HuggingFace embedding model (commented out to save memory/build size)
+# RUN python -c "from langchain_huggingface import HuggingFaceEmbeddings; HuggingFaceEmbeddings(model_name='all-MiniLM-L6-v2')"
 
 # Copy the rest of the backend and data files
 COPY backend ./backend
