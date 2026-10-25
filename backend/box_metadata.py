@@ -17,8 +17,8 @@ BOX_ORDER = [
     "OK", "KS", "NB", "SD", "ND", "MN", "IA", "MO", "AR", "LA", "MS", "AL", 
     "TN", "KY", "IL", "WI", "MI", "IN", "OH", "WV", "PA", "FL", "GA", "SC", 
     "NC", "VA", "DC", "MD", "DE", "NJ", "NY", "CT", "RI", "MA", "VT", "NH", 
-    "ME", "HI", "AK", "PR", "VI", "Bahamas", "Cuba", "Haiti",
-    "Jamaica", "Saint Kitts and Nevis", "Antigua and Barbuda", "Dominica", "Barbados"
+    "ME", "HI", "AK", "PR", "VI", "Bahamas", "Cuba", "Dominican Republic", "Haiti",
+    "Jamaica", "Saint Kitts and Nevis", "Antigua and Barbuda", "Dominica"
 ]
 
 def get_box_sort_index(box_id):
