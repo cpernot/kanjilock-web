@@ -57,14 +57,14 @@ export default function Quiz({ forcedMode = null }) {
         // Match legacy logic: digits -> svg, others -> png
         const isDigit = /^\d/.test(selectedBox);
         const extension = isDigit ? "svg" : "png";
-        const imageUrl = `${baseDir}box_${selectedBox}.${extension}`;
+        const imageUrl = `${baseDir}box_${encodeURIComponent(selectedBox)}.${extension}`;
 
         containerRef.current.style.backgroundImage = `url('${imageUrl}')`;
         containerRef.current.style.backgroundSize = "contain";
         containerRef.current.style.backgroundPosition = "center";
         containerRef.current.style.backgroundRepeat = "no-repeat";
         containerRef.current.style.backgroundBlendMode = "overlay";
-        containerRef.current.style.backgroundColor = "rgba(255, 255, 255, 0.85)";
+        containerRef.current.style.backgroundColor = "rgba(255, 255, 255, 0.60)";
         containerRef.current.style.color = "#0f172a"; // Match app background for contrast
     }, [selectedBox]);
 
@@ -734,8 +734,15 @@ const styles = {
         padding: "20px",
         fontSize: "1.2rem",
         cursor: "pointer",
-        borderRadius: "8px",
-        border: "1px solid #ccc"
+        borderRadius: "12px",
+        border: "1px solid rgba(0, 0, 0, 0.12)",
+        backgroundColor: "rgba(255, 255, 255, 0.5)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
+        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.06)",
+        transition: "all 0.15s ease",
+        color: "inherit",
+        fontWeight: "600"
     },
     resultBox: {
         padding: "20px",
