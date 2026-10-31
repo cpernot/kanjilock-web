@@ -29,10 +29,19 @@ async def initialize_cache(app: FastAPI):
         if not all_data:
             print("⚠️ WARNING: No kanji found in 'kanji' table!")
 
-        # 2. Fetch composition table
+        # 2. Fetch composition table (with pagination)
         try:
-            response_comp = supabase.table("kanji_mot").select("*").execute()
-            comp_map = {item['kanji']: item['liste_de_mots'] for item in response_comp.data}
+            comp_map = {}
+            start = 0
+            chunk_size = 1000
+            while True:
+                res_comp = supabase.table("kanji_mot").select("*").order("kanji").range(start, start + chunk_size - 1).execute()
+                for item in res_comp.data:
+                    comp_map[item['kanji']] = item.get('liste_de_mots')
+                if len(res_comp.data) < chunk_size:
+                    break
+                start += chunk_size
+            print(f"✅ Composition map loaded: {len(comp_map)} entries.")
         except Exception as e:
             print(f"⚠️ Warning: Could not fetch 'kanji_mot' table from Supabase: {e}")
             comp_map = {}
