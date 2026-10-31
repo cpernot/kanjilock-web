@@ -168,8 +168,8 @@ export function getAvailableBoxes() {
 
 
 export function getBoxLevel(boxId, mode = "qa") {
-    // Non-core modes (qh, qg) are excluded from box mastery and inherit progression from master mode qa
-    const effectiveMode = (mode === "qh" || mode === "qg") ? "qa" : mode;
+    // Only qg is excluded from box progress tracking (Kanji -> Box mode) and uses master mode qa
+    const effectiveMode = (mode === "qg") ? "qa" : mode;
     const bId = String(boxId);
     if (boxProgress[bId] && boxProgress[bId][effectiveMode]) {
         const entry = boxProgress[bId][effectiveMode];

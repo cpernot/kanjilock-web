@@ -391,8 +391,8 @@ export default function Quiz({ forcedMode = null }) {
         const summary = getSessionSummary();
         const player = getPlayer_setting();
 
-        // Evaluate Box Mastery only for core modes (not qh/qg)
-        const isCoreMode = (mode !== "qh" && mode !== "qg");
+        // Evaluate Box Mastery for core modes and qh (only exclude qg)
+        const isCoreMode = (mode !== "qg");
 
         if (selectedBox && isCoreMode) {
             const oldLevel = getBoxLevel(selectedBox, mode);

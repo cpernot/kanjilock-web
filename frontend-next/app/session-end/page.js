@@ -37,7 +37,7 @@ export default function SessionEndPage() {
             if (settings.progressiveMode) {
                 // Use the new Rule: lowest box of lower level (if all unlocked) 
                 // or highest unlocked (if not all unlocked)
-                nextBox = getRecommendedBox(true, "qa");
+                nextBox = getRecommendedBox(true, summary.mode || "qa");
             } else {
                 nextBox = getNextBoxId(summary.boxId);
             }

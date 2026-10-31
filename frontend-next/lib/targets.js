@@ -64,7 +64,7 @@ export async function fetchStatsCounts(player, mode = null) {
                     level = modes[mode] || 0;
                 } else {
                     const coreModes = Object.entries(modes)
-                        .filter(([m]) => m !== "qh" && m !== "qg")
+                        .filter(([m]) => m !== "qg")
                         .map(([, l]) => l);
                     if (coreModes.length > 0) level = Math.max(...coreModes);
                 }
@@ -104,7 +104,7 @@ export async function fetchBoxCounts(player, mode = null) {
                     level = modes[mode] || 0;
                 } else {
                     const coreModes = Object.entries(modes)
-                        .filter(([m]) => m !== "qh" && m !== "qg")
+                        .filter(([m]) => m !== "qg")
                         .map(([, l]) => l);
                     if (coreModes.length > 0) level = Math.max(...coreModes);
                 }

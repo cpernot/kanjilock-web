@@ -89,13 +89,13 @@ When doing a code review, return EXACTLY this structure:
 ### 🧩 Composition Quizzes (qh / qg) - FIXED
 - **Selection Logic:** These modes (`qh` for Kanji Composition, `qg` for Box Selection) use a pool of chips and require a manual "Validate" (Submit) button.
 - **qg Logic:** Question is a Kanji; options are boxes (0-5). User selects the box the Kanji belongs to. Always forced to "All Boxes" mode (Enforced in `Quiz.js` and `quizengine.js`).
-- **qh Logic:** Question is a Kanji; options are words from the `comp_words` pool. User selects the words that contain the Kanji. Can be played in specific boxes or "All Boxes". If "All Boxes" is selected, it bypasses Progressive Mode filters to ensure a full selection. Total options are standardized to 7. If a box has insufficient data for distractors, the engine falls back to the global pool to maintain pool size.
+- **qh Logic:** Question is a Kanji; options are words from the `comp_words` pool. User selects the words that contain the Kanji. Can be played in specific boxes or "All Boxes". If "All Boxes" is selected, it bypasses Progressive Mode filters to ensure a full selection. Total options are standardized to 7. If a box has insufficient data for distractors, the engine falls back to the global pool to maintain pool size. Now fully integrated into Box Mastery progression.
 
 ### 📝 Quiz Modes (Expanded)
 - **Standard Order:** `qa` (Kanji→Sens), `qb` (Sens→Kanji), `qc` (Mot→Sens), `qe` (Sens→Mot), `qd` (Mot→Lecture), `qj` (Lecture→Mot), `qf` (Kanji→Romaji), `qi` (Romaji→Kanji), `qg` (Kanji→Boite), `qh` (Kanji→Composition).
 - **qi Mode:** Romaji -> Kanji (Tests spelling and recognition).
 - **qj Mode:** Lecture -> Mot (Tests reading to word matching).
-- **Context Exclusion:** These modes are generally excluded from "Box Mastery" calculation as they test structural recognition rather than SRS retention.
+- **Context Exclusion:** `qg` is excluded from "Box Mastery" calculation as it tests global box classification rather than sequential box retention.
 
 ### 💬 Chat Integration
 - **Kanji Deep-Dive:** In the `session-end` summary, clicking on any kanji in the "Détails par Kanji" list triggers the global **UnLock AI** bubble with a pre-filled query.
