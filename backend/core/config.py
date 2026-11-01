@@ -179,5 +179,17 @@ QUIZ_MODES = {
             "signification": k["signification"]
         }
     },
+    "qk": {
+        "question": lambda kanji, k: k["signification"],
+        "answer":   lambda kanji, k: k["comp_words"],
+        "extras":   lambda kanji, k: {
+            "kanji":            kanji,
+            "romaji":           k["romaji"],
+            "mot":              k["mot"],
+            "lecture_mot":      k["lecture_mot"],
+            "signification_mot": k["signification_mot"],
+            "boite":            k["boite"]
+        }
+    },
     "intrus": {}
 }

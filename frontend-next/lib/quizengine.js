@@ -289,14 +289,14 @@ export function getNextQuestion(mode, progressiveMode = false, sequentialOrder =
     let candidates = [];
     if (currentBoxFilter) {
         candidates = allKeys.filter(k => String(staticData[k].boite) === currentBoxFilter);
-    } else if (progressiveMode && mode !== "qg" && mode !== "qh") {
+    } else if (progressiveMode && mode !== "qg" && mode !== "qh" && mode !== "qk") {
         const visibleBoxes = getVisibleBoxes(true, mode);
         candidates = allKeys.filter(k => visibleBoxes.includes(String(staticData[k].boite)));
     } else {
         candidates = allKeys;
     }
 
-    if (mode === "qh") {
+    if (mode === "qh" || mode === "qk") {
         candidates = candidates.filter(k => {
             const cw = staticData[k].comp_words;
             return cw && (Array.isArray(cw) ? cw.length > 0 : cw.trim().length > 0);

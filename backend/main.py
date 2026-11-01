@@ -35,7 +35,7 @@ async def initialize_cache(app: FastAPI):
             start = 0
             chunk_size = 1000
             while True:
-                res_comp = supabase.table("kanji_mot").select("*").order("kanji").range(start, start + chunk_size - 1).execute()
+                res_comp = supabase.table("kanji_mot").select("*").order("id").range(start, start + chunk_size - 1).execute()
                 for item in res_comp.data:
                     comp_map[item['kanji']] = item.get('liste_de_mots')
                 if len(res_comp.data) < chunk_size:

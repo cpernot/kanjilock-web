@@ -9,10 +9,10 @@ export function generateOptions(correctKey, modeDef, candidates, staticData, mod
     if (!correctData) return [];
 
     correctData.kanji = correctKey; // Inject Key
-    const isComposeMode = (mode === "qh" || mode === "qg");
+    const isComposeMode = (mode === "qh" || mode === "qg" || mode === "qk");
 
-    if (mode === "qh") {
-        // --- QH: KANJI -> COMPOSITION (Word Selection) ---
+    if (mode === "qh" || mode === "qk") {
+        // --- QH / QK: COMPOSITION (Word Selection) ---
         let rawCorrect = correctData.comp_words || [];
         if (typeof rawCorrect === 'string') rawCorrect = rawCorrect.split(",");
         const correctWords = rawCorrect.map(w => w.trim()).filter(w => w.length > 0);
@@ -108,9 +108,9 @@ export function prepareQuestionObject(selectedKanji, mode, staticData, candidate
 
     const modeDef = MODES[mode] || MODES["qa"];
 
-    // Generate qh/qg correct answers array
+    // Generate qh/qk/qg correct answers array
     let correctAnswers = null;
-    if (mode === "qh") {
+    if (mode === "qh" || mode === "qk") {
         correctAnswers = (Array.isArray(kData.comp_words)
             ? kData.comp_words
             : (typeof kData.comp_words === 'string' ? kData.comp_words.split(",") : [])

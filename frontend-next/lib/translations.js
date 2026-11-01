@@ -73,7 +73,8 @@ export const translations = {
                 qf: "Kanji → Romaji",
                 qi: "Romaji → Kanji",
                 qg: "Kanji → Box",
-                qh: "Kanji → Composition"
+                qh: "Kanji → Composition",
+                qk: "Meaning → Composition"
             },
             labels: {
                 sens: "Meaning",
@@ -243,7 +244,8 @@ export const translations = {
                 qf: "Kanji → Romaji",
                 qi: "Romaji → Kanji",
                 qg: "Kanji → Boîte",
-                qh: "Kanji → Composition"
+                qh: "Kanji → Composition",
+                qk: "Sens → Composition"
             },
             labels: {
                 sens: "Sens",
@@ -415,7 +417,8 @@ export const translations = {
                 qf: "漢字 → ローマ字",
                 qi: "ローマ字 → 漢字",
                 qg: "漢字 → ボックス",
-                qh: "漢字 → 構成"
+                qh: "漢字 → 構成",
+                qk: "意味 → 構成"
             },
             labels: {
                 sens: "意味",

@@ -4,7 +4,7 @@
 
 export function checkLocalAnswer(questionObj, userChoice, rt_ms) {
     let isCorrect = false;
-    const isComposeMode = (questionObj.mode === "qh" || questionObj.mode === "qg");
+    const isComposeMode = (questionObj.mode === "qh" || questionObj.mode === "qg" || questionObj.mode === "qk");
 
     if (isComposeMode) {
         const correctSet = new Set(questionObj.correctAnswers);

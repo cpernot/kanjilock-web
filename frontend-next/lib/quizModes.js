@@ -133,5 +133,19 @@ export const MODES = {
             boite: k.boite,
             signification: k.signification
         })
+    },
+
+    "qk": {
+        label: "Sens → Composition",
+        q: (k) => k.signification,
+        a: (k) => k.comp_words,
+        extras: (k) => ({
+            kanji: k.kanji,
+            romaji: k.romaji,
+            mot: k.mot,
+            lecture_mot: k.lecture_mot,
+            signification_mot: k.signification_mot,
+            boite: k.boite
+        })
     }
 };

@@ -247,10 +247,10 @@ export default function Quiz({ forcedMode = null }) {
     }
 
     async function loadQuestion() {
-        const isComposeMode = (question?.mode === "qh" || question?.mode === "qg");
+        const isComposeMode = (question?.mode === "qh" || question?.mode === "qg" || question?.mode === "qk");
         setIsProcessing(false);
         setResult(null);
-        setSelectedComposeChoices([]); // Reset for qh/qg
+        setSelectedComposeChoices([]); // Reset for qh/qg/qk
         elapsedBeforePauseRef.current = 0; // Reset question timer
 
         // Timer animation reset
@@ -433,7 +433,7 @@ export default function Quiz({ forcedMode = null }) {
     }
 
     // MODES_OPTS defined with explicit order requested by user
-    const MODES_OPTS = ["qa", "qb", "qc", "qe", "qd", "qj", "qf", "qi", "qg", "qh"];
+    const MODES_OPTS = ["qa", "qb", "qc", "qe", "qd", "qj", "qf", "qi", "qg", "qh", "qk"];
 
     if (isLoading) {
         if (!isInitialized) {
@@ -549,12 +549,14 @@ export default function Quiz({ forcedMode = null }) {
                         <div ref={barRef} style={styles.timerFill}></div>
                     </div>
 
-                    <h2 style={styles.question}>{question.question}</h2>
+                    <h2 style={{ ...styles.question, fontSize: (question?.mode === "qb" || question?.mode === "qe" || question?.mode === "qk") ? "2.2rem" : "3rem" }}>
+                        {question.question}
+                    </h2>
 
                     {/* Options */}
-                    <div style={(question.mode === "qh" || question.mode === "qg") ? styles.pool : styles.grid}>
+                    <div style={(question.mode === "qh" || question.mode === "qg" || question.mode === "qk") ? styles.pool : styles.grid}>
                         {question.options.map((opt, i) => {
-                            if (question.mode === "qh" || question.mode === "qg") {
+                            if (question.mode === "qh" || question.mode === "qg" || question.mode === "qk") {
                                 const isSelected = selectedComposeChoices.includes(opt);
                                 return (
                                     <button
@@ -591,7 +593,7 @@ export default function Quiz({ forcedMode = null }) {
                         })}
                     </div>
 
-                    {(question.mode === "qh" || question.mode === "qg") && (
+                    {(question.mode === "qh" || question.mode === "qg" || question.mode === "qk") && (
                         <div style={{ marginTop: "20px" }}>
                             <button
                                 onClick={() => handleAnswer(selectedComposeChoices)}
@@ -626,8 +628,8 @@ export default function Quiz({ forcedMode = null }) {
                     <div style={styles.resultQuestion}>{question?.question}</div>
 
                     {/* Correct Answer Prominent */}
-                    <div style={{ fontSize: question?.mode === "qh" ? "1.5rem" : "2rem", margin: "10px 0", color: "#fff", fontWeight: "bold" }}>
-                        {question?.mode === "qh" && <span style={{ fontSize: "0.9rem", opacity: 0.8, display: "block" }}>Composition :</span>}
+                    <div style={{ fontSize: (question?.mode === "qh" || question?.mode === "qk") ? "1.5rem" : "2rem", margin: "10px 0", color: "#fff", fontWeight: "bold" }}>
+                        {(question?.mode === "qh" || question?.mode === "qk") && <span style={{ fontSize: "0.9rem", opacity: 0.8, display: "block" }}>Composition :</span>}
                         {Array.isArray(result.bonne) ? result.bonne.join(" + ") : result.bonne}
                     </div>
 

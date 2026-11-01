@@ -82,19 +82,21 @@ When doing a code review, return EXACTLY this structure:
 - **Display:** "Avg Speed" (s/item) is displayed in the session-end summary to clarify the derivation of the final score.
 
 ### 📊 Flashcard Mastery Code
-- **Implementation:** Each card displays a 10-digit monospace string (e.g., `1030010000`) in the bottom-left corner.
-- **Mapping:** Each digit corresponds to an SRS level (0-4) for modes: `qa, qb, qc, qe, qd, qj, qf, qi, qg, qh` in order.
+- **Implementation:** Each card displays an 11-digit monospace string (e.g., `10300100000`) in the bottom-left corner.
+- **Mapping:** Each digit corresponds to an SRS level (0-4) for modes: `qa, qb, qc, qe, qd, qj, qf, qi, qg, qh, qk` in order.
 - **Feasibility:** Calculated in `lib/flashcards.js` using the in-memory `userProgress` map during deck preparation.
 
-### 🧩 Composition Quizzes (qh / qg) - FIXED
-- **Selection Logic:** These modes (`qh` for Kanji Composition, `qg` for Box Selection) use a pool of chips and require a manual "Validate" (Submit) button.
+### 🧩 Composition Quizzes (qh / qk / qg)
+- **Selection Logic:** These modes (`qh` for Kanji Composition, `qk` for Meaning Composition, `qg` for Box Selection) use a pool of chips and require a manual "Validate" (Submit) button.
 - **qg Logic:** Question is a Kanji; options are boxes (0-5). User selects the box the Kanji belongs to. Always forced to "All Boxes" mode (Enforced in `Quiz.js` and `quizengine.js`).
-- **qh Logic:** Question is a Kanji; options are words from the `comp_words` pool. User selects the words that contain the Kanji. Can be played in specific boxes or "All Boxes". If "All Boxes" is selected, it bypasses Progressive Mode filters to ensure a full selection. Total options are standardized to 7. If a box has insufficient data for distractors, the engine falls back to the global pool to maintain pool size. Now fully integrated into Box Mastery progression.
+- **qh Logic:** Question is a Kanji; options are words from the `comp_words` pool. User selects the words that contain the Kanji. Can be played in specific boxes or "All Boxes". Total options standardized to 7. Fully integrated into Box Mastery progression.
+- **qk Logic:** Question is a Signification (Meaning/Sens); options are words from the `comp_words` pool. User selects the words that compose the kanji associated with that meaning. Same interactive chip pool and validation as `qh`. Fully integrated into Box Mastery progression.
 
 ### 📝 Quiz Modes (Expanded)
-- **Standard Order:** `qa` (Kanji→Sens), `qb` (Sens→Kanji), `qc` (Mot→Sens), `qe` (Sens→Mot), `qd` (Mot→Lecture), `qj` (Lecture→Mot), `qf` (Kanji→Romaji), `qi` (Romaji→Kanji), `qg` (Kanji→Boite), `qh` (Kanji→Composition).
+- **Standard Order:** `qa` (Kanji→Sens), `qb` (Sens→Kanji), `qc` (Mot→Sens), `qe` (Sens→Mot), `qd` (Mot→Lecture), `qj` (Lecture→Mot), `qf` (Kanji→Romaji), `qi` (Romaji→Kanji), `qg` (Kanji→Boite), `qh` (Kanji→Composition), `qk` (Sens→Composition).
 - **qi Mode:** Romaji -> Kanji (Tests spelling and recognition).
 - **qj Mode:** Lecture -> Mot (Tests reading to word matching).
+- **qk Mode:** Sens -> Composition (Tests meaning to composition words).
 - **Context Exclusion:** `qg` is excluded from "Box Mastery" calculation as it tests global box classification rather than sequential box retention.
 
 ### 💬 Chat Integration

@@ -14,7 +14,7 @@ export default function RankingPage() {
     const [currentPlayer, setCurrentPlayer] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const MODES_OPTS = ["qa", "qb", "qc", "qe", "qd", "qj", "qf", "qi", "qg", "qh"];
+    const MODES_OPTS = ["qa", "qb", "qc", "qe", "qd", "qj", "qf", "qi", "qg", "qh", "qk"];
 
     useEffect(() => {
         const p = localStorage.getItem("kanjilock_player");
