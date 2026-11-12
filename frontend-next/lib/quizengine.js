@@ -21,9 +21,18 @@ let sessionHistory = new Set();
 let penaltyQueue = new Map();
 let reinjectionQueue = new Set();
 let sessionFailures = new Set();
+let revengePool = null; // Temporary subset of Kanji for Quick Revenge mode
 
 export let currentBoxFilter = null;
 export let isInitialized = false;
+
+export function setRevengePool(kanjiList) {
+    revengePool = Array.isArray(kanjiList) && kanjiList.length > 0 ? [...kanjiList] : null;
+}
+
+export function getRevengePool() {
+    return revengePool;
+}
 
 // --- CONFIGURATION ---
 const COOLDOWN_ERROR = 20;
@@ -149,6 +158,20 @@ export async function initEngine(playerOverride = null) {
 export const getUserProgress = () => userProgress;
 export const getStaticData = () => staticData;
 export const getBoxProgress = () => boxProgress;
+export function getKanjiLevel(kanji, mode = "qa") {
+    const effectiveMode = (mode === "qg") ? "qa" : mode;
+    return userProgress[effectiveMode]?.[kanji]?.level || 1;
+}
+
+export function applyFeverBonus(kanji, mode) {
+    if (!kanji) return null;
+    const effectiveMode = (mode === "qg") ? "qa" : (mode || "qa");
+    if (!userProgress[effectiveMode]) userProgress[effectiveMode] = {};
+    if (!userProgress[effectiveMode][kanji]) userProgress[effectiveMode][kanji] = { level: 1 };
+    const state = userProgress[effectiveMode][kanji];
+    state.level = Math.min((state.level || 1) + 1, 4);
+    return state.level;
+}
 
 export function getAvailableBoxes() {
     if (orderedBoxes.length > 0) return orderedBoxes;
@@ -287,13 +310,21 @@ export function getNextQuestion(mode, progressiveMode = false, sequentialOrder =
 
     // A. FILTERING CANDIDATES
     let candidates = [];
+    let distractorPool = [];
     if (currentBoxFilter) {
-        candidates = allKeys.filter(k => String(staticData[k].boite) === currentBoxFilter);
+        distractorPool = allKeys.filter(k => String(staticData[k].boite) === currentBoxFilter);
     } else if (progressiveMode && mode !== "qg" && mode !== "qh" && mode !== "qk") {
         const visibleBoxes = getVisibleBoxes(true, mode);
-        candidates = allKeys.filter(k => visibleBoxes.includes(String(staticData[k].boite)));
+        distractorPool = allKeys.filter(k => visibleBoxes.includes(String(staticData[k].boite)));
     } else {
-        candidates = allKeys;
+        distractorPool = allKeys;
+    }
+
+    if (revengePool && revengePool.length > 0) {
+        candidates = revengePool.filter(k => staticData[k]);
+        if (distractorPool.length < 4) distractorPool = allKeys;
+    } else {
+        candidates = distractorPool;
     }
 
     if (mode === "qh" || mode === "qk") {
@@ -347,7 +378,7 @@ export function getNextQuestion(mode, progressiveMode = false, sequentialOrder =
     else sessionHistory.add(selectedKanji);
 
     // E. PREPARE OBJECT
-    return prepareQuestionObject(selectedKanji, mode, staticData, candidates, orderedBoxes);
+    return prepareQuestionObject(selectedKanji, mode, staticData, distractorPool, orderedBoxes);
 }
 
 /* ============================

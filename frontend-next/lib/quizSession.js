@@ -7,7 +7,7 @@ import { reinjectKanji, currentBoxFilter, getReinjectionQueueSize } from "./quiz
 
 let session = null;
 
-export function startSession(customSize = null, boxId = null) {
+export function startSession(customSize = null, boxId = null, extraOptions = {}) {
     const settings = getSettings();
 
     session = {
@@ -18,6 +18,12 @@ export function startSession(customSize = null, boxId = null) {
         wrong: 0,
         totalTime: 0,
         speedScore: 0,
+        streak: 0,
+        maxStreak: 0,
+        fastStreak: 0,
+        feverTriggered: false,
+        flashCount: 0,
+        isRevenge: Boolean(extraOptions.isRevenge),
         startedAt: Date.now(),
         history: []
     };
@@ -30,13 +36,36 @@ export function getSession() {
     return session;
 }
 
-export function recordAnswer({ correct, rt_ms, kanji, mode }) {
+export function recordAnswer({ correct, rt_ms, kanji, mode, oldLevel, newLevel }) {
     if (!session) return false;
 
     const settings = getSettings();
     const isBoxSession = currentBoxFilter !== null;
     const isTooSlow = rt_ms > settings.maxTimeMs;
     const isActuallyCorrect = correct && !isTooSlow;
+    const isFast = correct && rt_ms <= 2200;
+    const isFlash = correct && rt_ms <= 1500;
+
+    if (isActuallyCorrect) {
+        session.streak = (session.streak || 0) + 1;
+        if (session.streak > (session.maxStreak || 0)) {
+            session.maxStreak = session.streak;
+        }
+        if (isFast) {
+            session.fastStreak = (session.fastStreak || 0) + 1;
+        } else {
+            session.fastStreak = Math.max(0, (session.fastStreak || 0));
+        }
+        if (isFlash) {
+            session.flashCount = (session.flashCount || 0) + 1;
+        }
+        if (session.streak >= 5 && session.fastStreak >= 3) {
+            session.feverTriggered = true;
+        }
+    } else {
+        session.streak = 0;
+        session.fastStreak = 0;
+    }
 
     if (settings.allGood && isBoxSession) {
         if (isActuallyCorrect) {
@@ -64,9 +93,11 @@ export function recordAnswer({ correct, rt_ms, kanji, mode }) {
     session.history.push({
         kanji: kanjiId,
         correct: correct,
+        rt_ms: rt_ms,
         mode: quizMode,
         speed_factor: (rt_ms < 3000) ? 1.0 : (rt_ms < 5000 ? 0.8 : 0.6),
-        newLevel: arguments[0].newLevel,
+        oldLevel: oldLevel,
+        newLevel: newLevel,
         isActuallyCorrect: isActuallyCorrect // Extra flag for UI if needed
     });
 
@@ -121,20 +152,27 @@ export function getSessionSummary() {
                 // Always keep the latest level reached
                 existing.newLevel = h.newLevel;
             } else {
-                // Normal mode: just keep the latest attempt info
-                historyMap.set(kanji, { ...h });
+                // Normal mode: keep initial oldLevel, update latest attempt info
+                historyMap.set(kanji, { ...h, oldLevel: existing.oldLevel });
             }
         }
     });
 
     const deduplicatedHistory = Array.from(historyMap.values());
+    const accuracyRatio = session.size > 0 ? Math.min(1, session.correct / session.size) : 0;
+    const roundedSpeed = Math.round(speedScore100);
+    let rank = "C";
+    if (accuracyRatio >= 1.0 && roundedSpeed >= 95) rank = "S";
+    else if (accuracyRatio >= 0.9 && roundedSpeed >= 80) rank = "A";
+    else if (accuracyRatio >= 0.75 && roundedSpeed >= 60) rank = "B";
 
     return {
         ...session,
         history: deduplicatedHistory,
         scoreOn10: Math.round((session.correct / session.size) * 10),
-        scoreOn100: Math.round(speedScore100),
-        avgTimeMs: Math.round(avgTime)
+        scoreOn100: roundedSpeed,
+        avgTimeMs: Math.round(avgTime),
+        rank: rank
     };
 }
 

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { getNextQuestion, checkLocalAnswer, updateEngineAfterAnswer, updateBoxRanking, currentBoxFilter, setBoxContext, getAvailableBoxes, getVisibleBoxes, getBoxKanjiCount, getBoxLevel, getRecommendedBox, resetEngineSession, isInitialized, initEngine } from "../lib/quizengine";
+import { getNextQuestion, checkLocalAnswer, updateEngineAfterAnswer, updateBoxRanking, currentBoxFilter, setBoxContext, getAvailableBoxes, getVisibleBoxes, getBoxKanjiCount, getBoxLevel, getRecommendedBox, resetEngineSession, isInitialized, initEngine, getKanjiLevel, applyFeverBonus, setRevengePool, getRevengePool } from "../lib/quizengine";
 import { startSession, recordAnswer, getSessionSummary, isSessionFinished, updateSessionSummary, getSession } from "../lib/quizSession";
 import { getMode, setMode as saveMode } from "../lib/modeManager";
 import { getPlayer_setting } from "../lib/settings";
@@ -28,8 +28,13 @@ export default function Quiz({ forcedMode = null }) {
 
     // Game State
     const [isPlaying, setIsPlaying] = useState(false);
+    const [combo, setCombo] = useState(0);
+    const [isFever, setIsFever] = useState(false);
+    const [speedFeedback, setSpeedFeedback] = useState(null); // { label, color, sub }
+    const [isRevengeMode, setIsRevengeMode] = useState(false);
 
     const timerRef = useRef(null);
+    const audioCtxRef = useRef(null);
     const startTimeRef = useRef(null); // Track when the current question started (for RT)
     const pauseTimeRef = useRef(null); // Track when we paused
     const elapsedBeforePauseRef = useRef(0); // Track accumulated time before pause
@@ -147,6 +152,14 @@ export default function Quiz({ forcedMode = null }) {
 
             // REPLAY LOGIC: If we are replaying, we want to stick to the box we just finished
             const isReplay = searchParams.get("replay") === "true";
+            const isRevengeParam = searchParams.get("revenge") === "true";
+            if (!isRevengeParam) {
+                setRevengePool(null);
+                setIsRevengeMode(false);
+            } else {
+                const pool = getRevengePool();
+                setIsRevengeMode(Boolean(pool && pool.length > 0));
+            }
 
             // Sync from remote (async)
             fetchRemoteSettings(player).then(remoteSettings => {
@@ -183,14 +196,23 @@ export default function Quiz({ forcedMode = null }) {
 
     function startNewSession(forceStart = false) {
         let size = null;
-        if (selectedBox && selectedBox !== "") {
+        const revPool = getRevengePool();
+        const inRevenge = Boolean(revPool && revPool.length > 0);
+        setIsRevengeMode(inRevenge);
+
+        if (inRevenge) {
+            size = revPool.length;
+        } else if (selectedBox && selectedBox !== "") {
             size = getBoxKanjiCount(selectedBox);
         }
 
         resetEngineSession();
-        startSession(size, selectedBox);
+        startSession(size, selectedBox, { isRevenge: inRevenge });
         setQuestion(null);
         setResult(null);
+        setCombo(0);
+        setIsFever(false);
+        setSpeedFeedback(null);
         setIsProcessing(false);
         elapsedBeforePauseRef.current = 0;
 
@@ -202,6 +224,8 @@ export default function Quiz({ forcedMode = null }) {
     // Handlers
     function handleModeChange(e) {
         const newMode = e.target.value;
+        setRevengePool(null);
+        setIsRevengeMode(false);
         setSelectedMode(newMode);
         saveMode(newMode);
 
@@ -216,6 +240,8 @@ export default function Quiz({ forcedMode = null }) {
 
     function handleBoxChange(e) {
         const val = e.target.value;
+        setRevengePool(null);
+        setIsRevengeMode(false);
         setSelectedBox(val);
         setBoxContext(val === "" ? null : val);
         setIsPlaying(false);
@@ -338,6 +364,42 @@ export default function Quiz({ forcedMode = null }) {
         audio.play().catch(e => console.error("Sound play failed", e));
     }
 
+    function playComboTone(streakCount, isFeverNow) {
+        if (appSettings?.soundEnabled === false) return;
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            if (!audioCtxRef.current) {
+                audioCtxRef.current = new AudioCtx();
+            }
+            const ctx = audioCtxRef.current;
+            if (ctx.state === "suspended") ctx.resume();
+
+            const now = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = isFeverNow ? "triangle" : "sine";
+
+            // Musical pentatonic progression rising with combo
+            const semitones = Math.min(streakCount, 12);
+            const baseFreq = 440 * Math.pow(2, semitones / 12);
+            osc.frequency.setValueAtTime(baseFreq, now);
+            if (isFeverNow) {
+                osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.25, now + 0.14);
+            }
+
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.18);
+        } catch (e) {
+            // Ignore Web Audio errors
+        }
+    }
+
     async function handleAnswer(choice) {
         if (isProcessing) return;
         setIsProcessing(true);
@@ -350,9 +412,42 @@ export default function Quiz({ forcedMode = null }) {
         const data = checkLocalAnswer(question, choice, rt_ms);
 
         const mode = forcedMode || selectedMode;
+        const oldLevel = getKanjiLevel(question.kanji, mode);
         const newState = updateEngineAfterAnswer(question.kanji, data.correct, mode);
 
-        setResult(data);
+        // Live Speed & Combo Feedback
+        const maxTimeMs = appSettings?.maxTimeMs || 5000;
+        const isValidHit = data.correct && rt_ms <= maxTimeMs;
+
+        if (isValidHit) {
+            const nextCombo = combo + 1;
+            const feverActive = nextCombo >= 5;
+            setCombo(nextCombo);
+            setIsFever(feverActive);
+            playComboTone(nextCombo, feverActive);
+
+            if (rt_ms <= 1500) {
+                setSpeedFeedback({ label: `⚡ ${t('quiz.flash') || 'FLASH!'}`, sub: `${(rt_ms / 1000).toFixed(2)}s`, color: "#facc15" });
+            } else if (rt_ms <= 2500) {
+                setSpeedFeedback({ label: `🔥 ${t('quiz.fast') || 'FAST!'}`, sub: `${(rt_ms / 1000).toFixed(2)}s`, color: "#38bdf8" });
+            } else {
+                setSpeedFeedback({ label: `👍 ${t('quiz.good') || 'GOOD'}`, sub: `${(rt_ms / 1000).toFixed(2)}s`, color: "#4ade80" });
+            }
+        } else {
+            setCombo(0);
+            setIsFever(false);
+            if (data.correct && rt_ms > maxTimeMs) {
+                setSpeedFeedback({ label: `🐢 ${t('quiz.tooSlow') || 'TOO SLOW'}`, sub: `${(rt_ms / 1000).toFixed(2)}s`, color: "#fb923c" });
+            } else {
+                setSpeedFeedback({ label: `💔 ${t('quiz.comboBroken') || 'COMBO BROKEN'}`, sub: `${(rt_ms / 1000).toFixed(2)}s`, color: "#f87171" });
+            }
+        }
+
+        setResult({
+            ...data,
+            oldLevel,
+            newLevel: newState?.level || oldLevel
+        });
         playSound(data.correct ? "success.wav" : "BOMB.WAV");
 
         // Record Answer
@@ -361,17 +456,21 @@ export default function Quiz({ forcedMode = null }) {
             rt_ms: rt_ms,
             kanji: question.kanji,
             mode: mode,
+            oldLevel: oldLevel,
             newLevel: newState?.level
         });
 
         if (finished) {
             // If session is finished, don't allow loading another question
             setIsPlaying(false);
-            // Give the user time to see the last answer before showing compilation overlay
-            setTimeout(async () => {
-                setIsCompiling(true);
-                await finishSession(mode);
-            }, 2500);
+            // If autoDismissAnswer is true (or undefined), wait before showing compilation overlay
+            // If autoDismissAnswer is false, wait for the user to click the result overlay
+            if (appSettings?.autoDismissAnswer !== false) {
+                setTimeout(async () => {
+                    setIsCompiling(true);
+                    await finishSession(mode);
+                }, 2500);
+            }
         } else {
             // Check settings for autoDismiss
             if (appSettings?.autoDismissAnswer !== false) {
@@ -390,9 +489,75 @@ export default function Quiz({ forcedMode = null }) {
         invalidateDashboardCache();
         const summary = getSessionSummary();
         const player = getPlayer_setting();
+        summary.mode = mode;
 
-        // Evaluate Box Mastery for core modes and qh (only exclude qg)
-        const isCoreMode = (mode !== "qg");
+        // Clear any temporary revenge pool once session finishes
+        setRevengePool(null);
+
+        // FEVER BONUS: If player reached 5x+ streak, award a Double Mastery Jump (+1 extra level) to a qualifying Kanji
+        let feverBonusKanji = null;
+        if ((summary.maxStreak >= 5 || summary.feverTriggered) && Array.isArray(summary.history)) {
+            const eligible = summary.history
+                .filter(h => h.correct && (h.newLevel || 1) < 4)
+                .sort((a, b) => (a.newLevel || 1) - (b.newLevel || 1));
+
+            if (eligible.length > 0) {
+                const target = eligible[0];
+                const boostedLevel = applyFeverBonus(target.kanji, mode);
+                if (boostedLevel) {
+                    target.newLevel = boostedLevel;
+                    target.feverBonus = true;
+                    feverBonusKanji = target.kanji;
+                    // Add a second correct entry for backend payload so backend SRS increments twice
+                    summary.feverBonusKanji = feverBonusKanji;
+                    updateSessionSummary({ feverBonusKanji, history: summary.history });
+                }
+            }
+        }
+
+        // PERSONAL BEST (PB) TRACKING per Box + Mode
+        if (typeof window !== "undefined") {
+            const pbKey = `kanjilock_pb_${player}_${mode}_${summary.boxId || "all"}`;
+            let prevPb = null;
+            try {
+                const rawPb = localStorage.getItem(pbKey);
+                if (rawPb) prevPb = JSON.parse(rawPb);
+            } catch (e) {}
+
+            const accuracyPct = summary.size > 0 ? Math.round((summary.correct / summary.size) * 100) : 0;
+            const isFullClear = summary.correct >= summary.size;
+            let isNewRecord = false;
+            let pbDiffMs = null;
+
+            if (isFullClear) {
+                if (!prevPb || summary.scoreOn100 > prevPb.bestScore || (summary.scoreOn100 === prevPb.bestScore && summary.avgTimeMs < prevPb.bestAvgTimeMs)) {
+                    isNewRecord = true;
+                    if (prevPb && prevPb.bestAvgTimeMs) {
+                        pbDiffMs = summary.avgTimeMs - prevPb.bestAvgTimeMs; // negative means faster!
+                    }
+                    const nextPb = {
+                        bestScore: summary.scoreOn100,
+                        bestAvgTimeMs: summary.avgTimeMs,
+                        accuracyPct,
+                        updatedAt: new Date().toISOString()
+                    };
+                    localStorage.setItem(pbKey, JSON.stringify(nextPb));
+                } else if (prevPb && prevPb.bestAvgTimeMs) {
+                    pbDiffMs = summary.avgTimeMs - prevPb.bestAvgTimeMs;
+                }
+            }
+
+            summary.personalBest = {
+                isNewRecord,
+                prevBestScore: prevPb?.bestScore ?? null,
+                prevBestAvgTimeMs: prevPb?.bestAvgTimeMs ?? null,
+                pbDiffMs
+            };
+            updateSessionSummary({ personalBest: summary.personalBest, mode });
+        }
+
+        // Evaluate Box Mastery for core modes and qh (only exclude qg and Revenge sub-sessions)
+        const isCoreMode = (mode !== "qg") && !summary.isRevenge;
 
         if (selectedBox && isCoreMode) {
             const oldLevel = getBoxLevel(selectedBox, mode);
@@ -405,6 +570,12 @@ export default function Quiz({ forcedMode = null }) {
             updateSessionSummary({ boxRanking }); // Sync back to session manager
         }
 
+        const backendAnswers = [...summary.history];
+        if (feverBonusKanji) {
+            const bonusEntry = summary.history.find(h => h.kanji === feverBonusKanji);
+            if (bonusEntry) backendAnswers.push({ ...bonusEntry });
+        }
+
         const payload = {
             player: player,
             mode: mode,
@@ -415,7 +586,7 @@ export default function Quiz({ forcedMode = null }) {
             wrong: summary.wrong,
             total_time_ms: summary.totalTime,
             score_global: summary.scoreOn100,
-            answers: summary.history
+            answers: backendAnswers
         };
 
         try {
@@ -454,7 +625,13 @@ export default function Quiz({ forcedMode = null }) {
     // If not isPlaying and question -> Paused State
 
     return (
-        <div ref={containerRef} style={styles.container}>
+        <div
+            ref={containerRef}
+            style={{
+                ...styles.container,
+                ...(isFever && isPlaying ? styles.feverContainer : {})
+            }}
+        >
             {/* Compiling Overlay */}
             {isCompiling && (
                 <div style={styles.compilingOverlay}>
@@ -529,12 +706,40 @@ export default function Quiz({ forcedMode = null }) {
 
             {isPlaying && question && (
                 <>
+                    {/* Live Arcade HUD: Revenge Badge + Combo / Fever + Speed Badge */}
+                    <div style={styles.arcadeHud}>
+                        <div style={styles.hudLeft}>
+                            {isRevengeMode && (
+                                <span style={styles.revengeBadge}>⚡ {t('quiz.revengeMode') || 'REVENGE RUN'}</span>
+                            )}
+                            {combo > 0 && (
+                                <span style={isFever ? styles.feverBadge : styles.comboBadge}>
+                                    {isFever ? `🔥 FEVER ${combo}x` : `⚡ ${combo}x COMBO`}
+                                </span>
+                            )}
+                        </div>
+                        <div style={styles.hudRight}>
+                            {speedFeedback && (
+                                <span style={{ ...styles.speedBadge, borderColor: speedFeedback.color, color: speedFeedback.color }}>
+                                    {speedFeedback.label} <small style={{ opacity: 0.85 }}>({speedFeedback.sub})</small>
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
                     {/* Session Progress Bar */}
                     {appSettings?.showProgressBar !== false && (
-                        <div style={styles.sessionProgressContainer}>
+                        <div style={{
+                            ...styles.sessionProgressContainer,
+                            borderColor: isFever ? "rgba(250, 204, 21, 0.6)" : "rgba(255,255,255,0.1)"
+                        }}>
                             <div
                                 style={{
                                     ...styles.sessionProgressFill,
+                                    background: isFever
+                                        ? "linear-gradient(90deg, #f59e0b, #facc15, #fef08a)"
+                                        : "linear-gradient(to right, #4caf50, #81c784)",
+                                    boxShadow: isFever ? "0 0 12px rgba(250, 204, 21, 0.8)" : "none",
                                     width: `${((getSession()?.current || 0) / (getSession()?.size || 1)) * 100}%`
                                 }}
                             ></div>
@@ -546,7 +751,13 @@ export default function Quiz({ forcedMode = null }) {
 
                     {/* Timer Bar */}
                     <div style={styles.timerContainer}>
-                        <div ref={barRef} style={styles.timerFill}></div>
+                        <div
+                            ref={barRef}
+                            style={{
+                                ...styles.timerFill,
+                                background: isFever ? "linear-gradient(90deg, #f59e0b, #fde047)" : "#2196F3"
+                            }}
+                        ></div>
                     </div>
 
                     <h2 style={{ ...styles.question, fontSize: (question?.mode === "qb" || question?.mode === "qe" || question?.mode === "qk") ? "2.2rem" : "3rem" }}>
@@ -633,7 +844,35 @@ export default function Quiz({ forcedMode = null }) {
                         {Array.isArray(result.bonne) ? result.bonne.join(" + ") : result.bonne}
                     </div>
 
-                    <h3 style={{ margin: "10px 0" }}>{result.correct ? "✓ Correct" : "✗ Wrong"}</h3>
+                    <h3 style={{ margin: "6px 0" }}>{result.correct ? "✓ Correct" : "✗ Wrong"}</h3>
+
+                    {/* Live Micro-Feedback & Level Transition */}
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "center", flexWrap: "wrap", marginBottom: "8px" }}>
+                        {speedFeedback && (
+                            <span style={{
+                                background: "rgba(0,0,0,0.35)",
+                                padding: "3px 10px",
+                                borderRadius: "999px",
+                                fontSize: "0.85rem",
+                                fontWeight: "700",
+                                color: speedFeedback.color
+                            }}>
+                                {speedFeedback.label} ({speedFeedback.sub})
+                            </span>
+                        )}
+                        {result.oldLevel && result.newLevel && result.newLevel !== result.oldLevel && (
+                            <span style={{
+                                background: "rgba(0,0,0,0.35)",
+                                padding: "3px 10px",
+                                borderRadius: "999px",
+                                fontSize: "0.85rem",
+                                fontWeight: "700",
+                                color: result.newLevel > result.oldLevel ? "#fde047" : "#fca5a5"
+                            }}>
+                                Lv.{result.oldLevel} → Lv.{result.newLevel} {result.newLevel > result.oldLevel ? "⬆️" : "⬇️"}
+                            </span>
+                        )}
+                    </div>
 
                     {result.extras && (
                         <div style={styles.extras}>
@@ -849,5 +1088,68 @@ const styles = {
         fontWeight: "bold",
         color: "rgba(255,255,255,0.9)",
         textShadow: "0 1px 2px rgba(0,0,0,0.5)"
+    },
+    feverContainer: {
+        boxShadow: "0 0 28px rgba(250, 204, 21, 0.45), inset 0 0 18px rgba(250, 204, 21, 0.25)",
+        borderRadius: "16px",
+        border: "2px solid rgba(250, 204, 21, 0.65)",
+        transition: "box-shadow 0.3s ease, border-color 0.3s ease"
+    },
+    arcadeHud: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        minHeight: "34px",
+        marginBottom: "10px",
+        gap: "8px",
+        flexWrap: "wrap"
+    },
+    hudLeft: {
+        display: "flex",
+        alignItems: "center",
+        gap: "8px"
+    },
+    hudRight: {
+        display: "flex",
+        alignItems: "center",
+        gap: "8px"
+    },
+    comboBadge: {
+        background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+        color: "#fff",
+        padding: "4px 12px",
+        borderRadius: "999px",
+        fontSize: "0.82rem",
+        fontWeight: "800",
+        letterSpacing: "0.03em",
+        boxShadow: "0 2px 8px rgba(59, 130, 246, 0.4)"
+    },
+    feverBadge: {
+        background: "linear-gradient(135deg, #f59e0b, #ef4444)",
+        color: "#fff",
+        padding: "4px 14px",
+        borderRadius: "999px",
+        fontSize: "0.85rem",
+        fontWeight: "900",
+        letterSpacing: "0.05em",
+        boxShadow: "0 0 14px rgba(245, 158, 11, 0.75)"
+    },
+    revengeBadge: {
+        background: "linear-gradient(135deg, #a855f7, #ec4899)",
+        color: "#fff",
+        padding: "4px 12px",
+        borderRadius: "999px",
+        fontSize: "0.78rem",
+        fontWeight: "800",
+        letterSpacing: "0.04em"
+    },
+    speedBadge: {
+        background: "rgba(15, 23, 42, 0.78)",
+        border: "1px solid",
+        padding: "3px 10px",
+        borderRadius: "999px",
+        fontSize: "0.8rem",
+        fontWeight: "700",
+        backdropFilter: "blur(4px)"
     }
 };
