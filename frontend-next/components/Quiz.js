@@ -283,7 +283,6 @@ export default function Quiz({ forcedMode = null }) {
         resetTimerVisuals();
 
         startTimeRef.current = Date.now();
-        startTimerControl();
 
         // FIX: Use updated mode directly from state (or forced)
         // Note: In React state might be stale in closures, but since we rely on dependency in useEffect 
@@ -302,6 +301,15 @@ export default function Quiz({ forcedMode = null }) {
 
         setQuestion(data);
     }
+
+    // When question state changes or user resumes playing, ensure timer bar starts animating
+    useEffect(() => {
+        if (isPlaying && question) {
+            startTimerControl();
+        } else {
+            stopTimerControl();
+        }
+    }, [question, isPlaying]);
 
     // --- TIMER LOGIC ---
 

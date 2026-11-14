@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
 import calendar
 from backend.data.progress import load_data, get_player_settings
-from backend.data.session_stats import load_sessions 
+from backend.data.session_stats import load_sessions
+from backend.box_metadata import get_box_sort_index
 # from backend.core.config import USER_ID
 from fastapi import APIRouter, Request
 
@@ -69,7 +70,7 @@ def stats_api(request: Request, mode: str = "qa", player: str = "Anonymous"):
     start_dates = {r: get_start_of_period(r, last_reset) for r in ranges}
 
     # 2. Calcul des stats journalières à partir des sessions
-    all_sessions = load_sessions(player)
+    all_sessions = sorted(load_sessions(player) or [], key=lambda x: x.get("session_date") or "")
     daily_stats = {}
     
     summaries = {
@@ -78,6 +79,8 @@ def stats_api(request: Request, mode: str = "qa", player: str = "Anonymous"):
     }
 
     sessions_by_date = {}
+    box_times_by_date = {}
+    box_pb = {}  # { box_id: { "pb_cold_ms": int|None, "pb_cold_perfect_ms": int|None, "pb_best_ms": int|None, "pb_best_perfect_ms": int|None } }
 
     for s in all_sessions:
         d_str = s.get("session_date") 
@@ -118,6 +121,7 @@ def stats_api(request: Request, mode: str = "qa", player: str = "Anonymous"):
                 box_id = details.get("box")
                 box_rank = details.get("boxRanking")
                 if box_id:
+                    box_key = str(box_id)
                     lvl = 1
                     if isinstance(box_rank, dict):
                         lvl = box_rank.get("level") or box_rank.get("newLevel") or box_rank.get("oldLevel") or 1
@@ -125,6 +129,51 @@ def stats_api(request: Request, mode: str = "qa", player: str = "Anonymous"):
                         lvl = int(box_rank)
                     if lvl in entry["box"]:
                         entry["box"][lvl] += 1
+
+                    # Box Time Tracking (avg ms per kanji)
+                    total_time_ms = details.get("total_time_ms")
+                    session_size = details.get("session_size") or count
+                    if total_time_ms and session_size and int(session_size) > 0:
+                        avg_ms = round(float(total_time_ms) / float(session_size))
+                        wrong_cnt = int(details.get("wrong", 0))
+                        correct_cnt = int(details.get("correct", 0))
+                        is_perfect = (wrong_cnt == 0 and correct_cnt >= int(session_size))
+
+                        if date_key not in box_times_by_date:
+                            box_times_by_date[date_key] = {}
+
+                        if box_key not in box_pb:
+                            box_pb[box_key] = {
+                                "pb_cold_ms": None,
+                                "pb_cold_perfect_ms": None,
+                                "pb_best_ms": None,
+                                "pb_best_perfect_ms": None
+                            }
+
+                        if box_key not in box_times_by_date[date_key]:
+                            # First run of the day (Cold Run)
+                            box_times_by_date[date_key][box_key] = {
+                                "cold_ms": avg_ms,
+                                "cold_perfect": is_perfect,
+                                "best_ms": avg_ms,
+                                "best_perfect": is_perfect,
+                                "runs": 1
+                            }
+                            if box_pb[box_key]["pb_cold_ms"] is None or avg_ms < box_pb[box_key]["pb_cold_ms"]:
+                                box_pb[box_key]["pb_cold_ms"] = avg_ms
+                            if is_perfect and (box_pb[box_key]["pb_cold_perfect_ms"] is None or avg_ms < box_pb[box_key]["pb_cold_perfect_ms"]):
+                                box_pb[box_key]["pb_cold_perfect_ms"] = avg_ms
+                        else:
+                            day_box = box_times_by_date[date_key][box_key]
+                            day_box["runs"] += 1
+                            if avg_ms < day_box["best_ms"]:
+                                day_box["best_ms"] = avg_ms
+                                day_box["best_perfect"] = is_perfect
+
+                        if box_pb[box_key]["pb_best_ms"] is None or avg_ms < box_pb[box_key]["pb_best_ms"]:
+                            box_pb[box_key]["pb_best_ms"] = avg_ms
+                        if is_perfect and (box_pb[box_key]["pb_best_perfect_ms"] is None or avg_ms < box_pb[box_key]["pb_best_perfect_ms"]):
+                            box_pb[box_key]["pb_best_perfect_ms"] = avg_ms
         except Exception:
             continue
 
@@ -188,10 +237,29 @@ def stats_api(request: Request, mode: str = "qa", player: str = "Anonymous"):
         history["kanji"]["year"].append({"label": y, "levels": {str(k): v for k, v in act["kanji"].items()}})
         history["box"]["year"].append({"label": y, "levels": {str(k): v for k, v in act["box"].items()}})
 
+    available_dates = sorted(list(box_times_by_date.keys()), reverse=True)
+    # Sort each date's boxes by master BOX_ORDER
+    sorted_box_times_by_date = {}
+    for d_key, b_map in box_times_by_date.items():
+        sorted_keys = sorted(b_map.keys(), key=get_box_sort_index)
+        sorted_box_times_by_date[d_key] = {k: b_map[k] for k in sorted_keys}
+
+    pb_summary = {}
+    for b_key, pb in box_pb.items():
+        pb_summary[b_key] = {
+            "cold_pb_ms": pb["pb_cold_perfect_ms"] or pb["pb_cold_ms"],
+            "best_pb_ms": pb["pb_best_perfect_ms"] or pb["pb_best_ms"]
+        }
+
     return {
         "srs_levels": {str(k): v for k, v in srs_levels.items()},
         "daily_stats": daily_stats,
         "kanjis": [],
         "history": history,
-        "summaries": summaries
+        "summaries": summaries,
+        "box_times": {
+            "available_dates": available_dates,
+            "by_date": sorted_box_times_by_date,
+            "pb": pb_summary
+        }
     }

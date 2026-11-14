@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import config from "@/lib/config";
 import { getPlayer_setting, fetchRemoteSettings } from "@/lib/settings";
-import { getMode, MODES_LIST } from "@/lib/modeManager";
+import { getMode, setMode, MODES_LIST } from "@/lib/modeManager";
+import { setBoxContext, setRevengePool } from "@/lib/quizengine";
 import { MODES } from "@/lib/quizModes";
 import { fetchBoxCounts } from "@/lib/targets";
 import { loadFlashcardProgress } from "@/lib/flashcards";
@@ -20,6 +22,9 @@ export default function StatsPage() {
     const [selectedMode, setSelectedMode] = useState(null);
     const [timeRange, setTimeRange] = useState("week");
     const [masteryView, setMasteryView] = useState("kanji"); // 'kanji' or 'box'
+    const [selectedDate, setSelectedDate] = useState("");
+    const [timeMetric, setTimeMetric] = useState("cold"); // 'cold' (1st run/day) or 'best'
+    const router = useRouter();
     const activeModeRef = useRef(null);
     const historyScrollRef = useRef(null);
 
@@ -64,6 +69,8 @@ export default function StatsPage() {
                 const data = await res.json();
                 if (activeModeRef.current === mode) {
                     setStats(data);
+                    const dates = data?.box_times?.available_dates || [];
+                    setSelectedDate(dates[0] || "");
                 }
             }
             // 2. Fetch box-specific stats for this mode
@@ -86,6 +93,15 @@ export default function StatsPage() {
             }
         }
     }
+
+    const handleBeatGhost = (boxId) => {
+        if (!boxId) return;
+        setRevengePool(null);
+        if (selectedMode) setMode(selectedMode);
+        localStorage.setItem("kanjilock_last_box_selection", String(boxId));
+        setBoxContext(String(boxId));
+        router.push("/quiz?replay=true");
+    };
 
     if (!selectedMode || loading) return (
         <div style={{ ...styles.container, display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh" }}>
@@ -248,6 +264,186 @@ export default function StatsPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Box Speed vs. Personal Best (Ghost) Graph */}
+            {(() => {
+                const boxTimes = stats?.box_times || {};
+                const availableDates = boxTimes.available_dates || [];
+                const activeDate = selectedDate && boxTimes.by_date?.[selectedDate] ? selectedDate : (availableDates[0] || "");
+                const dayBoxes = activeDate ? (boxTimes.by_date?.[activeDate] || {}) : {};
+                const pbMap = boxTimes.pb || {};
+                const boxEntries = Object.entries(dayBoxes);
+
+                // Compute scale max (in seconds) across both day times and PB ghosts
+                let maxSec = 3.0;
+                let slowestTarget = null;
+
+                const items = boxEntries.map(([boxId, info]) => {
+                    const dayMs = timeMetric === "cold" ? info.cold_ms : info.best_ms;
+                    const pbMs = timeMetric === "cold"
+                        ? (pbMap[boxId]?.cold_pb_ms || dayMs)
+                        : (pbMap[boxId]?.best_pb_ms || dayMs);
+                    const daySec = dayMs / 1000;
+                    const pbSec = pbMs / 1000;
+                    const diffSec = daySec - pbSec;
+                    if (daySec > maxSec) maxSec = daySec;
+                    if (pbSec > maxSec) maxSec = pbSec;
+
+                    // Track slowest box relative to PB (for Beat Your Ghost callout)
+                    if (!slowestTarget || diffSec > slowestTarget.diffSec) {
+                        slowestTarget = { boxId, daySec, pbSec, diffSec, runs: info.runs };
+                    }
+                    return { boxId, daySec, pbSec, diffSec, runs: info.runs, isPerfect: timeMetric === "cold" ? info.cold_perfect : info.best_perfect };
+                });
+
+                // Nice ceiling in seconds
+                const scaleMaxSec = Math.ceil(maxSec * 1.15);
+
+                return (
+                    <div style={styles.fullWidthSection}>
+                        <div style={styles.glassCard}>
+                            <div style={styles.boxTimeHeader}>
+                                <div>
+                                    <h3 style={{ ...styles.cardTitle, margin: 0 }}>⚡ Box Speed vs. Ghost (PB)</h3>
+                                    <p style={{ margin: "4px 0 0 0", fontSize: "0.78rem", color: "#94a3b8" }}>
+                                        {timeMetric === "cold"
+                                            ? "1st Run of the Day (honest recall) vs. Cold Personal Best"
+                                            : "Best Run of the Day vs. All-Time Best"}
+                                    </p>
+                                </div>
+
+                                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                                    <div style={styles.viewToggle}>
+                                        <button
+                                            onClick={() => setTimeMetric("cold")}
+                                            style={{ ...styles.toggleBtn, ...(timeMetric === "cold" ? styles.toggleBtnActive : {}) }}
+                                            title="Only counts your very first attempt of each box on that day"
+                                        >❄️ 1st Run (Cold)</button>
+                                        <button
+                                            onClick={() => setTimeMetric("best")}
+                                            style={{ ...styles.toggleBtn, ...(timeMetric === "best" ? styles.toggleBtnActive : {}) }}
+                                        >🏆 Best</button>
+                                    </div>
+
+                                    {availableDates.length > 0 && (
+                                        <select
+                                            value={activeDate}
+                                            onChange={(e) => setSelectedDate(e.target.value)}
+                                            style={{ ...styles.select, padding: "6px 10px", fontSize: "0.85rem" }}
+                                        >
+                                            {availableDates.map((d, idx) => (
+                                                <option key={d} value={d}>
+                                                    {idx === 0 ? `${d} (Latest)` : d}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
+                                </div>
+                            </div>
+
+                            {items.length === 0 ? (
+                                <p style={{ color: "#64748b", margin: "20px 0" }}>
+                                    No box sessions recorded for this mode yet. Play a specific box to track your Ghost PB!
+                                </p>
+                            ) : (
+                                <>
+                                    {/* Option C: Beat Your Ghost Callout */}
+                                    {slowestTarget && slowestTarget.diffSec > 0.15 && (
+                                        <div style={styles.ghostCallout}>
+                                            <div style={{ textAlign: "left" }}>
+                                                <div style={{ fontWeight: "800", fontSize: "0.9rem", color: "#fde047" }}>
+                                                    👻 Ghost Challenge: Box {slowestTarget.boxId}
+                                                </div>
+                                                <div style={{ fontSize: "0.8rem", color: "#cbd5e1", marginTop: "2px" }}>
+                                                    {slowestTarget.daySec.toFixed(2)}s/kanji vs {slowestTarget.pbSec.toFixed(2)}s PB (+{slowestTarget.diffSec.toFixed(2)}s slower)
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => handleBeatGhost(slowestTarget.boxId)}
+                                                style={styles.ghostChallengeBtn}
+                                            >
+                                                ⚡ Beat Box {slowestTarget.boxId}
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Grouped Bar + Ghost PB Marker Chart */}
+                                    <div style={styles.boxTimeChartScroll}>
+                                        <div style={styles.boxTimeBars}>
+                                            {items.map(({ boxId, daySec, pbSec, diffSec, runs }) => {
+                                                const barPct = Math.min(100, (daySec / scaleMaxSec) * 100);
+                                                const pbPct = Math.min(100, (pbSec / scaleMaxSec) * 100);
+                                                const isRecord = diffSec <= 0.01;
+                                                const isSlow = diffSec > pbSec * 0.15 && diffSec > 0.15;
+
+                                                const barColor = isRecord
+                                                    ? "linear-gradient(180deg, #10b981, #059669)"
+                                                    : (isSlow
+                                                        ? "linear-gradient(180deg, #f97316, #ea580c)"
+                                                        : "linear-gradient(180deg, #3b82f6, #1d4ed8)");
+
+                                                return (
+                                                    <div key={boxId} style={styles.boxTimeCol}>
+                                                        {/* Delta badge */}
+                                                        <div style={{
+                                                            fontSize: "0.7rem",
+                                                            fontWeight: "800",
+                                                            color: isRecord ? "#4ade80" : (isSlow ? "#fb923c" : "#93c5fd"),
+                                                            marginBottom: "4px",
+                                                            whiteSpace: "nowrap"
+                                                        }}>
+                                                            {isRecord ? "🏆 PB!" : `+${diffSec.toFixed(2)}s`}
+                                                        </div>
+
+                                                        {/* Bar Track */}
+                                                        <div style={styles.boxTimeTrack} title={`Box ${boxId}: ${daySec.toFixed(2)}s/kanji (PB: ${pbSec.toFixed(2)}s, ${runs} run${runs > 1 ? 's' : ''})`}>
+                                                            {/* Actual Day Bar */}
+                                                            <div style={{
+                                                                ...styles.boxTimeFill,
+                                                                height: `${barPct}%`,
+                                                                background: barColor
+                                                            }}>
+                                                                <span style={styles.boxTimeBarText}>{daySec.toFixed(1)}s</span>
+                                                            </div>
+
+                                                            {/* Ghost PB Line */}
+                                                            <div
+                                                                style={{
+                                                                    ...styles.ghostLine,
+                                                                    bottom: `${pbPct}%`
+                                                                }}
+                                                                title={`Ghost PB: ${pbSec.toFixed(2)}s`}
+                                                            >
+                                                                <span style={styles.ghostTag}>{pbSec.toFixed(1)}s</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div style={styles.boxTimeLabel}>Box {boxId}</div>
+                                                        {runs > 1 && (
+                                                            <div style={{ fontSize: "0.65rem", color: "#64748b" }}>{runs}x</div>
+                                                        )}
+
+                                                        {/* Quick Challenge Button on slow boxes */}
+                                                        {isSlow ? (
+                                                            <button
+                                                                onClick={() => handleBeatGhost(boxId)}
+                                                                style={styles.miniChallengeBtn}
+                                                                title={`Challenge Box ${boxId}`}
+                                                            >⚡ Go</button>
+                                                        ) : (
+                                                            <div style={{ height: "22px" }} />
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Summary Cards */}
             <div style={styles.summaryRow}>
@@ -654,6 +850,117 @@ const styles = {
         color: "#64748b",
         marginTop: "10px",
         whiteSpace: "nowrap"
+    },
+    boxTimeHeader: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: "12px",
+        marginBottom: "16px"
+    },
+    ghostCallout: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: "12px",
+        padding: "12px 16px",
+        borderRadius: "12px",
+        background: "rgba(250, 204, 21, 0.08)",
+        border: "1px solid rgba(250, 204, 21, 0.3)",
+        marginBottom: "18px"
+    },
+    ghostChallengeBtn: {
+        background: "linear-gradient(135deg, #f59e0b, #ef4444)",
+        color: "#fff",
+        border: "none",
+        borderRadius: "10px",
+        padding: "8px 16px",
+        fontWeight: "800",
+        fontSize: "0.85rem",
+        cursor: "pointer",
+        boxShadow: "0 4px 12px rgba(245, 158, 11, 0.35)"
+    },
+    boxTimeChartScroll: {
+        overflowX: "auto",
+        paddingBottom: "8px"
+    },
+    boxTimeBars: {
+        display: "flex",
+        alignItems: "flex-end",
+        gap: "16px",
+        minHeight: "230px",
+        paddingTop: "10px"
+    },
+    boxTimeCol: {
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        minWidth: "56px"
+    },
+    boxTimeTrack: {
+        position: "relative",
+        width: "44px",
+        height: "155px",
+        background: "rgba(255, 255, 255, 0.04)",
+        borderRadius: "8px",
+        display: "flex",
+        alignItems: "flex-end",
+        border: "1px solid rgba(255,255,255,0.06)"
+    },
+    boxTimeFill: {
+        width: "100%",
+        borderRadius: "6px",
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "center",
+        paddingTop: "4px",
+        transition: "height 0.4s ease"
+    },
+    boxTimeBarText: {
+        fontSize: "0.68rem",
+        fontWeight: "800",
+        color: "#fff",
+        textShadow: "0 1px 2px rgba(0,0,0,0.6)"
+    },
+    ghostLine: {
+        position: "absolute",
+        left: "-4px",
+        right: "-4px",
+        borderTop: "2px dashed #facc15",
+        pointerEvents: "none",
+        zIndex: 5
+    },
+    ghostTag: {
+        position: "absolute",
+        right: "-2px",
+        top: "-15px",
+        background: "#0f172a",
+        color: "#fde047",
+        fontSize: "0.62rem",
+        fontWeight: "800",
+        padding: "1px 4px",
+        borderRadius: "4px",
+        border: "1px solid rgba(250, 204, 21, 0.5)"
+    },
+    boxTimeLabel: {
+        fontSize: "0.78rem",
+        fontWeight: "700",
+        color: "#e2e8f0",
+        marginTop: "8px",
+        whiteSpace: "nowrap"
+    },
+    miniChallengeBtn: {
+        marginTop: "4px",
+        background: "rgba(249, 115, 22, 0.2)",
+        border: "1px solid rgba(249, 115, 22, 0.5)",
+        color: "#fdba74",
+        borderRadius: "6px",
+        padding: "2px 8px",
+        fontSize: "0.7rem",
+        fontWeight: "700",
+        cursor: "pointer"
     }
 };
 
