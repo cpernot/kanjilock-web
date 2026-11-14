@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { setBoxContext, getNextBoxId, initEngine, isInitialized, setRevengePool } from "@/lib/quizengine";
+import { setBoxContext, getNextBoxId, initEngine, isInitialized, setRevengePool, getStaticData } from "@/lib/quizengine";
 import { useRouter } from "next/navigation";
 import { getSessionSummary } from "@/lib/quizSession";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -9,6 +9,8 @@ import { useLanguage } from "@/lib/LanguageContext";
 export default function SessionEndPage() {
     const { t } = useLanguage();
     const [summary, setSummary] = useState(null);
+    const [flippedCards, setFlippedCards] = useState({});
+    const [staticKanjiMap, setStaticKanjiMap] = useState({});
     const router = useRouter();
 
     useEffect(() => {
@@ -21,9 +23,13 @@ export default function SessionEndPage() {
             if (stored) setSummary(JSON.parse(stored));
         }
 
-        // Ensure engine is ready for "Continue" logic
+        // Ensure engine is ready for "Continue" logic & static data
         if (!isInitialized) {
-            initEngine();
+            initEngine().then(() => {
+                setStaticKanjiMap(getStaticData() || {});
+            });
+        } else {
+            setStaticKanjiMap(getStaticData() || {});
         }
     }, []);
 
@@ -65,6 +71,13 @@ export default function SessionEndPage() {
         setBoxContext(bId || null);
         setRevengePool(kanjiList);
         router.push("/quiz?replay=true&revenge=true");
+    };
+
+    const toggleFlip = (kanji) => {
+        setFlippedCards(prev => ({
+            ...prev,
+            [kanji]: !prev[kanji]
+        }));
     };
 
     if (!summary) return <div>{t('common.loading')}... <Link href="/">{t('nav.home')}</Link></div>;
@@ -234,17 +247,21 @@ export default function SessionEndPage() {
 
             {/* Detailed Kanji History */}
             <div style={styles.historyList}>
-                <h4 style={{ color: "#94a3b8", margin: "30px 0 15px 0" }}>{t('quiz.details')}</h4>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "30px 0 15px 0" }}>
+                    <h4 style={{ color: "#94a3b8", margin: 0 }}>{t('quiz.details')}</h4>
+                    <span style={{ fontSize: "0.75rem", color: "#64748b" }}>💡 Click card to flip details</span>
+                </div>
                 <div style={styles.grid}>
                     {summary.history.map((h, i) => {
                         const leveledUp = h.oldLevel && h.newLevel && h.newLevel > h.oldLevel;
                         const leveledDown = h.oldLevel && h.newLevel && h.newLevel < h.oldLevel;
+                        const isFlipped = Boolean(flippedCards[h.kanji]);
+                        const info = staticKanjiMap[h.kanji] || {};
+
                         return (
-                            <div key={i}
-                                onClick={() => {
-                                    const msg = `Fais une phrase d'exemple en japonais avec le kanji "${h.kanji}" and explains its readings and meaning.`;
-                                    window.dispatchEvent(new CustomEvent('askSensei', { detail: msg }));
-                                }}
+                            <div
+                                key={i}
+                                onClick={() => toggleFlip(h.kanji)}
                                 style={{
                                     ...styles.historyItem,
                                     borderColor: h.feverBonus
@@ -254,23 +271,62 @@ export default function SessionEndPage() {
                                     cursor: "pointer"
                                 }}
                             >
-                                <span style={styles.kanjiChar}>{h.kanji}</span>
-                                <span style={{
-                                    ...styles.kanjiLevel,
-                                    color: h.feverBonus ? "#fde047" : (leveledUp ? "#4ade80" : (leveledDown ? "#f87171" : "#94a3b8")),
-                                    fontWeight: (leveledUp || h.feverBonus) ? "700" : "normal"
-                                }}>
-                                    {leveledUp || leveledDown
-                                        ? `Lv.${h.oldLevel} → Lv.${h.newLevel}`
-                                        : (h.newLevel ? `${t('flashcards.level')} ${h.newLevel}` : "---")}
-                                    {h.feverBonus && " 🔥+2"}
-                                    {!h.feverBonus && h.newLevel === 3 && " ⭐"}
-                                    {!h.feverBonus && h.newLevel === 4 && " ⭐⭐⭐"}
-                                </span>
-                                {h.rt_ms && (
-                                    <span style={{ fontSize: "0.7rem", color: h.rt_ms <= 1500 ? "#facc15" : "#64748b", marginTop: "2px" }}>
-                                        {(h.rt_ms / 1000).toFixed(2)}s
-                                    </span>
+                                {!isFlipped ? (
+                                    <>
+                                        <span style={styles.kanjiChar}>{h.kanji}</span>
+                                        <span style={{
+                                            ...styles.kanjiLevel,
+                                            color: h.feverBonus ? "#fde047" : (leveledUp ? "#4ade80" : (leveledDown ? "#f87171" : "#94a3b8")),
+                                            fontWeight: (leveledUp || h.feverBonus) ? "700" : "normal"
+                                        }}>
+                                            {leveledUp || leveledDown
+                                                ? `Lv.${h.oldLevel} → Lv.${h.newLevel}`
+                                                : (h.newLevel ? `${t('flashcards.level')} ${h.newLevel}` : "---")}
+                                            {h.feverBonus && " 🔥+2"}
+                                            {!h.feverBonus && h.newLevel === 3 && " ⭐"}
+                                            {!h.feverBonus && h.newLevel === 4 && " ⭐⭐⭐"}
+                                        </span>
+                                        {h.rt_ms && (
+                                            <span style={{ fontSize: "0.7rem", color: h.rt_ms <= 1500 ? "#facc15" : "#64748b", marginTop: "2px" }}>
+                                                {(h.rt_ms / 1000).toFixed(2)}s
+                                            </span>
+                                        )}
+                                        <span style={{ fontSize: "0.65rem", color: "#64748b", marginTop: "4px" }}>
+                                            🔄
+                                        </span>
+                                    </>
+                                ) : (
+                                    <div style={{ textAlign: "center", width: "100%", fontSize: "0.75rem", display: "flex", flexDirection: "column", gap: "3px" }}>
+                                        <div style={{ fontWeight: "bold", color: "#38bdf8", fontSize: "0.85rem" }}>
+                                            {info.signification || "—"}
+                                        </div>
+                                        {info.romaji && (
+                                            <div style={{ color: "#94a3b8", fontSize: "0.7rem" }}>
+                                                {info.romaji}
+                                            </div>
+                                        )}
+                                        {info.mot && (
+                                            <div style={{ marginTop: "4px", paddingTop: "3px", borderTop: "1px dashed rgba(255,255,255,0.15)" }}>
+                                                <div
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const msg = `Fais une phrase d'exemple en japonais avec le mot "${info.mot}" et donne la traduction en français.`;
+                                                        window.dispatchEvent(new CustomEvent('askSensei', { detail: msg }));
+                                                    }}
+                                                    style={{ color: "#facc15", textDecoration: "underline", cursor: "pointer", fontWeight: "600" }}
+                                                    title="Ask Sensei"
+                                                >
+                                                    {info.mot} 💡
+                                                </div>
+                                                <div style={{ color: "#cbd5e1", fontSize: "0.7rem" }}>
+                                                    {info.signification_mot || ""}
+                                                </div>
+                                            </div>
+                                        )}
+                                        <span style={{ fontSize: "0.65rem", color: "#64748b", marginTop: "3px" }}>
+                                            ↩️
+                                        </span>
+                                    </div>
                                 )}
                             </div>
                         );

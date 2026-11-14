@@ -409,15 +409,19 @@ export default function Quiz({ forcedMode = null }) {
         const currentSegment = Date.now() - startTimeRef.current;
         const rt_ms = elapsedBeforePauseRef.current + currentSegment;
 
-        const data = checkLocalAnswer(question, choice, rt_ms);
-
+        const maxTimeMs = appSettings?.maxTimeMs || 5000;
+        const isTimeExpired = rt_ms > maxTimeMs;
         const mode = forcedMode || selectedMode;
+
+        // In All-Good mode, timing out counts as a failure (isCorrect = false for SRS)
+        const data = checkLocalAnswer(question, choice, rt_ms);
+        const effectiveCorrect = data.correct && !isTimeExpired;
+
         const oldLevel = getKanjiLevel(question.kanji, mode);
-        const newState = updateEngineAfterAnswer(question.kanji, data.correct, mode);
+        const newState = updateEngineAfterAnswer(question.kanji, effectiveCorrect, mode);
 
         // Live Speed & Combo Feedback
-        const maxTimeMs = appSettings?.maxTimeMs || 5000;
-        const isValidHit = data.correct && rt_ms <= maxTimeMs;
+        const isValidHit = effectiveCorrect;
 
         if (isValidHit) {
             const nextCombo = combo + 1;
@@ -448,11 +452,11 @@ export default function Quiz({ forcedMode = null }) {
             oldLevel,
             newLevel: newState?.level || oldLevel
         });
-        playSound(data.correct ? "success.wav" : "BOMB.WAV");
+        playSound(effectiveCorrect ? "success.wav" : "BOMB.WAV");
 
         // Record Answer
         const finished = recordAnswer({
-            correct: data.correct,
+            correct: effectiveCorrect,
             rt_ms: rt_ms,
             kanji: question.kanji,
             mode: mode,
@@ -495,10 +499,11 @@ export default function Quiz({ forcedMode = null }) {
         setRevengePool(null);
 
         // FEVER BONUS: If player reached 5x+ streak, award a Double Mastery Jump (+1 extra level) to a qualifying Kanji
+        // ONLY eligible if the kanji succeeded on first try (not in sessionFailures)
         let feverBonusKanji = null;
         if ((summary.maxStreak >= 5 || summary.feverTriggered) && Array.isArray(summary.history)) {
             const eligible = summary.history
-                .filter(h => h.correct && (h.newLevel || 1) < 4)
+                .filter(h => h.correct && h.isActuallyCorrect && (h.newLevel || 1) < 4)
                 .sort((a, b) => (a.newLevel || 1) - (b.newLevel || 1));
 
             if (eligible.length > 0) {
